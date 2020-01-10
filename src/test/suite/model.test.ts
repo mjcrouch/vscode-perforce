@@ -336,6 +336,7 @@ describe('Model & ScmProvider modules', () => {
             return command.getCalls()[index >= 0 ? index : command.getCalls().length+index];
         }
 
+        
         describe('When opening a file', () => {
             it('Opens the underlying workspace file', () => {
                 const file = items.stubService.changelists[0].files[0];
