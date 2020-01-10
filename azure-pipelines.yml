@@ -28,10 +28,10 @@ steps:
 
 - bash: |
     echo ">>> Compile vscode-test"
-    npm && npm ci
+    npm ci
     echo ">>> Compiled vscode-test"
     echo ">>> Run integration test"
-    npm && npm test
+    npm test
   displayName: Run Tests
   env:
     DISPLAY: ':99.0'
