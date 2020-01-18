@@ -35,6 +35,18 @@ const config = {
         use: [
           {
             loader: 'ts-loader'
+          },
+          {
+            loader: 'eslint-loader'
+          }
+        ]
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'eslint-loader'
           }
         ]
       }
