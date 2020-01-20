@@ -477,7 +477,8 @@ describe("Model & ScmProvider modules", () => {
         }
 
         let execCommand: sinon.SinonSpy;
-        beforeEach(() => {
+        beforeEach(function() {
+            this.timeout(4000);
             execCommand = sinon.spy(vscode.commands, "executeCommand");
         });
 
