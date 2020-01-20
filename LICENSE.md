@@ -1,4 +1,9 @@
 # The MIT License (MIT)
+
+**Copyright © 2020+ Matt Crouch**
+
+Significant portions of this extension are derived from the original base code stef-levesque/vscode-perforce:
+
 **Copyright © 2015 Stef Levesque**
 
 * * *
