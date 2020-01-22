@@ -166,7 +166,7 @@ export default class FileSystemListener {
         const fileExcludes = Object.keys(workspace.getConfiguration("files").exclude);
         const ignoredPatterns = this._p4ignore.concat(fileExcludes);
 
-        const shouldIgnore: boolean = micromatch.any(uri.fsPath, ignoredPatterns, {
+        const shouldIgnore: boolean = micromatch.isMatch(uri.fsPath, ignoredPatterns, {
             dot: true
         });
 
