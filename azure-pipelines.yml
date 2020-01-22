@@ -1,12 +1,12 @@
 trigger:
-- master
-- test-ci
-- master-new
+  branches:
+    - master
+    - test-ci
+  tags:
+    [*]
 
 pr:
 - master
-- test-ci
-- master-new
 
 strategy:
   matrix:
@@ -46,3 +46,9 @@ steps:
   displayName: Compile and Run Tests
   env:
     DISPLAY: ':99.0'
+
+- bash: |
+    echo ">>> Publish"
+    npm run deploy -p $(VSCODE_MARKETPLACE_TOKEN)
+  displayName: Publish
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'), eq(variables['Agent.OS'], 'Linux'))
