@@ -1,9 +1,8 @@
 trigger:
   branches:
-    - master
-    - test-ci
+    include: ['*']
   tags:
-    [*]
+    include: ['*']
 
 pr:
 - master
