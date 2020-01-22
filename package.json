@@ -716,6 +716,7 @@
     },
     "scripts": {
         "vscode:prepublish": "webpack --mode production",
+        "deploy": "vsce publish",
         "webpack": "webpack --mode development",
         "watch": "webpack --mode development --watch --info-verbosity verbose",
         "eslint": "eslint --ext .js,.ts ./",
