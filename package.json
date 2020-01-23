@@ -44,27 +44,27 @@
                 "perforce.bottleneck.maxConcurrent": {
                     "scope": "application",
                     "type": "number",
-                    "description": "How many jobs can be executing at the same time",
+                    "description": "How many perforce commands can be executing at the same time. Use zero for unlimited.",
                     "minimum": 0,
-                    "default": null
+                    "default": 10
                 },
                 "perforce.bottleneck.minTime": {
                     "scope": "application",
                     "type": "number",
-                    "description": "How long to wait after launching a job before launching another one",
+                    "description": "How long to wait (in milliseconds) after launching a perforce command before launching another one",
                     "minimum": 0
                 },
                 "perforce.bottleneck.highWater": {
                     "scope": "application",
                     "type": "number",
-                    "description": "How long can the queue be? When the queue length exceeds that value, the selected strategy is executed to shed the load",
+                    "description": "How many perforce commands can be queued? When the queue length exceeds that value, the selected strategy is executed to shed the load from the queue. Use zero for unlimited. **Low values are NOT recommended as useful commands may be dropped**",
                     "minimum": 0,
-                    "default": 50
+                    "default": 150
                 },
                 "perforce.bottleneck.strategy": {
                     "scope": "application",
                     "type": "string",
-                    "description": "Which strategy to use when the queue gets longer than the high water mark",
+                    "description": "Which strategy to use when the queue gets longer than the high water mark. Only applies when high water is > 0. See https://www.npmjs.com/package/bottleneck#strategies",
                     "enum": [
                         "LEAK",
                         "OVERFLOW_PRIORITY",
@@ -77,7 +77,7 @@
                     "type": "number",
                     "description": "The penalty value used by the BLOCK strategy",
                     "minimum": 0,
-                    "default": null
+                    "default": 0
                 },
                 "perforce.debugModeActive": {
                     "type": "boolean",

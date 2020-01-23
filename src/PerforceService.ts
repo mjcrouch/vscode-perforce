@@ -46,13 +46,14 @@ export function matchConfig(config: IPerforceConfig, uri: Uri): boolean {
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace PerforceService {
     const limiter: Bottleneck = new Bottleneck({
-        maxConcurrent: workspace
-            .getConfiguration("perforce")
-            .get<number>("bottleneck.maxConcurrent"),
+        maxConcurrent:
+            workspace
+                .getConfiguration("perforce")
+                .get<number>("bottleneck.maxConcurrent") || null,
         minTime: workspace.getConfiguration("perforce").get<number>("bottleneck.minTime"),
-        highWater: workspace
-            .getConfiguration("perforce")
-            .get<number>("bottleneck.highWater"),
+        highWater:
+            workspace.getConfiguration("perforce").get<number>("bottleneck.highWater") ||
+            null,
         strategy:
             Bottleneck.strategy[
                 workspace.getConfiguration("perforce").get<string>("bottleneck.strategy")
@@ -173,6 +174,9 @@ export namespace PerforceService {
         if (debugModeActive && !debugModeSetup) {
             limiter.on("error", err => {
                 console.warn("Bottleneck ERROR:", err);
+            });
+            limiter.on("dropped", info => {
+                console.warn("Bottleneck DROPPED:", info);
             });
             limiter.on("debug", (message, data) => {
                 console.log("Bottleneck Debug:", message, data);
