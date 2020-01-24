@@ -23,7 +23,7 @@ function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
 }
 
 type ChangeInfo = { chnum: number; description: string };
-type ShelvedFileInfo = { change: ChangeInfo; action: string; depotPath: string };
+type ShelvedFileInfo = { chnum: number; action: string; path: string };
 
 export class Model implements Disposable {
     private _disposables: Disposable[] = [];
@@ -769,29 +769,26 @@ export class Model implements Disposable {
 
         const prefix = this.getIgnoredChangelistPrefix();
 
-        let changes = changelists
+        let changeInfos = changelists
             .map(c => this.parseChangelistDescription(c))
             .filter(c => c !== undefined);
 
-        const ignoredChangelists: number[] = changes
+        const ignoredChangelists: number[] = changeInfos
             .filter(c => c.description.startsWith(prefix))
             .map(c => c.chnum);
 
         if (prefix) {
-            changes = changes.filter(c => !c.description.startsWith(prefix));
+            changeInfos = changeInfos.filter(c => !c.description.startsWith(prefix));
         }
 
         const shelvedResourcePromises = this.hideShelvedFiles()
             ? []
-            : this.getAllShelvedResources(changes);
-        const depotOpenedFilePromises = this.getDepotOpenedFilePaths();
-        const [shelvedResources, depotOpenedFilePaths] = await Promise.all([
+            : this.getAllShelvedResources(changeInfos);
+        const openResourcePromises = this.getDepotOpenedResources();
+        const [shelvedResources, openResources] = await Promise.all([
             shelvedResourcePromises,
-            depotOpenedFilePromises
+            openResourcePromises
         ]);
-
-        const fstatInfo = await this.getFstatInfoForFiles(depotOpenedFilePaths, "-Or");
-        const openResources = fstatInfo.map(info => this.getResourceFromFileInfo(info));
 
         const allResources = shelvedResources.concat(openResources);
 
@@ -808,7 +805,8 @@ export class Model implements Disposable {
             }
         });
 
-        // must be done AFTER the async operations! Do not mutate `this` before this point
+        // do this AFTER the async operations! Do not mutate `this` before this point
+        // TODO actually refresh kills them straight away anyway - should it?
         this.cleanAllGroups();
 
         this._defaultGroup = this._sourceControl.createResourceGroup(
@@ -818,7 +816,7 @@ export class Model implements Disposable {
         this._defaultGroup["model"] = this;
         this._defaultGroup.resourceStates = defaults;
 
-        const groups = changes.map(c => {
+        const groups = changeInfos.map(c => {
             const group = this._sourceControl.createResourceGroup(
                 "pending:" + c.chnum,
                 "#" + c.chnum + ": " + c.description
@@ -829,8 +827,8 @@ export class Model implements Disposable {
         });
 
         groups.forEach((group, i) => {
-            this._pendingGroups.set(changes[i].chnum, {
-                description: changes[i].description,
+            this._pendingGroups.set(changeInfos[i].chnum, {
+                description: changeInfos[i].description,
                 group: group
             });
         });
@@ -897,56 +895,51 @@ export class Model implements Disposable {
     }
 
     private async getAllShelvedResources(changes: ChangeInfo[]): Promise<Resource[]> {
-        const filePromises = changes.map(c => this.getDepotShelvedFilePaths(c.chnum));
-        const allFiles = await Promise.all(filePromises);
-        const infos: ShelvedFileInfo[] = allFiles
-            .reduce((prev, cur) => prev.concat(cur), [])
-            .map((file, i) => {
-                return {
-                    action: file.action,
-                    change: changes[i],
-                    depotPath: file.path
-                };
-            });
-        return this.getShelvedResources(infos);
+        const allFileInfo = await this.getDepotShelvedFilePaths(
+            changes.map(c => c.chnum)
+        );
+        return this.getShelvedResources(allFileInfo);
     }
 
     private async getShelvedResources(files: ShelvedFileInfo[]): Promise<Resource[]> {
         const fstatInfo = await this.getFstatInfoForFiles(
-            files.map(f => f.depotPath),
+            files.map(f => f.path),
             "-Or"
         );
 
-        const resources = fstatInfo
-            .map((element, i) => {
-                if (element) {
-                    const { depotPath, action, change } = files[i];
+        return fstatInfo.map((info, i) => {
+            const { path, action, chnum } = files[i];
 
-                    let underlyingUri: Uri;
-                    let fromFile: Uri;
-                    if (fstatInfo[i]) {
-                        underlyingUri = Uri.file(fstatInfo[i]["clientFile"]);
-                        fromFile = fstatInfo[i]["resolveFromFile0"]
-                            ? Uri.file(fstatInfo[i]["resolveFromFile0"])
-                            : undefined;
-                    }
+            let underlyingUri: Uri;
+            let fromFile: Uri;
+            if (info) {
+                // not present if a file is shelved for add, and not in the filesystem
+                underlyingUri = Uri.file(info["clientFile"]);
+                fromFile = info["resolveFromFile0"]
+                    ? Uri.file(info["resolveFromFile0"])
+                    : undefined;
+            }
 
-                    const resource: Resource = new Resource(
-                        this,
-                        Uri.file(depotPath),
-                        underlyingUri,
-                        change.chnum.toString(),
-                        true,
-                        action,
-                        fromFile
-                    );
-                    return resource;
-                }
-                return null;
-            })
-            .filter(r => r !== null);
+            const resource: Resource = new Resource(
+                this,
+                Uri.file(path),
+                underlyingUri,
+                chnum.toString(),
+                true,
+                action,
+                fromFile
+            );
+            return resource;
+        });
+    }
 
-        return resources;
+    private async getDepotOpenedResources(): Promise<Resource[]> {
+        const depotOpenedFilePromises = this.getDepotOpenedFilePaths();
+        const fstatInfo = await this.getFstatInfoForFiles(
+            await depotOpenedFilePromises,
+            "-Or"
+        );
+        return fstatInfo.map(info => this.getResourceFromFileInfo(info));
     }
 
     private async getDepotOpenedFilePaths(): Promise<string[]> {
@@ -973,21 +966,35 @@ export class Model implements Disposable {
         return files;
     }
 
-    private async getDepotShelvedFilePaths(
-        chnum: number
-    ): Promise<{ path: string; action: string }[]> {
+    private async getDepotShelvedFilePaths(chnums: number[]): Promise<ShelvedFileInfo[]> {
+        if (chnums.length === 0) {
+            return [];
+        }
         const resource = Uri.file(this._config.localDir);
-        const output = await Utils.getSimpleOutput(resource, "describe -Ss " + chnum);
+        const output = await Utils.getSimpleOutput(
+            resource,
+            "describe -Ss " + chnums.join(" ")
+        );
         const shelved = output.trim().split("\n");
         if (shelved.length === 0) {
-            return;
+            return [];
         }
 
         const files = [];
+        let curCh: number = 0;
         shelved.forEach(open => {
-            const matches = new RegExp(/(\.+)\ (.*)#(.*) (.*)/).exec(open);
-            if (matches) {
-                files.push({ path: matches[2], action: matches[4].trim() });
+            const chMatch = new RegExp(/^Change (\d+) by/).exec(open);
+            if (chMatch) {
+                curCh = parseInt(chMatch[1]);
+            } else {
+                const matches = new RegExp(/(\.+)\ (.*)#(.*) (.*)/).exec(open);
+                if (matches) {
+                    files.push({
+                        chnum: curCh,
+                        path: matches[2],
+                        action: matches[4].trim()
+                    });
+                }
             }
         });
 
@@ -1005,7 +1012,7 @@ export class Model implements Disposable {
     private async getFstatInfoForFiles(
         files: string[],
         additionalParams?: string
-    ): Promise<any> {
+    ): Promise<{}[]> {
         const config = workspace.getConfiguration("perforce");
         const maxFilePerCommand: number = config.get<number>("maxFilePerCommand");
 
