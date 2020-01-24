@@ -194,7 +194,7 @@ describe("Model & ScmProvider modules", () => {
 
         await promise;
 
-        subscriptions.push(instance.onDidChange(refresh));
+        subscriptions.push(instance.onRefreshStarted(refresh));
     });
     afterEach(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");

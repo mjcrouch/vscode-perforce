@@ -44,6 +44,10 @@ export class PerforceSCMProvider {
         return mapEvent(this._model.onDidChange, () => this);
     }
 
+    get onRefreshStarted(): Event<this> {
+        return mapEvent(this._model.onRefreshStarted, () => this);
+    }
+
     public get resources(): SourceControlResourceGroup[] {
         return this._model.ResourceGroups;
     }
@@ -120,7 +124,7 @@ export class PerforceSCMProvider {
 
         // Hook up the model change event to trigger our own event
         this._model.onDidChange(this.onDidModelChange.bind(this), this, this.disposables);
-        this._model.Refresh();
+        this._model.FullRefresh();
 
         this._model._sourceControl.inputBox.value = "";
         this._model._sourceControl.inputBox.placeholder =
@@ -273,12 +277,12 @@ export class PerforceSCMProvider {
         const perforceProvider = PerforceSCMProvider.GetInstance(
             sourceControl ? sourceControl.rootUri : null
         );
-        perforceProvider._model.Refresh();
+        perforceProvider._model.FullRefresh();
     }
 
     public static RefreshAll() {
         for (const provider of PerforceSCMProvider.instances) {
-            provider._model.Refresh();
+            provider._model.FullRefresh();
         }
     }
 

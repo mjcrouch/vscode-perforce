@@ -69,6 +69,20 @@ function stderr(err: string): [string, string] {
     return ["", err];
 }
 
+function joinStds(stds: [string, string][], joinWith: string): [string, string] {
+    // only join non-empty values
+    const outs = stds
+        .map(std => std[0])
+        .filter(out => !!out)
+        .join(joinWith);
+    const errs = stds
+        .map(std => std[1])
+        .filter(out => !!out)
+        .join(joinWith);
+
+    return [outs, errs];
+}
+
 export function returnStdOut(out: string) {
     return () => stdout(out);
 }
@@ -184,38 +198,42 @@ export const makeResponses = (
                   }
               },
               describe: (service, resource, args, ...rest) => {
-                  const chnum = args.split(" ")[1];
-                  const c = service.changelists.find(c => c.chnum === chnum);
-                  if (c && c.behaviours?.describe) {
-                      c.behaviours.describe(service, resource, args, ...rest);
-                  } else if (c) {
-                      const pend = c.submitted ? " *pending*" : "";
-                      let ret =
-                          "Change " +
-                          chnum +
-                          " by user@cli on 2019/12/25 10:36:29" +
-                          pend +
-                          "\n\n" +
-                          "       " +
-                          c.description +
-                          "\n\n" +
-                          (c.submitted
-                              ? "Affected files ...\n"
-                              : "Shelved files ...\n\n");
+                  const [, ...chnums] = args.split(" ");
+                  const allStds = chnums.map(chnum => {
+                      const c = service.changelists.find(c => c.chnum === chnum);
+                      if (c && c.behaviours?.describe) {
+                          return c.behaviours.describe(service, resource, args, ...rest);
+                      } else if (c) {
+                          const pend = c.submitted ? " *pending*" : "";
+                          let ret =
+                              "Change " +
+                              chnum +
+                              " by user@cli on 2019/12/25 10:36:29" +
+                              pend +
+                              "\n\n" +
+                              "       " +
+                              c.description +
+                              "\n\n" +
+                              (c.submitted
+                                  ? "Affected files ...\n"
+                                  : "Shelved files ...\n\n");
 
-                      if (c.shelvedFiles) {
-                          ret += c.shelvedFiles
-                              .map(f => "... " + getDepotPathAndOp(f, false))
-                              .join("\n");
+                          if (c.shelvedFiles) {
+                              ret += c.shelvedFiles
+                                  .map(f => "... " + getDepotPathAndOp(f, false))
+                                  .join("\n");
+                          }
+                          //... //depot/TestArea/doc3.txt#1 add
+                          //... //depot/TestArea/hmm#1 add
+                          //... //depot/TestArea/My initial text document.txt#2 edit
+                          //... //depot/TestArea/my next document.txt#1 delete
+                          return stdout(ret);
+                      } else {
+                          return stderr(c + " - no such changelist");
                       }
-                      //... //depot/TestArea/doc3.txt#1 add
-                      //... //depot/TestArea/hmm#1 add
-                      //... //depot/TestArea/My initial text document.txt#2 edit
-                      //... //depot/TestArea/my next document.txt#1 delete
-                      return stdout(ret);
-                  } else {
-                      return stderr(c + " - no such changelist");
-                  }
+                  });
+
+                  return joinStds(allStds, "\n\n");
               },
               open: () => {
                   return stdout("open not implemented");
