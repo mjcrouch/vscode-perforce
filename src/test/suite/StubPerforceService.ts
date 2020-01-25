@@ -39,7 +39,7 @@ interface StubChangelist {
 }
 
 export interface StubFile {
-    localFile: vscode.Uri;
+    localFile?: vscode.Uri; // may be undefined where shelved for add and no local file
     depotPath: string;
     depotRevision: number;
     behaviours?: StubFileBehaviours;
@@ -185,8 +185,9 @@ export const makeResponses = (
                                   .map(
                                       f =>
                                           getDepotPathAndOp(f, true) +
-                                          " change " +
-                                          c.chnum +
+                                          (c.chnum === "default"
+                                              ? " default change"
+                                              : " change " + c.chnum) +
                                           " (" +
                                           (f.fileType ?? "text") +
                                           ")"

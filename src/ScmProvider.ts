@@ -103,10 +103,9 @@ export class PerforceSCMProvider {
         this.compatibilityMode = compatibilityMode;
         this.wksFolder = wksFolder;
         this.config = config;
-        this.Initialize();
     }
 
-    public Initialize() {
+    public async Initialize() {
         this._model = new Model(this.config, this.wksFolder, this.compatibilityMode);
 
         PerforceSCMProvider.instances.push(this);
@@ -124,11 +123,12 @@ export class PerforceSCMProvider {
 
         // Hook up the model change event to trigger our own event
         this._model.onDidChange(this.onDidModelChange.bind(this), this, this.disposables);
-        this._model.FullRefresh();
 
         this._model._sourceControl.inputBox.value = "";
         this._model._sourceControl.inputBox.placeholder =
             "Message (press {0} to create changelist)";
+
+        await this._model.FullRefresh();
     }
 
     public static registerCommands() {
@@ -273,17 +273,18 @@ export class PerforceSCMProvider {
         perforceProvider._model.Sync();
     }
 
-    public static Refresh(sourceControl: SourceControl) {
+    public static async Refresh(sourceControl: SourceControl) {
         const perforceProvider = PerforceSCMProvider.GetInstance(
             sourceControl ? sourceControl.rootUri : null
         );
-        perforceProvider._model.FullRefresh();
+        await perforceProvider._model.FullRefresh();
     }
 
-    public static RefreshAll() {
-        for (const provider of PerforceSCMProvider.instances) {
-            provider._model.FullRefresh();
-        }
+    public static async RefreshAll() {
+        const promises = PerforceSCMProvider.instances.map(provider =>
+            provider._model.FullRefresh()
+        );
+        await Promise.all(promises);
     }
 
     public static Info(sourceControl: SourceControl) {

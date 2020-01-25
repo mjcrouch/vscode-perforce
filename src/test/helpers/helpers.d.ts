@@ -8,6 +8,18 @@ declare module "chai" {
                     right: import("vscode").Uri,
                     title: string
                 ): void;
+                resources(
+                    expecteds: {
+                        depotPath: string;
+                        operation: import("../../scm/Status").Status;
+                    }[]
+                ): void;
+                shelvedResources(
+                    expecteds: {
+                        depotPath: string;
+                        operation: import("../../scm/Status").Status;
+                    }[]
+                ): void;
             }
         }
     }

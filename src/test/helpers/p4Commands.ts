@@ -1,5 +1,7 @@
 import { SinonSpyCall } from "sinon";
 import * as vscode from "vscode";
+import { Resource } from "../../scm/Resource";
+import { Status } from "../../scm/Status";
 
 function assertP4UriMatches(
     Assertion: Chai.AssertionStatic,
@@ -40,5 +42,58 @@ export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
         assertP4UriMatches(Assertion, obj.args[1], left, "Left Resource");
         assertP4UriMatches(Assertion, obj.args[2], right, "Right Resource");
         new Assertion(obj.args[3]).to.be.string(title, "Title");
+    });
+
+    Assertion.addMethod("resources", function(
+        expecteds: { depotPath: string; operation: Status }[]
+    ) {
+        const obj: Resource[] = this._obj as Resource[];
+
+        new Assertion(obj).to.have.length(
+            expecteds.length,
+            "Unexpected length for resource array"
+        );
+        expecteds.forEach((expected, i) => {
+            const resource: Resource = obj[i];
+            new Assertion(resource.depotPath).to.be.equal(
+                expected.depotPath,
+                "Unexpected depot path for resource " + i
+            );
+            new Assertion(resource.status, "Resource " + i + "operation").to.equal(
+                expected.operation
+            );
+            new Assertion(
+                resource.isShelved,
+                "Resource " + i + " should not be marked as shelved"
+            ).to.be.false;
+            // TODO rest of the fields
+        });
+    });
+
+    Assertion.addMethod("shelvedResources", function(
+        expecteds: { depotPath: string; operation: Status }[]
+    ) {
+        const obj: Resource[] = this._obj as Resource[];
+
+        new Assertion(obj).to.have.length(
+            expecteds.length,
+            "Unexpected length for shelved resource array"
+        );
+        expecteds.forEach((expected, i) => {
+            const resource: Resource = obj[i];
+            new Assertion(resource.depotPath).to.be.equal(
+                expected.depotPath,
+                "Unexpected depot path for resource " + i
+            );
+            new Assertion(
+                resource.status,
+                "Shelved resource " + i + "operation"
+            ).to.equal(expected.operation);
+            new Assertion(
+                resource.isShelved,
+                "Shelved resource " + i + " should not be marked as shelved"
+            ).to.be.true;
+            // TODO rest of the fields
+        });
     });
 }

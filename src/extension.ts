@@ -64,7 +64,9 @@ function TryCreateP4(uri: vscode.Uri): Promise<boolean> {
             }
 
             PerforceService.addConfig(config, wksUri.fsPath);
-            _disposable.push(new PerforceSCMProvider(config, wksUri, compatibilityMode));
+            const scm = new PerforceSCMProvider(config, wksUri, compatibilityMode);
+            scm.Initialize();
+            _disposable.push(scm);
             _disposable.push(new FileSystemListener(wksFolder));
 
             // Register only once
