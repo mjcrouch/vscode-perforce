@@ -345,9 +345,9 @@ export class StubPerforceService {
             throw new Error("No stub for perforce command: " + cmd);
         }
         const ret = func(this, resource, allArgs, directoryOverride, input);
-        setTimeout(() => {
+        setImmediate(() => {
             responseCallback(undefined, ret[0], ret[1]);
-        }, 0);
+        });
     }
 
     getChangelist(chnum: string) {

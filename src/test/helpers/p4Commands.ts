@@ -21,6 +21,19 @@ function assertP4UriMatches(
     new Assertion(got.query).to.have.string(expected.query, message);
 }
 
+function resourceToString(resource: Resource) {
+    return JSON.stringify(
+        {
+            uri: resource.uri,
+            depotPath: resource.depotPath,
+            status: resource.status,
+            isShelved: resource.isShelved
+        },
+        undefined,
+        2
+    );
+}
+
 export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
     const Assertion = chai.Assertion;
 
@@ -44,6 +57,7 @@ export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
         new Assertion(obj.args[3]).to.be.string(title, "Title");
     });
 
+    // TODO - this code is excessive - can be simplified - possibly with expect.to.include
     Assertion.addMethod("resources", function(
         expecteds: { depotPath: string; operation: Status }[]
     ) {
@@ -57,14 +71,21 @@ export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
             const resource: Resource = obj[i];
             new Assertion(resource.depotPath).to.be.equal(
                 expected.depotPath,
-                "Unexpected depot path for resource " + i
-            );
-            new Assertion(resource.status, "Resource " + i + "operation").to.equal(
-                expected.operation
+                "Unexpected depot path for resource " +
+                    i +
+                    " : " +
+                    resourceToString(resource)
             );
             new Assertion(
+                resource.status,
+                "Resource " + i + "operation mismatch : " + resourceToString(resource)
+            ).to.equal(expected.operation);
+            new Assertion(
                 resource.isShelved,
-                "Resource " + i + " should not be marked as shelved"
+                "Resource " +
+                    i +
+                    " should not be marked as shelved : " +
+                    resourceToString(resource)
             ).to.be.false;
             // TODO rest of the fields
         });
@@ -83,15 +104,24 @@ export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
             const resource: Resource = obj[i];
             new Assertion(resource.depotPath).to.be.equal(
                 expected.depotPath,
-                "Unexpected depot path for resource " + i
+                "Unexpected depot path for resource " +
+                    i +
+                    " : " +
+                    resourceToString(resource)
             );
             new Assertion(
                 resource.status,
-                "Shelved resource " + i + "operation"
+                "Shelved resource " +
+                    i +
+                    "operation mismatch : " +
+                    resourceToString(resource)
             ).to.equal(expected.operation);
             new Assertion(
                 resource.isShelved,
-                "Shelved resource " + i + " should not be marked as shelved"
+                "Shelved resource " +
+                    i +
+                    " should not be marked as shelved : " +
+                    resourceToString(resource)
             ).to.be.true;
             // TODO rest of the fields
         });

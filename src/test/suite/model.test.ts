@@ -21,6 +21,7 @@ import * as path from "path";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
+import { WorkspaceConfigAccessor } from "../../ConfigService";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -36,7 +37,7 @@ interface TestItems {
     refresh: sinon.SinonSpy;
 }
 
-describe("Model & ScmProvider modules", () => {
+describe("Model & ScmProvider modules (integration)", () => {
     const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
 
     const basicFiles = {
@@ -124,6 +125,7 @@ describe("Model & ScmProvider modules", () => {
     describe("Refresh / Initialize", function() {
         let stubService: StubPerforceService;
         let instance: PerforceSCMProvider;
+        let workspaceConfig: WorkspaceConfigAccessor;
         this.beforeEach(function() {
             this.timeout(4000);
 
@@ -131,7 +133,14 @@ describe("Model & ScmProvider modules", () => {
             stubService.changelists = [];
             stubService.stubExecute();
 
-            instance = new PerforceSCMProvider(config, workspaceUri, "perforce");
+            workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
+
+            instance = new PerforceSCMProvider(
+                config,
+                workspaceUri,
+                workspaceConfig,
+                "perforce"
+            );
             subscriptions.push(instance);
         });
         this.afterEach(() => {
@@ -142,7 +151,7 @@ describe("Model & ScmProvider modules", () => {
             stubService.changelists = [];
 
             await instance.Initialize();
-            expect(instance.resources).to.have.length(1);
+            expect(instance.resources).to.have.lengthOf(1);
             expect(instance.resources[0].resourceStates).to.be.resources([]);
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].label).to.equal("Default Changelist");
@@ -156,7 +165,7 @@ describe("Model & ScmProvider modules", () => {
                 }
             ];
             await instance.Initialize();
-            expect(instance.resources).to.have.length(2);
+            expect(instance.resources).to.have.lengthOf(2);
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].label).to.equal("Default Changelist");
             expect(instance.resources[0].resourceStates).to.be.resources([]);
@@ -185,7 +194,7 @@ describe("Model & ScmProvider modules", () => {
 
             await instance.Initialize();
 
-            expect(instance.resources).to.have.length(3);
+            expect(instance.resources).to.have.lengthOf(3);
 
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].resourceStates).to.be.resources([
@@ -223,7 +232,7 @@ describe("Model & ScmProvider modules", () => {
 
             await instance.Initialize();
 
-            expect(instance.resources).to.have.length(3);
+            expect(instance.resources).to.have.lengthOf(3);
 
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].resourceStates).to.be.resources([]);
@@ -258,7 +267,7 @@ describe("Model & ScmProvider modules", () => {
 
             await instance.Initialize();
 
-            expect(instance.resources).to.have.length(3);
+            expect(instance.resources).to.have.lengthOf(3);
 
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].resourceStates).to.be.resources([]);
@@ -322,7 +331,7 @@ describe("Model & ScmProvider modules", () => {
 
             await instance.Initialize();
 
-            expect(instance.resources).to.have.length(3);
+            expect(instance.resources).to.have.lengthOf(3);
 
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].resourceStates).to.be.resources([]);
@@ -341,8 +350,83 @@ describe("Model & ScmProvider modules", () => {
                 basicFiles.shelveEdit
             ]);
         });
-        // TODO configuration stubbing (or integration of config settings)
-        it("Can sort changelists descending");
+        it("Can sort changelists ascending", async () => {
+            sinon.stub(workspaceConfig, "changelistOrder").get(() => "ascending");
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add]
+                },
+                {
+                    chnum: "2",
+                    description: "changelist 2",
+                    files: [basicFiles.moveAdd, basicFiles.moveDelete]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(3);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([
+                basicFiles.branch
+            ]);
+            expect(instance.resources[1].id).to.equal("pending:2");
+            expect(instance.resources[1].label).to.equal("#2: changelist 2");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.moveAdd,
+                basicFiles.moveDelete
+            ]);
+            expect(instance.resources[2].id).to.equal("pending:1");
+            expect(instance.resources[2].label).to.equal("#1: changelist 1");
+            expect(instance.resources[2].resourceStates).to.be.resources([
+                basicFiles.edit,
+                basicFiles.delete,
+                basicFiles.add
+            ]);
+        });
+        it("Handles shelved files with no open files", async () => {
+            stubService.changelists = [
+                {
+                    chnum: "3",
+                    description: "shelved changelist 1",
+                    files: [],
+                    shelvedFiles: [basicFiles.shelveEdit]
+                },
+                {
+                    chnum: "4",
+                    description: "shelved changelist 2",
+                    files: [],
+                    shelvedFiles: [basicFiles.shelveDelete]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(3);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([]);
+
+            expect(instance.resources[1].id).to.equal("pending:3");
+            expect(instance.resources[1].label).to.equal("#3: shelved changelist 1");
+            expect(instance.resources[1].resourceStates).to.be.shelvedResources([
+                basicFiles.shelveEdit
+            ]);
+
+            expect(instance.resources[2].id).to.equal("pending:4");
+            expect(instance.resources[2].label).to.equal("#4: shelved changelist 2");
+            expect(instance.resources[2].resourceStates).to.be.shelvedResources([
+                basicFiles.shelveDelete
+            ]);
+        });
         it("Has decorations for files", async () => {
             stubService.changelists = [
                 {
@@ -375,9 +459,87 @@ describe("Model & ScmProvider modules", () => {
                 faded: false
             });
         });
-        // TODO config
-        it("Handles more than the max files per command");
-        it("Can be refreshed");
+        it("Handles more than the max files per command", async () => {
+            sinon.stub(workspaceConfig, "maxFilePerCommand").get(() => 1);
+
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add],
+                    shelvedFiles: [basicFiles.shelveDelete, basicFiles.shelveEdit]
+                },
+                {
+                    chnum: "2",
+                    description: "changelist 2",
+                    files: [basicFiles.moveAdd, basicFiles.moveDelete]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(3);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([
+                basicFiles.branch
+            ]);
+            expect(instance.resources[1].id).to.equal("pending:1");
+            expect(instance.resources[1].label).to.equal("#1: changelist 1");
+            expect(
+                instance.resources[1].resourceStates.slice(0, 2)
+            ).to.be.shelvedResources([basicFiles.shelveDelete, basicFiles.shelveEdit]);
+            expect(instance.resources[1].resourceStates.slice(2)).to.be.resources([
+                basicFiles.edit,
+                basicFiles.delete,
+                basicFiles.add
+            ]);
+            expect(instance.resources[2].id).to.equal("pending:2");
+            expect(instance.resources[2].label).to.equal("#2: changelist 2");
+            expect(instance.resources[2].resourceStates).to.be.resources([
+                basicFiles.moveAdd,
+                basicFiles.moveDelete
+            ]);
+        });
+        it("Can be refreshed", async () => {
+            stubService.changelists = [];
+            await instance.Initialize();
+            expect(instance.resources).to.have.lengthOf(1);
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].label).to.equal("Default Changelist");
+            expect(instance.resources[0].resourceStates).to.be.resources([]);
+
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.edit]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.add]
+                }
+            ];
+
+            await PerforceSCMProvider.RefreshAll();
+            expect(instance.resources).to.have.lengthOf(2);
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].label).to.equal("Default Changelist");
+            expect(instance.resources[0].resourceStates).to.be.resources([
+                basicFiles.edit
+            ]);
+            expect(instance.resources[1].id).to.equal("pending:1");
+            expect(instance.resources[1].label).to.equal("#1: changelist 1");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.add
+            ]);
+        });
         it("Can be refreshed multiple times without duplication");
     });
     describe("Actions", function() {
@@ -419,8 +581,13 @@ describe("Model & ScmProvider modules", () => {
                 }
             ];
             const execute = stubService.stubExecute();
-
-            const instance = new PerforceSCMProvider(config, workspaceUri, "perforce");
+            const workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
+            const instance = new PerforceSCMProvider(
+                config,
+                workspaceUri,
+                workspaceConfig,
+                "perforce"
+            );
             subscriptions.push(instance);
             await instance.Initialize();
 

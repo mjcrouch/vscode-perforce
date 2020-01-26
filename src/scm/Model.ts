@@ -11,6 +11,7 @@ import {
     workspace,
     commands
 } from "vscode";
+import { WorkspaceConfigAccessor } from "../ConfigService";
 import { Utils } from "../Utils";
 import { Display } from "../Display";
 import { Resource } from "./Resource";
@@ -53,42 +54,9 @@ export class Model implements Disposable {
         number,
         { description: string; group: SourceControlResourceGroup }
     >();
-    private _compatibilityMode: string;
-    private _workspaceUri: Uri;
-    private _config: IPerforceConfig;
 
     get workspaceUri() {
         return this._workspaceUri;
-    }
-
-    // TODO - refactor these out to a class of known config items
-
-    private getWorkspaceConfigItem<T>(item: string): T | undefined {
-        return workspace.getConfiguration("perforce", this._workspaceUri).get<T>(item);
-    }
-
-    private getConfigItem<T>(item: string): T | undefined {
-        return workspace.getConfiguration("perforce").get<T>(item);
-    }
-
-    private get changelistOrder(): string {
-        return this.getConfigItem("changelistOrder") ?? "descending";
-    }
-
-    private get ignoredChangelistPrefix(): string | undefined {
-        return this.getConfigItem("ignoredChangelistPrefix");
-    }
-
-    private get hideNonWorkspaceFiles(): boolean {
-        return this.getConfigItem("hideNonWorkspaceFiles");
-    }
-
-    private get hideShelvedFiles(): boolean {
-        return this.getConfigItem("hideShelvedFiles");
-    }
-
-    private get maxFilePerCommand(): number {
-        return this.getConfigItem("maxFilePerCommand");
     }
 
     private get clientName(): string | undefined {
@@ -118,13 +86,12 @@ export class Model implements Disposable {
     }
 
     public constructor(
-        config: IPerforceConfig,
-        workspaceUri: Uri,
-        compatibilityMode: string
+        private _config: IPerforceConfig,
+        private _workspaceUri: Uri,
+        private _workspaceConfig: WorkspaceConfigAccessor,
+        private _compatibilityMode: string
     ) {
-        this._config = config;
-        this._workspaceUri = workspaceUri;
-        this._compatibilityMode = compatibilityMode;
+        /**/
     }
 
     public async Sync(): Promise<void> {
@@ -194,7 +161,7 @@ export class Model implements Disposable {
         descStr: string,
         existingChangelist?: string
     ): Promise<string> {
-        const hideNonWorksSpaceFiles = this.hideNonWorkspaceFiles;
+        const hideNonWorksSpaceFiles = this._workspaceConfig.hideNonWorkspaceFiles;
 
         const args = `-o ${existingChangelist ? existingChangelist : ""}`;
         if (!descStr) {
@@ -394,7 +361,7 @@ export class Model implements Disposable {
         }
 
         if (pick === "Submit") {
-            if (this.hideNonWorkspaceFiles) {
+            if (this._workspaceConfig.hideNonWorkspaceFiles) {
                 const changeListNr = await this.SaveToChangelist(descStr);
                 this.Submit(parseInt(changeListNr, 10));
             } else {
@@ -727,9 +694,7 @@ export class Model implements Disposable {
         const trailingSlash = /^(.*)(\/)$/;
         const config = this._config;
         let pathToSync = null;
-        let p4Dir = config.p4Dir
-            ? config.p4Dir
-            : this.getWorkspaceConfigItem<string>("dir");
+        let p4Dir = config.p4Dir ? config.p4Dir : this._workspaceConfig.dir;
         if (p4Dir && p4Dir !== "none") {
             p4Dir = Utils.normalize(p4Dir);
             if (!trailingSlash.exec(p4Dir)) {
@@ -784,7 +749,7 @@ export class Model implements Disposable {
             ? Uri.file(fstatInfo["resolveFromFile0"])
             : undefined;
         const uri = Uri.file(clientFile);
-        if (this.hideNonWorkspaceFiles) {
+        if (this._workspaceConfig.hideNonWorkspaceFiles) {
             const workspaceFolder = workspace.getWorkspaceFolder(uri);
             if (!workspaceFolder) {
                 return;
@@ -847,7 +812,7 @@ export class Model implements Disposable {
         );
         let changeNumbers = output.trim().split("\n");
 
-        if (this.changelistOrder === "ascending") {
+        if (this._workspaceConfig.changelistOrder === "ascending") {
             changeNumbers = changeNumbers.reverse();
         }
 
@@ -861,7 +826,7 @@ export class Model implements Disposable {
     }
 
     private filterIgnoredChangelists(changelists: ChangeInfo[]): ChangeInfo[] {
-        const prefix = this.ignoredChangelistPrefix;
+        const prefix = this._workspaceConfig.ignoredChangelistPrefix;
         if (prefix) {
             changelists = changelists.filter(c => !c.description.startsWith(prefix));
         }
@@ -888,7 +853,7 @@ export class Model implements Disposable {
     }
 
     private async getAllShelvedResources(changes: ChangeInfo[]): Promise<Resource[]> {
-        if (this.hideShelvedFiles) {
+        if (this._workspaceConfig.hideShelvedFiles) {
             return [];
         }
         const allFileInfo = await this.getDepotShelvedFilePaths(
@@ -1011,9 +976,10 @@ export class Model implements Disposable {
         files: string[],
         additionalParams?: string
     ): Promise<{}[]> {
-        const promises = this.splitArray(files, this.maxFilePerCommand).map(fs =>
-            this.getFstatInfoForChunk(fs, additionalParams)
-        );
+        const promises = this.splitArray(
+            files,
+            this._workspaceConfig.maxFilePerCommand
+        ).map(fs => this.getFstatInfoForChunk(fs, additionalParams));
 
         const result = await Promise.all(promises);
 

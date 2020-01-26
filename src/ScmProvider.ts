@@ -19,6 +19,7 @@ import { FileType } from "./scm/FileTypes";
 import { IPerforceConfig, matchConfig } from "./PerforceService";
 import * as Path from "path";
 import * as fs from "fs";
+import { WorkspaceConfigAccessor } from "./ConfigService";
 
 enum DiffType {
     WORKSPACE_V_DEPOT,
@@ -99,14 +100,24 @@ export class PerforceSCMProvider {
         return "idle";
     }
 
-    constructor(config: IPerforceConfig, wksFolder: Uri, compatibilityMode: string) {
+    constructor(
+        config: IPerforceConfig,
+        wksFolder: Uri,
+        private _workspaceConfig: WorkspaceConfigAccessor,
+        compatibilityMode: string
+    ) {
         this.compatibilityMode = compatibilityMode;
         this.wksFolder = wksFolder;
         this.config = config;
     }
 
     public async Initialize() {
-        this._model = new Model(this.config, this.wksFolder, this.compatibilityMode);
+        this._model = new Model(
+            this.config,
+            this.wksFolder,
+            this._workspaceConfig,
+            this.compatibilityMode
+        );
 
         PerforceSCMProvider.instances.push(this);
         this._model._sourceControl = scm.createSourceControl(
