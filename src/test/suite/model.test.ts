@@ -540,7 +540,37 @@ describe("Model & ScmProvider modules (integration)", () => {
                 basicFiles.add
             ]);
         });
-        it("Can be refreshed multiple times without duplication");
+        it("Can be refreshed multiple times without duplication", async () => {
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.edit]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.add]
+                }
+            ];
+
+            await instance.Initialize();
+            await Promise.all([
+                PerforceSCMProvider.RefreshAll(),
+                PerforceSCMProvider.RefreshAll()
+            ]);
+            expect(instance.resources).to.have.lengthOf(2);
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].label).to.equal("Default Changelist");
+            expect(instance.resources[0].resourceStates).to.be.resources([
+                basicFiles.edit
+            ]);
+            expect(instance.resources[1].id).to.equal("pending:1");
+            expect(instance.resources[1].label).to.equal("#1: changelist 1");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.add
+            ]);
+        });
     });
     describe("Actions", function() {
         beforeEach(async function() {
