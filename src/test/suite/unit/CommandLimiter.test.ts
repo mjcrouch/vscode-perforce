@@ -108,9 +108,16 @@ describe("Command Limiter (unit)", () => {
         beforeEach(() => {
             cbs = [
                 sinon.stub().callsArg(0),
-                sinon.stub().callsArg(0),
-                sinon.stub().callsArg(0),
-                sinon.stub().callsArg(0)
+                sinon.stub().callsFake(c =>
+                    setTimeout(() => {
+                        c();
+                    }, 2)
+                ),
+                sinon.stub().callsFake(c =>
+                    setTimeout(() => {
+                        c();
+                    }, 4)
+                )
             ];
         });
         it("Starts with empty queue and running count", () => {
