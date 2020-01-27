@@ -28,6 +28,10 @@ export class ConfigAccessor {
     public get maxFilePerCommand(): number {
         return this.getConfigItem("maxFilePerCommand");
     }
+
+    public get countBadge(): string {
+        return this.getConfigItem<string>("countBadge");
+    }
 }
 
 export class WorkspaceConfigAccessor extends ConfigAccessor {

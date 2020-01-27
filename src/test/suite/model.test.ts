@@ -672,6 +672,115 @@ describe("Model & ScmProvider modules (integration)", () => {
                 basicFiles.edit
             ]);
         });
+        it("Counts open files but not shelved files", async () => {
+            sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add],
+                    shelvedFiles: [basicFiles.shelveDelete, basicFiles.shelveEdit]
+                },
+                {
+                    chnum: "2",
+                    description: "changelist 2",
+                    files: [basicFiles.moveAdd, basicFiles.moveDelete] // move add and move delete count as one operation
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.count).to.equal(5);
+        });
+        it("Can count shelved files", async () => {
+            sinon.stub(workspaceConfig, "countBadge").get(() => "all");
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add],
+                    shelvedFiles: [basicFiles.shelveDelete, basicFiles.shelveEdit]
+                },
+                {
+                    chnum: "2",
+                    description: "changelist 2",
+                    files: [basicFiles.moveAdd, basicFiles.moveDelete] // move add and move delete count as one operation
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.count).to.equal(7);
+        });
+        it("Can disable counting files", async () => {
+            sinon.stub(workspaceConfig, "countBadge").get(() => "off");
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [],
+                    shelvedFiles: [basicFiles.shelveDelete]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.count).to.equal(0);
+        });
+        it("Updates the count after refresh", async () => {
+            sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
+
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add]
+                }
+            ];
+
+            await instance.Initialize();
+            expect(instance.count).to.equal(4);
+
+            stubService.changelists = [
+                {
+                    chnum: "default",
+                    description: "n/a",
+                    files: [basicFiles.branch, basicFiles.integrate]
+                },
+                {
+                    chnum: "1",
+                    description: "changelist 1",
+                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add]
+                },
+                {
+                    chnum: "2",
+                    description: "changelist 2",
+                    files: [basicFiles.moveAdd, basicFiles.moveDelete]
+                }
+            ];
+            await PerforceSCMProvider.RefreshAll();
+            expect(instance.count).to.equal(6);
+        });
     });
     describe("Actions", function() {
         beforeEach(async function() {

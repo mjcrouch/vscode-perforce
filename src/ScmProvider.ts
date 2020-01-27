@@ -59,9 +59,7 @@ export class PerforceSCMProvider {
         return "Perforce";
     }
     public get count(): number {
-        const countBadge = workspace
-            .getConfiguration("perforce")
-            .get<string>("countBadge");
+        const countBadge = this._workspaceConfig.countBadge;
         const statuses = this._model.ResourceGroups.reduce(
             (a, b) =>
                 a.concat(
