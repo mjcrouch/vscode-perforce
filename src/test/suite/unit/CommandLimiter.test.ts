@@ -185,14 +185,17 @@ describe("Command Limiter (unit)", () => {
             expect(cl).to.include({ queueLength: 0, runningCount: 0 });
             expect(cbs[2]).to.have.been.calledOnce;
         });
-        it("Runs jobs asyncronously", async () => {
+        it("Runs jobs asynchronously", async () => {
             const cl = new CommandLimiter(2);
+
+            const c1 = sinon.stub().callsFake(c => c());
+            const c2 = sinon.stub().callsFake(c => c());
 
             const p1 = cl.submit(
                 c =>
                     setTimeout(() => {
-                        cbs[0](c);
-                    }, 20),
+                        c1(c);
+                    }, 40),
                 "1"
             );
 
@@ -201,24 +204,24 @@ describe("Command Limiter (unit)", () => {
             const p2 = cl.submit(
                 c =>
                     setTimeout(() => {
-                        cbs[1](c);
+                        c2(c);
                     }, 5),
                 "2"
             );
 
             expect(cl).to.include({ queueLength: 0, runningCount: 2 });
 
-            expect(cbs[0]).not.to.have.been.called;
-            expect(cbs[1]).not.to.have.been.called;
+            expect(c1).not.to.have.been.called;
+            expect(c2).not.to.have.been.called;
 
             await p2;
-            expect(cbs[0]).not.to.have.been.called;
-            expect(cbs[1]).to.have.been.calledOnce;
+            expect(c1).not.to.have.been.called;
+            expect(c2).to.have.been.calledOnce;
 
             expect(cl).to.include({ queueLength: 0, runningCount: 1 });
 
             await p1;
-            expect(cbs[0]).to.have.been.calledOnce;
+            expect(c1).to.have.been.calledOnce;
 
             expect(cl).to.include({ queueLength: 0, runningCount: 0 });
         });

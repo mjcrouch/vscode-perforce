@@ -2,6 +2,7 @@ declare module "chai" {
     global {
         export namespace Chai {
             interface Assertion {
+                p4Uri(resource: import("vscode").Uri): void;
                 vscodeOpenCall(resource: import("vscode").Uri): void;
                 vscodeDiffCall(
                     left: import("vscode").Uri,

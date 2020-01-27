@@ -1152,18 +1152,18 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
 
             describe("When opening a file", () => {
-                it("Opens the underlying workspace file", () => {
+                it("Opens the underlying workspace file", async () => {
                     const file = items.stubService.changelists[0].files[0];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
                     );
 
-                    PerforceSCMProvider.OpenFile(resource);
+                    await PerforceSCMProvider.OpenFile(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeOpenCall(file.localFile);
                 });
-                it("Can open multiple files", () => {
+                it("Can open multiple files", async () => {
                     const file1 = items.stubService.changelists[0].files[0];
                     const resource1 = findResourceForFile(
                         items.instance.resources[1],
@@ -1176,7 +1176,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         file2
                     );
 
-                    PerforceSCMProvider.OpenFile(resource1, resource2);
+                    await PerforceSCMProvider.OpenFile(resource1, resource2);
                     expect(execCommand.getCall(-2)).to.be.vscodeOpenCall(file1.localFile);
                     expect(execCommand.lastCall).to.be.vscodeOpenCall(file2.localFile);
                 });
@@ -1205,6 +1205,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Can open multiple resources", async () => {
+                    const td = sinon.stub(vscode.window, "showTextDocument");
                     const file1 = items.stubService.changelists[0].files[0];
                     const resource1 = findResourceForFile(
                         items.instance.resources[1],
@@ -1218,7 +1219,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
 
                     await PerforceSCMProvider.Open(resource1, resource2);
-                    expect(execCommand.getCall(-2)).to.be.vscodeDiffCall(
+
+                    expect(execCommand.getCall(-1)).to.be.vscodeDiffCall(
                         perforceLocalUriMatcher(file1),
                         file1.localFile,
                         path.basename(file1.localFile.path) +
@@ -1230,31 +1232,33 @@ describe("Model & ScmProvider modules (integration)", () => {
                         sinon.match.any,
                         '-q "' + file1.localFile.fsPath + '"'
                     );
-                    expect(execCommand.lastCall).to.be.vscodeOpenCall(
+                    expect(td.lastCall.args[0]).to.be.p4Uri(
                         perforceLocalUriMatcher(file2)
                     );
                 });
-                it("Displays the depot version of a deleted file", () => {
+                it("Displays the depot version of a deleted file", async () => {
+                    const td = sinon.stub(vscode.window, "showTextDocument");
+
                     const file = items.stubService.changelists[0].files[1];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
                     );
 
-                    PerforceSCMProvider.Open(resource);
+                    await PerforceSCMProvider.Open(resource);
 
-                    expect(execCommand.lastCall).to.be.vscodeOpenCall(
+                    expect(td.lastCall.args[0]).to.be.p4Uri(
                         perforceLocalUriMatcher(file)
                     );
                 });
-                it("Diffs a new file against an empty file", () => {
+                it("Diffs a new file against an empty file", async () => {
                     const file = items.stubService.changelists[0].files[2];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
                     );
 
-                    PerforceSCMProvider.Open(resource);
+                    await PerforceSCMProvider.Open(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         vscode.Uri.parse("perforce:EMPTY"),
@@ -1285,23 +1289,29 @@ describe("Model & ScmProvider modules (integration)", () => {
                         '-q "' + file.resolveFromDepotPath + '"'
                     );
                 });
-                it("Displays the depot version for a move / delete", () => {
+                it("Displays the depot version for a move / delete", async () => {
+                    const td = sinon.stub(vscode.window, "showTextDocument");
+
                     const file = items.stubService.changelists[0].files[4];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
                     );
 
-                    PerforceSCMProvider.Open(resource);
+                    await PerforceSCMProvider.Open(resource);
+
+                    expect(td.lastCall.args[0]).to.be.p4Uri(
+                        perforceLocalUriMatcher(file)
+                    );
                 });
-                it("Diffs a file opened for branch against an empty file", () => {
+                it("Diffs a file opened for branch against an empty file", async () => {
                     const file = items.stubService.changelists[0].files[5];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
                     );
 
-                    PerforceSCMProvider.Open(resource);
+                    await PerforceSCMProvider.Open(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         vscode.Uri.parse("perforce:EMPTY"),
@@ -1406,6 +1416,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Displays the depot version for a shelved deletion", async () => {
+                    const td = sinon.stub(vscode.window, "showTextDocument");
                     const file = items.stubService.changelists[0].files[1];
                     const resource = findResourceForFile(
                         items.instance.resources[1],
@@ -1414,7 +1425,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                     await PerforceSCMProvider.Open(resource);
 
-                    expect(execCommand.lastCall).to.be.vscodeOpenCall(
+                    expect(td.lastCall.args[0]).to.be.p4Uri(
                         perforceLocalUriMatcher(file)
                     );
                 });

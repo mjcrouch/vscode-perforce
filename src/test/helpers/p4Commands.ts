@@ -37,6 +37,12 @@ function resourceToString(resource: Resource) {
 export default function(chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
     const Assertion = chai.Assertion;
 
+    Assertion.addMethod("p4Uri", function(resource: vscode.Uri) {
+        const obj: vscode.Uri = this._obj as vscode.Uri;
+
+        assertP4UriMatches(Assertion, obj, resource, "uri");
+    });
+
     Assertion.addMethod("vscodeOpenCall", function(resource: vscode.Uri) {
         const obj: SinonSpyCall = this._obj as SinonSpyCall;
 

@@ -247,14 +247,16 @@ export class PerforceSCMProvider {
         return null;
     }
 
-    public static OpenFile(...resourceStates: SourceControlResourceState[]) {
+    public static async OpenFile(...resourceStates: SourceControlResourceState[]) {
         const selection = resourceStates.filter(s => s instanceof Resource) as Resource[];
         const preview = selection.length == 1;
-        for (const resource of selection) {
-            commands.executeCommand<void>("vscode.open", resource.underlyingUri, {
+        const promises = selection.map(resource => {
+            return commands.executeCommand<void>("vscode.open", resource.underlyingUri, {
                 preview
             });
-        }
+        });
+
+        await Promise.all(promises);
     }
 
     public static async Open(...resourceStates: SourceControlResourceState[]) {
@@ -486,11 +488,11 @@ export class PerforceSCMProvider {
                 console.error("Status not supported: " + resource.status.toString());
                 return;
             }
-            await commands.executeCommand<void>("vscode.open", right);
+            await window.showTextDocument(right);
             return;
         }
         if (!right) {
-            await commands.executeCommand<void>("vscode.open", left);
+            await window.showTextDocument(left);
             return;
         }
         await commands.executeCommand<void>("vscode.diff", left, right, title);
