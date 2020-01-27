@@ -119,6 +119,8 @@ export class PerforceSCMProvider {
             this.compatibilityMode
         );
 
+        this.disposables.push(this._model);
+
         PerforceSCMProvider.instances.push(this);
         this._model._sourceControl = scm.createSourceControl(
             this.id,

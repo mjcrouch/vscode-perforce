@@ -86,6 +86,18 @@ describe("Model & ScmProvider modules (integration)", () => {
             operation: Status.INTEGRATE,
             resolveFromDepotPath: "//depot/testAreaOld/testFolder/integrated.txt"
         },
+        outOfWorkspaceAdd: {
+            localFile: getLocalFile(workspaceUri, "..", "outOfWorkspaceAdd.txt"),
+            depotPath: "//depot/outOfWorkspaceAdd.txt",
+            depotRevision: 1,
+            operation: Status.ADD
+        },
+        outOfWorkspaceEdit: {
+            localFile: getLocalFile(workspaceUri, "..", "outOfWorkspace.txt"),
+            depotPath: "//depot/outOfWorkspace.txt",
+            depotRevision: 99,
+            operation: Status.EDIT
+        },
         shelveNoWorkspace: {
             depotPath: "//depot/testArea/testFolder/none.txt",
             depotRevision: 1,
@@ -178,12 +190,17 @@ describe("Model & ScmProvider modules (integration)", () => {
                 {
                     chnum: "default",
                     description: "n/a",
-                    files: [basicFiles.branch]
+                    files: [basicFiles.branch, basicFiles.outOfWorkspaceEdit]
                 },
                 {
                     chnum: "1",
                     description: "changelist 1",
-                    files: [basicFiles.edit, basicFiles.delete, basicFiles.add]
+                    files: [
+                        basicFiles.edit,
+                        basicFiles.delete,
+                        basicFiles.add,
+                        basicFiles.outOfWorkspaceAdd
+                    ]
                 },
                 {
                     chnum: "2",
@@ -198,14 +215,16 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].resourceStates).to.be.resources([
-                basicFiles.branch
+                basicFiles.branch,
+                basicFiles.outOfWorkspaceEdit
             ]);
             expect(instance.resources[1].id).to.equal("pending:1");
             expect(instance.resources[1].label).to.equal("#1: changelist 1");
             expect(instance.resources[1].resourceStates).to.be.resources([
                 basicFiles.edit,
                 basicFiles.delete,
-                basicFiles.add
+                basicFiles.add,
+                basicFiles.outOfWorkspaceAdd
             ]);
             expect(instance.resources[2].id).to.equal("pending:2");
             expect(instance.resources[2].label).to.equal("#2: changelist 2");
@@ -569,6 +588,88 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].label).to.equal("#1: changelist 1");
             expect(instance.resources[1].resourceStates).to.be.resources([
                 basicFiles.add
+            ]);
+        });
+        it("Can ignore shelved files", async () => {
+            sinon.stub(workspaceConfig, "hideShelvedFiles").get(() => true);
+
+            stubService.changelists = [
+                {
+                    chnum: "1",
+                    description: "mixed changelist 1",
+                    files: [basicFiles.add],
+                    shelvedFiles: [basicFiles.shelveEdit]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(2);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([]);
+
+            expect(instance.resources[1].id).to.equal("pending:1");
+            expect(instance.resources[1].label).to.equal("#1: mixed changelist 1");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.add
+            ]);
+        });
+        it("Can hide non-workspace files", async () => {
+            sinon.stub(workspaceConfig, "hideNonWorkspaceFiles").get(() => true);
+
+            stubService.changelists = [
+                {
+                    chnum: "1",
+                    description: "mixed changelist 1",
+                    files: [
+                        basicFiles.add,
+                        basicFiles.outOfWorkspaceAdd,
+                        basicFiles.outOfWorkspaceEdit
+                    ]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(2);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([]);
+
+            expect(instance.resources[1].id).to.equal("pending:1");
+            expect(instance.resources[1].label).to.equal("#1: mixed changelist 1");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.add
+            ]);
+        });
+        it("Can ignore changelists with a defined prefix", async () => {
+            sinon.stub(workspaceConfig, "ignoredChangelistPrefix").get(() => "ignore:");
+
+            stubService.changelists = [
+                {
+                    chnum: "1",
+                    description: "ignore:me",
+                    files: [basicFiles.add]
+                },
+                {
+                    chnum: "2",
+                    description: "noignore:me",
+                    files: [basicFiles.edit]
+                }
+            ];
+
+            await instance.Initialize();
+
+            expect(instance.resources).to.have.lengthOf(2);
+
+            expect(instance.resources[0].id).to.equal("default");
+            expect(instance.resources[0].resourceStates).to.be.resources([]);
+
+            expect(instance.resources[1].id).to.equal("pending:2");
+            expect(instance.resources[1].label).to.equal("#2: noignore:me");
+            expect(instance.resources[1].resourceStates).to.be.resources([
+                basicFiles.edit
             ]);
         });
     });

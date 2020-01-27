@@ -40,6 +40,7 @@ export class Model implements Disposable {
     }
 
     public dispose() {
+        this.clean();
         if (this._disposables) {
             this._disposables.forEach(d => d.dispose());
             this._disposables = [];
@@ -739,7 +740,7 @@ export class Model implements Disposable {
         this._onDidChange.fire();
     }
 
-    private getResourceForOpenFile(fstatInfo: {}) {
+    private getResourceForOpenFile(fstatInfo: {}): Resource | undefined {
         const clientFile = fstatInfo["clientFile"];
         const change = fstatInfo["change"];
         const action = fstatInfo["action"];
@@ -769,7 +770,10 @@ export class Model implements Disposable {
         return resource;
     }
 
-    private createResourceGroups(changelists: ChangeInfo[], resources: Resource[]) {
+    private createResourceGroups(
+        changelists: ChangeInfo[],
+        resources: (Resource | undefined)[]
+    ) {
         this.clean();
 
         this._defaultGroup = this._sourceControl.createResourceGroup(
@@ -778,7 +782,7 @@ export class Model implements Disposable {
         );
         this._defaultGroup["model"] = this;
         this._defaultGroup.resourceStates = resources.filter(
-            resource => resource.change === "default"
+            resource => resource && resource.change === "default"
         );
 
         const groups = changelists.map(c => {
@@ -788,7 +792,7 @@ export class Model implements Disposable {
             );
             group["model"] = this;
             group.resourceStates = resources.filter(
-                resource => resource.change === c.chnum.toString()
+                resource => resource && resource.change === c.chnum.toString()
             );
             return group;
         });
@@ -913,7 +917,7 @@ export class Model implements Disposable {
             opened = output.trim().split("\n");
         } catch (err) {
             // perforce writes to stderr if no files are opened.
-            console.log("ERROR: " + err);
+            //console.log("ERROR: " + err);
         }
 
         const files = [];

@@ -195,6 +195,11 @@ export const makeResponses = (
                                   .join("\n");
                           })
                           .join("\n");
+
+                      if (!ret) {
+                          return stderr("no open files (not a real error - ignore)");
+                      }
+
                       return stdout(ret);
                   }
               },
