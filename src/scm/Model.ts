@@ -906,7 +906,9 @@ export class Model implements Disposable {
             await depotOpenedFilePromises,
             "-Or"
         );
-        return fstatInfo.map(info => this.getResourceForOpenFile(info));
+        return fstatInfo
+            .filter(info => !!info) // in case fstat doesn't have output for this file
+            .map(info => this.getResourceForOpenFile(info));
     }
 
     private async getDepotOpenedFilePaths(): Promise<string[]> {
