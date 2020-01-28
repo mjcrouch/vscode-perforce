@@ -57,6 +57,9 @@ class DebouncedCall<P extends any[], T> {
         if (this._timer && !this._expired) {
             clearTimeout(this._timer);
         }
+        if (this._promise !== undefined && this.rej) {
+            this.rej("Debounced function cancelled");
+        }
     }
 }
 
@@ -130,6 +133,7 @@ export function debounce<P extends any[], T>(
         if (lastDebounced) {
             lastDebounced.cancel();
         }
+        lastDebounced = undefined;
     };
 
     return ret;
