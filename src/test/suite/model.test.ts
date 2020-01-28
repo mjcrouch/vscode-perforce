@@ -37,6 +37,12 @@ interface TestItems {
     refresh: sinon.SinonSpy;
 }
 
+function timeout(ms: number) {
+    return new Promise(res => {
+        setTimeout(() => res(), ms);
+    });
+}
+
 describe("Model & ScmProvider modules (integration)", () => {
     const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
 
@@ -146,6 +152,9 @@ describe("Model & ScmProvider modules (integration)", () => {
             stubService.stubExecute();
 
             workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
+
+            // save time on refresh function calls
+            sinon.stub(workspaceConfig, "refreshDebounceTime").get(() => 100);
 
             instance = new PerforceSCMProvider(
                 config,
@@ -822,6 +831,8 @@ describe("Model & ScmProvider modules (integration)", () => {
             ];
             const execute = stubService.stubExecute();
             const workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
+            sinon.stub(workspaceConfig, "refreshDebounceTime").get(() => 0);
+
             const instance = new PerforceSCMProvider(
                 config,
                 workspaceUri,
@@ -863,6 +874,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "shelve"
                 );
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
             });
 
@@ -877,6 +889,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist shelved"
                 );
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
@@ -899,6 +912,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist shelved"
                 );
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
@@ -914,6 +928,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my shelve error"
                 );
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
@@ -935,6 +950,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "revert"
                 );
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
             });
         });
@@ -951,6 +967,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist unshelved"
                 );
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
@@ -962,6 +979,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "unshelve"
                 );
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
             });
 
@@ -977,6 +995,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my unshelve error"
                 );
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
             });
         });
@@ -993,6 +1012,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
 
                 expect(warn).to.have.been.calledOnce;
+                await timeout(1);
                 expect(items.refresh).to.have.been.calledOnce;
                 expect(items.execute).to.have.been.calledWithMatch(
                     workspaceUri,
@@ -1013,6 +1033,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
 
                 expect(warn).to.have.been.calledOnce;
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
                 expect(items.execute).not.to.have.been.calledWithMatch(
                     workspaceUri,
@@ -1040,6 +1061,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my shelve error"
                 );
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
             });
 
@@ -1055,6 +1077,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "shelve"
                 );
+                await timeout(1);
                 expect(items.refresh).not.to.have.been.called;
             });
         });

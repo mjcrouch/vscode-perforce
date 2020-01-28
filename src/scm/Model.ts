@@ -18,6 +18,7 @@ import { Resource } from "./Resource";
 
 import * as Path from "path";
 import * as vscode from "vscode";
+import { DebouncedFunction, debounce } from "../Debounce";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg.id !== undefined;
@@ -56,6 +57,8 @@ export class Model implements Disposable {
         { description: string; group: SourceControlResourceGroup }
     >();
 
+    private _refresh: DebouncedFunction<any[], Promise<void>>;
+
     get workspaceUri() {
         return this._workspaceUri;
     }
@@ -92,7 +95,11 @@ export class Model implements Disposable {
         private _workspaceConfig: WorkspaceConfigAccessor,
         private _compatibilityMode: string
     ) {
-        /**/
+        this._refresh = debounce(
+            this.RefreshImpl.bind(this),
+            _workspaceConfig.refreshDebounceTime
+        );
+        this._disposables.push(this._refresh);
     }
 
     public async Sync(): Promise<void> {
@@ -113,11 +120,19 @@ export class Model implements Disposable {
         );
     }
 
-    public async FullRefresh() {
-        await this.Refresh(true);
+    public async Refresh() {
+        await this._refresh.withoutLeadingCall();
     }
 
-    private async Refresh(updateInfo?: boolean): Promise<void> {
+    public async RefreshPolitely() {
+        await this._refresh();
+    }
+
+    public async RefreshImmediately() {
+        await this.RefreshImpl();
+    }
+
+    private async RefreshImpl(): Promise<void> {
         // don't clean the changelists now - this will be done by updateStatus
         // seeing an empty scm view and waiting for it to populate makes it feel slower.
         this._onRefreshStarted.fire();
@@ -130,7 +145,7 @@ export class Model implements Disposable {
             return;
         }
 
-        if (updateInfo || !this.clientName) {
+        if (!this.clientName) {
             await window.withProgress(
                 {
                     location: ProgressLocation.SourceControl,

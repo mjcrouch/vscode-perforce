@@ -139,7 +139,7 @@ export class PerforceSCMProvider {
         this._model._sourceControl.inputBox.placeholder =
             "Message (press {0} to create changelist)";
 
-        await this._model.FullRefresh();
+        await this._model.RefreshImmediately();
     }
 
     public static registerCommands() {
@@ -290,12 +290,12 @@ export class PerforceSCMProvider {
         const perforceProvider = PerforceSCMProvider.GetInstance(
             sourceControl ? sourceControl.rootUri : null
         );
-        await perforceProvider._model.FullRefresh();
+        await perforceProvider._model.RefreshPolitely();
     }
 
     public static async RefreshAll() {
         const promises = PerforceSCMProvider.instances.map(provider =>
-            provider._model.FullRefresh()
+            provider._model.Refresh()
         );
         await Promise.all(promises);
     }

@@ -32,6 +32,10 @@ export class ConfigAccessor {
     public get countBadge(): string {
         return this.getConfigItem<string>("countBadge");
     }
+
+    public get refreshDebounceTime(): number {
+        return 1000;
+    }
 }
 
 export class WorkspaceConfigAccessor extends ConfigAccessor {
