@@ -125,14 +125,14 @@ export class Model implements Disposable {
     }
 
     public async RefreshPolitely() {
-        await this._refresh();
+        await this._refresh(true);
     }
 
     public async RefreshImmediately() {
-        await this.RefreshImpl();
+        await this.RefreshImpl(true);
     }
 
-    private async RefreshImpl(): Promise<void> {
+    private async RefreshImpl(refreshClientInfo?: boolean): Promise<void> {
         // don't clean the changelists now - this will be done by updateStatus
         // seeing an empty scm view and waiting for it to populate makes it feel slower.
         this._onRefreshStarted.fire();
@@ -145,7 +145,7 @@ export class Model implements Disposable {
             return;
         }
 
-        if (!this.clientName) {
+        if (!this.clientName || refreshClientInfo) {
             await window.withProgress(
                 {
                     location: ProgressLocation.SourceControl,
