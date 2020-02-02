@@ -142,8 +142,10 @@ describe("Model & ScmProvider modules (integration)", () => {
         }
     };
 
+    const localDir = Utils.normalize(workspaceUri.fsPath) + "/";
+
     const config: IPerforceConfig = {
-        localDir: workspaceUri.fsPath + "/",
+        localDir,
         p4Client: "cli",
         p4User: "user"
     };
