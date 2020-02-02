@@ -43,6 +43,25 @@ function timeout(ms: number) {
     });
 }
 
+function findResourceForShelvedFile(
+    group: vscode.SourceControlResourceGroup,
+    file: StubFile
+) {
+    return group.resourceStates.find(
+        resource =>
+            (resource as Resource).isShelved &&
+            Utils.getDepotPathFromDepotUri(resource.resourceUri) === file.depotPath
+    );
+}
+
+function findResourceForFile(group: vscode.SourceControlResourceGroup, file: StubFile) {
+    return group.resourceStates.find(
+        resource =>
+            !(resource as Resource).isShelved &&
+            (resource as Resource).resourceUri.fsPath === file.localFile.fsPath
+    );
+}
+
 describe("Model & ScmProvider modules (integration)", () => {
     const workspaceUri = vscode.workspace.workspaceFolders[0].uri;
 
@@ -124,7 +143,7 @@ describe("Model & ScmProvider modules (integration)", () => {
     };
 
     const config: IPerforceConfig = {
-        localDir: workspaceUri.fsPath,
+        localDir: workspaceUri.fsPath + "/",
         p4Client: "cli",
         p4User: "user"
     };
@@ -1083,30 +1102,6 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
 
         describe("Opening", () => {
-            function findResourceForShelvedFile(
-                group: vscode.SourceControlResourceGroup,
-                file: StubFile
-            ) {
-                return group.resourceStates.find(
-                    resource =>
-                        (resource as Resource).isShelved &&
-                        Utils.getDepotPathFromDepotUri(resource.resourceUri) ===
-                            file.depotPath
-                );
-            }
-
-            function findResourceForFile(
-                group: vscode.SourceControlResourceGroup,
-                file: StubFile
-            ) {
-                return group.resourceStates.find(
-                    resource =>
-                        !(resource as Resource).isShelved &&
-                        (resource as Resource).resourceUri.fsPath ===
-                            file.localFile.fsPath
-                );
-            }
-
             /**
              * Matches against a perforce URI, containing a local file's path
              * @param file
@@ -1176,7 +1171,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             describe("When opening a file", () => {
                 it("Opens the underlying workspace file", async () => {
-                    const file = items.stubService.changelists[0].files[0];
+                    const file = basicFiles.edit;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1187,13 +1182,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeOpenCall(file.localFile);
                 });
                 it("Can open multiple files", async () => {
-                    const file1 = items.stubService.changelists[0].files[0];
+                    const file1 = basicFiles.edit;
                     const resource1 = findResourceForFile(
                         items.instance.resources[1],
                         file1
                     );
 
-                    const file2 = items.stubService.changelists[0].files[2];
+                    const file2 = basicFiles.add;
                     const resource2 = findResourceForFile(
                         items.instance.resources[1],
                         file2
@@ -1206,7 +1201,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
             describe("When opening an scm resource", () => {
                 it("Diffs a local file against the depot file", async () => {
-                    const file = items.stubService.changelists[0].files[0];
+                    const file = basicFiles.edit;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1229,13 +1224,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
                 it("Can open multiple resources", async () => {
                     const td = sinon.stub(vscode.window, "showTextDocument");
-                    const file1 = items.stubService.changelists[0].files[0];
+                    const file1 = basicFiles.edit;
                     const resource1 = findResourceForFile(
                         items.instance.resources[1],
                         file1
                     );
 
-                    const file2 = items.stubService.changelists[0].files[1];
+                    const file2 = basicFiles.delete;
                     const resource2 = findResourceForFile(
                         items.instance.resources[1],
                         file2
@@ -1262,7 +1257,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 it("Displays the depot version of a deleted file", async () => {
                     const td = sinon.stub(vscode.window, "showTextDocument");
 
-                    const file = items.stubService.changelists[0].files[1];
+                    const file = basicFiles.delete;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1275,7 +1270,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Diffs a new file against an empty file", async () => {
-                    const file = items.stubService.changelists[0].files[2];
+                    const file = basicFiles.add;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1291,7 +1286,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Diffs a moved file against the original file", async () => {
-                    const file = items.stubService.changelists[0].files[3];
+                    const file = basicFiles.moveAdd;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1315,7 +1310,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 it("Displays the depot version for a move / delete", async () => {
                     const td = sinon.stub(vscode.window, "showTextDocument");
 
-                    const file = items.stubService.changelists[0].files[4];
+                    const file = basicFiles.moveDelete;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1328,7 +1323,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Diffs a file opened for branch against an empty file", async () => {
-                    const file = items.stubService.changelists[0].files[5];
+                    const file = basicFiles.branch;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1344,7 +1339,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Diffs an integration/merge against the target depot file", async () => {
-                    const file = items.stubService.changelists[0].files[6];
+                    const file = basicFiles.integrate;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1367,7 +1362,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Diffs a shelved file against the depot file", async () => {
-                    const file = items.stubService.changelists[0].shelvedFiles[0];
+                    const file = basicFiles.shelveEdit;
                     const resource = findResourceForShelvedFile(
                         items.instance.resources[1],
                         file
@@ -1395,7 +1390,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Can diff a local file against the shelved file (from the shelved file)", async () => {
-                    const file = items.stubService.changelists[0].shelvedFiles[0];
+                    const file = basicFiles.shelveEdit;
                     const resource = findResourceForShelvedFile(
                         items.instance.resources[1],
                         file
@@ -1417,7 +1412,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
                 });
                 it("Can diff a local file against the shelved file (from the local file)", async () => {
-                    const file = items.stubService.changelists[0].files[0];
+                    const file = basicFiles.shelveEdit;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1440,7 +1435,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
                 it("Displays the depot version for a shelved deletion", async () => {
                     const td = sinon.stub(vscode.window, "showTextDocument");
-                    const file = items.stubService.changelists[0].files[1];
+                    const file = basicFiles.shelveDelete;
                     const resource = findResourceForFile(
                         items.instance.resources[1],
                         file
@@ -1452,6 +1447,128 @@ describe("Model & ScmProvider modules (integration)", () => {
                         perforceLocalUriMatcher(file)
                     );
                 });
+            });
+        });
+        describe("Save a changelist", () => {
+            it("Can save the default changelist", async () => {
+                items.instance.sourceControl.inputBox.value = "My new changelist";
+                items.stubService.changelists = [
+                    {
+                        chnum: "default",
+                        files: [basicFiles.add, basicFiles.edit],
+                        description: "n/a"
+                    }
+                ];
+                await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
+                expect(items.stubService.lastChangeInput).to.include({
+                    Description: "\n\tMy new changelist",
+                    Files:
+                        "\n\t" +
+                        basicFiles.add.depotPath +
+                        "\t# add" +
+                        "\n\t" +
+                        basicFiles.edit.depotPath +
+                        "\t# edit"
+                });
+            });
+            it("Can change the description of an existing changelist", async () => {
+                items.instance.sourceControl.inputBox.value = "#1\nMy updated changelist";
+                items.stubService.changelists = [
+                    {
+                        chnum: "1",
+                        files: [basicFiles.add, basicFiles.edit],
+                        description: "changelist 1"
+                    }
+                ];
+                await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
+                expect(items.stubService.lastChangeInput).to.include({
+                    Description: "\n\tMy updated changelist",
+                    Files:
+                        "\n\t" +
+                        basicFiles.add.depotPath +
+                        "\t# add" +
+                        "\n\t" +
+                        basicFiles.edit.depotPath +
+                        "\t# edit"
+                });
+            });
+        });
+        describe("Move files to a changelist", () => {
+            it("Displays a selection of changelists to choose from", async () => {
+                const quickPick = sinon
+                    .stub(vscode.window, "showQuickPick")
+                    .resolves(undefined);
+                const resource = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+
+                await PerforceSCMProvider.ReopenFile(resource as Resource);
+
+                const itemArg = quickPick.lastCall.args[0];
+                expect(itemArg).to.have.lengthOf(3);
+                expect(itemArg[0]).to.include({ label: "Default Changelist" });
+                expect(itemArg[1]).to.include({
+                    label: "#1",
+                    description: "Changelist 1"
+                });
+                expect(itemArg[2]).to.include({
+                    label: "#2",
+                    description: "Changelist 2"
+                });
+
+                expect(items.execute).not.to.have.been.calledWith(
+                    sinon.match.any,
+                    "reopen"
+                );
+            });
+            it("Can move files to a changelist", async () => {
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve(items[2]);
+                });
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+                const resource2 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.add
+                );
+
+                await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
+
+                // TODO this shouldn't need to be many commands!!
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "reopen",
+                    sinon.match.any,
+                    '-c 2 "' + basicFiles.edit.localFile.fsPath + '"'
+                );
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "reopen",
+                    sinon.match.any,
+                    '-c 2 "' + basicFiles.add.localFile.fsPath + '"'
+                );
+            });
+            it("Can move files to the default changelist", async () => {
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve(items[0]);
+                });
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+
+                await PerforceSCMProvider.ReopenFile(resource1 as Resource);
+
+                // TODO this shouldn't need to be many commands
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "reopen",
+                    sinon.match.any,
+                    '-c default "' + basicFiles.edit.localFile.fsPath + '"'
+                );
             });
         });
     });
