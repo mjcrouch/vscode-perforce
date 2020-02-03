@@ -238,7 +238,9 @@ export const makeResponses = (
                       service.lastChangeInput = input.split("\n\n").reduce((all, cur) => {
                           if (!cur.startsWith("#")) {
                               const colPos = cur.indexOf(":");
-                              all[cur.slice(0, colPos)] = cur.slice(colPos + 1);
+                              all[cur.slice(0, colPos)] = cur
+                                  .slice(colPos + 1)
+                                  .replace(/^\n/, "");
                           }
                           return all;
                       }, {});

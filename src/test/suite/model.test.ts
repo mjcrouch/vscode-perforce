@@ -1463,15 +1463,30 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
                 expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\n\tMy new changelist",
+                    Description: "\tMy new changelist",
                     Files:
-                        "\n\t" +
+                        "\t" +
                         basicFiles.add.depotPath +
                         "\t# add" +
                         "\n\t" +
                         basicFiles.edit.depotPath +
                         "\t# edit"
                 });
+            });
+            it("Can save from an empty default changelist", async () => {
+                items.instance.sourceControl.inputBox.value = "My new changelist";
+                items.stubService.changelists = [
+                    {
+                        chnum: "default",
+                        files: [],
+                        description: "n/a"
+                    }
+                ];
+                await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
+                expect(items.stubService.lastChangeInput).to.include({
+                    Description: "\tMy new changelist"
+                });
+                expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
             });
             it("Can change the description of an existing changelist", async () => {
                 items.instance.sourceControl.inputBox.value = "#1\nMy updated changelist";
@@ -1484,15 +1499,30 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
                 expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\n\tMy updated changelist",
+                    Description: "\tMy updated changelist",
                     Files:
-                        "\n\t" +
+                        "\t" +
                         basicFiles.add.depotPath +
                         "\t# add" +
                         "\n\t" +
                         basicFiles.edit.depotPath +
                         "\t# edit"
                 });
+            });
+            it("Can change the description of an empty changelist", async () => {
+                items.instance.sourceControl.inputBox.value = "#1\nMy updated changelist";
+                items.stubService.changelists = [
+                    {
+                        chnum: "1",
+                        files: [],
+                        description: "changelist 1"
+                    }
+                ];
+                await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
+                expect(items.stubService.lastChangeInput).to.include({
+                    Description: "\tMy updated changelist"
+                });
+                expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
             });
         });
         describe("Move files to a changelist", () => {
