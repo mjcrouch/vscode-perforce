@@ -14,6 +14,7 @@ type PerforceCommand =
     | "opened"
     | "describe"
     | "open"
+    | "reopen"
     | "shelve"
     | "unshelve"
     | "revert"
@@ -232,7 +233,6 @@ export const makeResponses = (
                                   )
                                   .join("\n\t");
                       }
-                      console.log(ret);
                       return stdout(ret);
                   } else if (args.startsWith("-i")) {
                       service.lastChangeInput = input.split("\n\n").reduce((all, cur) => {
@@ -315,9 +315,8 @@ export const makeResponses = (
 
                   return joinStds(allStds, "\n\n");
               },
-              open: () => {
-                  return stdout("open not implemented");
-              },
+              open: returnStdOut("open not implemented"),
+              reopen: returnStdOut("reopen not implemented"),
               shelve: (service, ...rest) => {
                   const ret = service.runChangelistBehaviour("shelve", "c", ...rest);
                   return ret ?? stdout("shelve not implemented");
