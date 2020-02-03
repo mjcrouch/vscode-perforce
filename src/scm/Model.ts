@@ -285,6 +285,12 @@ export class Model implements Disposable {
         );
     }
 
+    private getChangelistNumber(changeCreatedStr: string) {
+        const matches = new RegExp(/Change\s(\d+)\screated/).exec(changeCreatedStr);
+        // Change #### created with ...
+        return matches?.[1];
+    }
+
     public async SaveToChangelist(
         descStr: string,
         existingChangelist?: string
@@ -309,11 +315,7 @@ export class Model implements Disposable {
         try {
             const createdStr = await this.inputChangeSpec(changeFields);
 
-            // Change #### created with ...
-            const matches = new RegExp(/Change\s(\d+)\screated with/).exec(createdStr);
-            if (matches) {
-                newChangelistNumber = matches[1];
-            }
+            newChangelistNumber = this.getChangelistNumber(createdStr);
             Display.channel.append(createdStr);
             this.Refresh();
         } catch (err) {
@@ -321,6 +323,15 @@ export class Model implements Disposable {
         }
 
         return newChangelistNumber;
+    }
+
+    private async createEmptyChangelist(descStr: string) {
+        const changeFields = await this.getChangeSpec();
+        changeFields.files = [];
+        changeFields.description = descStr;
+
+        const createdStr = await this.inputChangeSpec(changeFields);
+        return this.getChangelistNumber(createdStr);
     }
 
     public async ProcessChangelist(): Promise<void> {
@@ -728,6 +739,7 @@ export class Model implements Disposable {
         //TODO: remove the file current changelist
         const items = [];
         items.push({ id: "default", label: this._defaultGroup.label, description: "" });
+        items.push({ id: "new", label: "New Changelist...", description: "" });
         this._pendingGroups.forEach((value, key) => {
             items.push({
                 id: key.toString(),
@@ -735,7 +747,6 @@ export class Model implements Disposable {
                 description: value.description
             });
         });
-        //items.push({ id: "new", label: "New Changelist...", description: "" });
 
         const selection = await window.showQuickPick(items, {
             matchOnDescription: true,
@@ -747,12 +758,29 @@ export class Model implements Disposable {
             return;
         }
 
+        let chnum: string;
         if (selection.id == "new") {
+            const newText = await window.showInputBox({
+                prompt: "Enter the changelist description",
+                validateInput: val => {
+                    if (val.trim() === "") {
+                        return "Description must not be empty";
+                    }
+                }
+            });
+
+            if (newText === undefined) {
+                return;
+            } else {
+                chnum = await this.createEmptyChangelist(newText);
+            }
+        } else {
+            chnum = selection.id;
         }
 
         for (const resource of resources) {
             const file = Uri.file(resource.resourceUri.fsPath);
-            const args = "-c " + selection.id;
+            const args = "-c " + chnum;
 
             Utils.runCommand(this._workspaceUri, "reopen", file, null, args)
                 .then(output => {

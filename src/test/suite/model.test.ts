@@ -1538,13 +1538,16 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.ReopenFile(resource as Resource);
 
                 const itemArg = quickPick.lastCall.args[0];
-                expect(itemArg).to.have.lengthOf(3);
+                expect(itemArg).to.have.lengthOf(4);
                 expect(itemArg[0]).to.include({ label: "Default Changelist" });
                 expect(itemArg[1]).to.include({
+                    label: "New Changelist..."
+                });
+                expect(itemArg[2]).to.include({
                     label: "#1",
                     description: "Changelist 1"
                 });
-                expect(itemArg[2]).to.include({
+                expect(itemArg[3]).to.include({
                     label: "#2",
                     description: "Changelist 2"
                 });
@@ -1556,7 +1559,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
             it("Can move files to a changelist", async () => {
                 sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
-                    return Promise.resolve(items[2]);
+                    return Promise.resolve(items[3]);
                 });
                 const resource1 = findResourceForFile(
                     items.instance.resources[1],
@@ -1600,6 +1603,36 @@ describe("Model & ScmProvider modules (integration)", () => {
                     "reopen",
                     sinon.match.any,
                     '-c default "' + basicFiles.edit.localFile.fsPath + '"'
+                );
+            });
+            it("Can move files to a new default changelist", async () => {
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve(items[1]);
+                });
+                sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("My selective changelist");
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+                const resource2 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.add
+                );
+
+                await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
+
+                expect(items.stubService.lastChangeInput).to.include({
+                    Description: "\tMy selective changelist"
+                });
+
+                // TODO this shouldn't need to be many commands
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "reopen",
+                    sinon.match.any,
+                    '-c 99 "' + basicFiles.edit.localFile.fsPath + '"'
                 );
             });
         });

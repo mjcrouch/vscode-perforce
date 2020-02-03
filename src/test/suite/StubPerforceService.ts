@@ -221,7 +221,7 @@ export const makeResponses = (
                               : changelist.description) +
                           "\n\n";
 
-                      if (changelist.files.length > 0) {
+                      if (changelist?.files.length > 0) {
                           ret +=
                               "Files:\n\t" +
                               changelist.files
