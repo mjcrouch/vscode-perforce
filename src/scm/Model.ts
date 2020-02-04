@@ -274,7 +274,7 @@ export class Model implements Disposable {
             })
             .join("\n\n");
 
-        return await Utils.runCommand(
+        const output = await Utils.runCommand(
             this._workspaceUri,
             "change",
             null,
@@ -283,6 +283,8 @@ export class Model implements Disposable {
             null,
             newSpec
         );
+        Display.channel.append(output);
+        return output;
     }
 
     private getChangelistNumber(changeCreatedStr: string) {
@@ -308,7 +310,6 @@ export class Model implements Disposable {
                 this.isInWorkspace(infos[i]?.["clientFile"])
             );
         }
-
         changeFields.description = descStr;
 
         let newChangelistNumber: string;
@@ -326,12 +327,15 @@ export class Model implements Disposable {
     }
 
     private async createEmptyChangelist(descStr: string) {
-        const changeFields = await this.getChangeSpec();
-        changeFields.files = [];
-        changeFields.description = descStr;
-
-        const createdStr = await this.inputChangeSpec(changeFields);
-        return this.getChangelistNumber(createdStr);
+        try {
+            const changeFields = await this.getChangeSpec();
+            changeFields.files = [];
+            changeFields.description = descStr;
+            const createdStr = await this.inputChangeSpec(changeFields);
+            return this.getChangelistNumber(createdStr);
+        } catch (err) {
+            Display.showImportantError(err.toString());
+        }
     }
 
     public async ProcessChangelist(): Promise<void> {
@@ -727,6 +731,24 @@ export class Model implements Disposable {
         }
     }
 
+    private async requestChangelistDescription() {
+        const newText = await window.showInputBox({
+            prompt: "Enter the new changelist's description",
+            validateInput: val => {
+                if (val.trim() === "") {
+                    return "Description must not be empty";
+                }
+            }
+        });
+
+        return newText;
+    }
+
+    private async createEmptyChangelistInteractively() {
+        const newText = await this.requestChangelistDescription();
+        return newText ? await this.createEmptyChangelist(newText) : undefined;
+    }
+
     public async ReopenFile(resources: Resource[]): Promise<void> {
         if (resources.some(r => r.isShelved)) {
             Display.showImportantError("Cannot reopen a shelved file");
@@ -741,7 +763,6 @@ export class Model implements Disposable {
             return;
         }
 
-        //TODO: remove the file current changelist
         const items = [];
         items.push({ id: "default", label: this._defaultGroup.label, description: "" });
         items.push({ id: "new", label: "New Changelist...", description: "" });
@@ -758,31 +779,20 @@ export class Model implements Disposable {
             placeHolder: "Choose a changelist:"
         });
 
-        if (selection == undefined) {
-            Display.showMessage("operation cancelled");
+        if (selection === undefined) {
             return;
         }
 
-        let chnum: string;
-        if (selection.id == "new") {
-            const newText = await window.showInputBox({
-                prompt: "Enter the changelist description",
-                validateInput: val => {
-                    if (val.trim() === "") {
-                        return "Description must not be empty";
-                    }
-                }
-            });
+        const chnum =
+            selection.id === "new"
+                ? await this.createEmptyChangelistInteractively()
+                : selection.id;
 
-            if (newText === undefined) {
-                return;
-            } else {
-                chnum = await this.createEmptyChangelist(newText);
-            }
-        } else {
-            chnum = selection.id;
+        if (chnum === undefined) {
+            return;
         }
 
+        // TODO - ideally this should be a single command instead of many
         for (const resource of resources) {
             const file = Uri.file(resource.resourceUri.fsPath);
             const args = "-c " + chnum;

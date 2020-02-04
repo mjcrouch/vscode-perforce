@@ -1605,7 +1605,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     '-c default "' + basicFiles.edit.localFile.fsPath + '"'
                 );
             });
-            it("Can move files to a new default changelist", async () => {
+            it("Can move files to a new changelist", async () => {
                 sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
                     return Promise.resolve(items[1]);
                 });
@@ -1654,7 +1654,34 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await expect(
                     PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2)
-                ).to.eventually.be.rejectedWith("Cannot reopen shelved files");
+                ).to.eventually.be.rejectedWith("Cannot reopen shelved file");
+
+                expect(items.showImportantError).to.be.calledWith(
+                    "Cannot reopen a shelved file"
+                );
+            });
+            it("Handles an error when creating a changelist", async () => {
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve(items[1]);
+                });
+                sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("My selective changelist");
+                items.stubService.setResponse("change", returnStdErr("My change error"));
+
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+
+                await PerforceSCMProvider.ReopenFile(resource1 as Resource);
+                expect(items.showImportantError).to.have.been.calledWith(
+                    "My change error"
+                );
+                expect(items.execute).not.to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "reopen"
+                );
             });
         });
     });
