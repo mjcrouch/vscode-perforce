@@ -1634,6 +1634,27 @@ describe("Model & ScmProvider modules (integration)", () => {
                     sinon.match.any,
                     '-c 99 "' + basicFiles.edit.localFile.fsPath + '"'
                 );
+
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "reopen",
+                    sinon.match.any,
+                    '-c 99 "' + basicFiles.add.localFile.fsPath + '"'
+                );
+            });
+            it("Cannot move shelved files", async () => {
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit
+                );
+                const resource2 = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit
+                );
+
+                await expect(
+                    PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2)
+                ).to.eventually.be.rejectedWith("Cannot reopen shelved files");
             });
         });
     });

@@ -728,6 +728,11 @@ export class Model implements Disposable {
     }
 
     public async ReopenFile(resources: Resource[]): Promise<void> {
+        if (resources.some(r => r.isShelved)) {
+            Display.showImportantError("Cannot reopen a shelved file");
+            throw new Error("Cannot reopen shelved file");
+        }
+
         const loggedin = await Utils.isLoggedIn(
             this._workspaceUri,
             this._compatibilityMode
