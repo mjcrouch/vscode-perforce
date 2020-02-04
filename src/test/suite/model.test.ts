@@ -1453,7 +1453,8 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         describe("Save a changelist", () => {
             it("Can save the default changelist", async () => {
-                items.instance.sourceControl.inputBox.value = "My new changelist";
+                items.instance.sourceControl.inputBox.value =
+                    "My new changelist\nline 2\nline 3";
                 items.stubService.changelists = [
                     {
                         chnum: "default",
@@ -1463,7 +1464,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
                 expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy new changelist",
+                    Description: "\tMy new changelist\n\tline 2\n\tline 3",
                     Files:
                         "\t" +
                         basicFiles.add.depotPath +
@@ -1611,7 +1612,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
                 sinon
                     .stub(vscode.window, "showInputBox")
-                    .resolves("My selective changelist");
+                    .resolves("My selective changelist\nLine 2\nLine 3");
                 const resource1 = findResourceForFile(
                     items.instance.resources[1],
                     basicFiles.edit
@@ -1624,7 +1625,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
 
                 expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy selective changelist"
+                    Description: "\tMy selective changelist\n\tLine 2\n\tLine 3"
                 });
 
                 // TODO this shouldn't need to be many commands
