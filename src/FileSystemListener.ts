@@ -13,7 +13,8 @@ import {
 } from "vscode";
 
 import * as micromatch from "micromatch";
-import * as parseignore from "parse-gitignore";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const parseignore = require("parse-gitignore"); // (this module should be removed anyway)
 
 import { Display } from "./Display";
 import { PerforceCommands } from "./PerforceCommands";

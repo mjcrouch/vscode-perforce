@@ -48,7 +48,7 @@ type ChangeSpec = {
     rawFields: ChangeFieldRaw[];
 };
 
-interface ResourceGroup extends SourceControlResourceGroup {
+export interface ResourceGroup extends SourceControlResourceGroup {
     model: Model;
 }
 
@@ -73,7 +73,6 @@ export class Model implements Disposable {
         }
     }
 
-    public _sourceControl?: SourceControl;
     private _infos = new Map<string, string>();
 
     private _defaultGroup?: ResourceGroup;
@@ -92,8 +91,8 @@ export class Model implements Disposable {
         return this._infos.get("Client name") ?? this._config.p4Client;
     }
 
-    public get ResourceGroups(): SourceControlResourceGroup[] {
-        const result: SourceControlResourceGroup[] = [];
+    public get ResourceGroups(): ResourceGroup[] {
+        const result: ResourceGroup[] = [];
 
         if (this._defaultGroup) {
             result.push(this._defaultGroup);
@@ -118,7 +117,8 @@ export class Model implements Disposable {
         private _config: IPerforceConfig,
         private _workspaceUri: Uri,
         private _workspaceConfig: WorkspaceConfigAccessor,
-        private _compatibilityMode: string
+        private _compatibilityMode: string,
+        public _sourceControl: SourceControl
     ) {
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
             this.RefreshImpl.bind(this),
@@ -189,7 +189,7 @@ export class Model implements Disposable {
     }
 
     public async Info(): Promise<void> {
-        const resource = this._sourceControl?.rootUri;
+        const resource = this._sourceControl.rootUri;
         if (resource) {
             Display.channel.show();
             try {
@@ -354,9 +354,6 @@ export class Model implements Disposable {
     }
 
     public async ProcessChangelist(): Promise<void> {
-        if (!this._sourceControl) {
-            throw new Error("Source control not initialised");
-        }
         let description = this._sourceControl.inputBox.value;
         this._sourceControl.inputBox.value = "";
 
@@ -371,9 +368,6 @@ export class Model implements Disposable {
     }
 
     public async EditChangelist(input: SourceControlResourceGroup): Promise<void> {
-        if (!this._sourceControl) {
-            throw new Error("Source control not initialised");
-        }
         let descStr = "";
         const id = input.id;
         let args = "-o ";

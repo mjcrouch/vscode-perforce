@@ -249,7 +249,7 @@ export namespace PerforceService {
     }
 
     export function handleCommonServiceResponse(
-        err: Error,
+        err: Error | null,
         stdout: string,
         stderr: string
     ) {
