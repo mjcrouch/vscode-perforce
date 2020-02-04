@@ -43,7 +43,10 @@ export class PerforceContentProvider {
                 const resource =
                     allArgs["workspace"] && typeof (allArgs["workspace"] === "string")
                         ? Uri.file(allArgs["workspace"] as string)
-                        : workspace.workspaceFolders[0].uri;
+                        : workspace.workspaceFolders?.[0].uri;
+                if (!resource) {
+                    throw new Error("A resource is required");
+                }
                 Utils.runCommand(
                     resource,
                     command,

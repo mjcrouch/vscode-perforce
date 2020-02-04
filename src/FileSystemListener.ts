@@ -21,14 +21,14 @@ import { PerforceService } from "./PerforceService";
 
 export default class FileSystemListener {
     private static _eventRegistered: boolean = false;
-    private static _lastCheckedFileUri?: Uri = null;
+    private static _lastCheckedFileUri?: Uri = undefined;
 
     private _disposable: Disposable;
-    private _watcher: FileSystemWatcher;
+    private _watcher?: FileSystemWatcher;
 
     private _p4ignore: string[];
 
-    constructor(workspaceFolder: WorkspaceFolder) {
+    constructor(workspaceFolder?: WorkspaceFolder) {
         const subscriptions: Disposable[] = [];
         window.onDidChangeActiveTextEditor(Display.updateEditor, this, subscriptions);
 
@@ -112,7 +112,7 @@ export default class FileSystemListener {
 
         //If this doc has already been checked, just returned
         if (
-            FileSystemListener._lastCheckedFileUri != null &&
+            FileSystemListener._lastCheckedFileUri &&
             docUri.toString() == FileSystemListener._lastCheckedFileUri.toString()
         ) {
             return;
