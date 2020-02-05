@@ -540,6 +540,13 @@ export class Model implements Disposable {
 
         let message = "Are you sure you want to revert the changes ";
         if (input instanceof Resource) {
+            if (input.isShelved) {
+                Display.showImportantError(
+                    "Revert cannot be used on shelved file: " +
+                        Path.basename(input.uri.fsPath)
+                );
+                return;
+            }
             file = Uri.file(input.resourceUri.fsPath);
             message += "to file " + Path.basename(input.resourceUri.fsPath) + "?";
         } else if (isResourceGroup(input)) {
@@ -746,6 +753,43 @@ export class Model implements Disposable {
                 .catch(reason => {
                     Display.showImportantError(reason.toString());
                 });
+        }
+    }
+
+    public async DeleteShelvedFile(input: Resource): Promise<void> {
+        if (!input.isShelved) {
+            Display.showImportantError(
+                "Shelve cannot be used on normal file: " + Path.basename(input.uri.fsPath)
+            );
+            return;
+        }
+
+        const yes = "Delete shelved file";
+        const answer = await window.showWarningMessage(
+            "Are you sure you want to delete the shelved file " + input.depotPath,
+            { modal: true },
+            yes
+        );
+
+        if (answer === undefined) {
+            return;
+        }
+
+        const command = "shelve";
+        const args = "-d -c " + input.change + ' "' + input.depotPath + '"';
+
+        try {
+            const ret = await Utils.runCommand(
+                this._workspaceUri,
+                command,
+                null,
+                null,
+                args
+            );
+            this.Refresh();
+            Display.showMessage(ret);
+        } catch (err) {
+            Display.showImportantError(err.toString());
         }
     }
 
