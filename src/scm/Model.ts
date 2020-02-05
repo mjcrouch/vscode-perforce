@@ -529,6 +529,10 @@ export class Model implements Disposable {
             });
     }
 
+    private hasShelvedFiles(group: SourceControlResourceGroup) {
+        return group.resourceStates.some(resource => (resource as Resource).isShelved);
+    }
+
     public async Revert(
         input: Resource | SourceControlResourceGroup,
         unchanged?: boolean
@@ -584,7 +588,7 @@ export class Model implements Disposable {
             });
 
         // delete changelist after
-        if (isResourceGroup(input)) {
+        if (isResourceGroup(input) && !this.hasShelvedFiles(input)) {
             const command = "change";
             const id = input.id;
             const chnum = id.substr(id.indexOf(":") + 1);

@@ -2043,7 +2043,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
             });
             it("Can revert if unchanged", async () => {
-                sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
 
                 const resource = findResourceForFile(
                     items.instance.resources[1],
@@ -2052,6 +2054,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.RevertUnchanged(resource as Resource);
 
+                expect(warn).not.to.have.been.called;
                 expect(items.execute).to.have.been.calledWithMatch(
                     workspaceUri,
                     "revert",
@@ -2061,10 +2064,120 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
         });
         describe("Revert changelist", () => {
-            it("Prompts the user for confirmation");
-            it("Reverts a changelist");
-            it("Deletes the changelist after reverting");
-            it("Does not try to delete a changelist with shelved files");
+            it("Prompts the user for confirmation", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolves(undefined);
+
+                await PerforceSCMProvider.Revert(items.instance.resources[1]);
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.execute).not.to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "revert"
+                );
+            });
+            it("Reverts a changelist and deletes it", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                await PerforceSCMProvider.Revert(items.instance.resources[2]);
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "revert",
+                    sinon.match.any,
+                    "-c 2"
+                );
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "change",
+                    sinon.match.any,
+                    "-d 2"
+                );
+            });
+            it("Can revert the default changelist and does not attempt to delete it", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                await PerforceSCMProvider.Revert(items.instance.resources[0]);
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "revert",
+                    sinon.match.any,
+                    "-c default"
+                );
+
+                expect(items.execute).not.to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "change",
+                    sinon.match.any,
+                    "-d"
+                );
+            });
+            it("Does not try to delete a changelist with shelved files", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                await PerforceSCMProvider.Revert(items.instance.resources[1]);
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "revert",
+                    sinon.match.any,
+                    "-c 1"
+                );
+                expect(items.execute).not.to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "change",
+                    sinon.match.any,
+                    "-d"
+                );
+            });
+            it("Can revert if unchanged", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                await PerforceSCMProvider.RevertUnchanged(items.instance.resources[2]);
+
+                expect(warn).not.to.have.been.called;
+                expect(items.execute).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    "revert",
+                    sinon.match.any,
+                    "-a -c 2 //..."
+                );
+                expect(items.execute).to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "change",
+                    sinon.match.any,
+                    "-d 2"
+                );
+            });
+            it("Can handle an error reverting a changelist", async () => {
+                sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
+
+                items.stubService.setResponse("revert", returnStdErr("My revert error"));
+
+                await PerforceSCMProvider.RevertUnchanged(items.instance.resources[2]);
+
+                expect(items.showError).to.have.been.calledWith("My revert error");
+                // it still tries to revert, even with an error - because the changelist may already be empty
+                expect(items.execute).to.have.been.calledWithMatch(
+                    sinon.match.any,
+                    "change",
+                    sinon.match.any,
+                    "-d 2"
+                );
+            });
         });
     });
 });
