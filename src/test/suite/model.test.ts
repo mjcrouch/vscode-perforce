@@ -17,7 +17,6 @@ import {
 } from "./StubPerforceService";
 import { Display } from "../../Display";
 import { Utils } from "../../Utils";
-import * as path from "path";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
@@ -85,7 +84,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         edit: {
             localFile: getLocalFile(workspaceUri, "testFolder", "a.txt"),
             depotPath: "//depot/testArea/testFolder/a.txt",
-            depotRevision: 1,
+            depotRevision: 4,
             operation: Status.EDIT
         },
         delete: {
@@ -1370,14 +1369,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceLocalUriMatcher(file),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "a.txt#4 vs a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         file.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file.localFile.fsPath + '#1"'
+                        '-q "' + file.localFile.fsPath + '#4"'
                     );
                 });
                 it("Can open multiple resources", async () => {
@@ -1399,14 +1397,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.getCall(-1)).to.be.vscodeDiffCall(
                         perforceLocalUriMatcher(file1),
                         file1.localFile,
-                        path.basename(file1.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "a.txt#4 vs a.txt"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         file1.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file1.localFile.fsPath + '#1"'
+                        '-q "' + file1.localFile.fsPath + '#4"'
                     );
                     expect(td.lastCall.args[0]).to.be.p4Uri(
                         perforceLocalUriMatcher(file2)
@@ -1439,8 +1436,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         vscode.Uri.parse("perforce:EMPTY"),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "new.txt#0 vs new.txt (workspace)"
                     );
                 });
                 it("Diffs a moved file against the original file", async () => {
@@ -1455,8 +1451,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceFromFileUriMatcher(file),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "movedFrom.txt#4 vs moved.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         sinon.match({ fsPath: workspaceUri.fsPath }),
@@ -1492,8 +1487,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         vscode.Uri.parse("perforce:EMPTY"),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "branched.txt#0 vs branched.txt (workspace)"
                     );
                 });
                 it("Diffs an integration/merge against the target depot file", async () => {
@@ -1508,8 +1502,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceLocalUriMatcher(file),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Most Recent Revision (left)"
+                        "integrated.txt#7 vs integrated.txt (workspace)"
                     );
 
                     expect(items.execute).to.be.calledWithMatch(
@@ -1531,8 +1524,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceDepotUriMatcher(file),
                         perforceShelvedUriMatcher(file, "1"),
-                        path.basename(file.localFile.path) +
-                            " - Diff Shelve (right) Against Depot Version (left)"
+                        "a.txt#1 vs a.txt@=1"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         { fsPath: workspaceUri.fsPath },
@@ -1559,8 +1551,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceShelvedUriMatcher(file, "1"),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Shelved Version (left)"
+                        "a.txt@=1 vs a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         { fsPath: workspaceUri.fsPath },
@@ -1581,8 +1572,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceLocalShelvedUriMatcher(file, "1"),
                         file.localFile,
-                        path.basename(file.localFile.path) +
-                            " - Diff Workspace (right) Against Shelved Version (left)"
+                        "a.txt@=1 vs a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         file.localFile,
