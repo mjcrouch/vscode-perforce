@@ -911,6 +911,29 @@ describe("Model & ScmProvider modules (integration)", () => {
             sinon.restore();
         });
 
+        describe("Provide original resource", () => {
+            it("Diffs against the have revision", async () => {
+                const out = await items.instance.provideOriginalResource(
+                    basicFiles.add.localFile
+                );
+
+                expect(out).to.deep.equal(
+                    basicFiles.add.localFile.with({
+                        scheme: "perforce",
+                        fragment: "have",
+                        query: "p4args=-q&command=print"
+                    })
+                );
+            });
+            it("Does not diff non-file resources", async () => {
+                const inUri = Utils.makePerforceDocUri(
+                    basicFiles.edit.localFile,
+                    "print"
+                );
+                const out = await items.instance.provideOriginalResource(inUri);
+                expect(out).to.be.undefined;
+            });
+        });
         describe("Shelving a changelist", () => {
             it("Cannot shelve the default changelist", async () => {
                 await expect(

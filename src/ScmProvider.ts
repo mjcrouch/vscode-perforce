@@ -483,7 +483,7 @@ export class PerforceSCMProvider {
             return;
         }
 
-        return Utils.makePerforceDocUri(uri, "print", "-q");
+        return Utils.makePerforceDocUri(uri, "print", "-q").with({ fragment: "have" });
     }
 
     /**
