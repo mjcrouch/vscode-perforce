@@ -564,11 +564,11 @@ export class PerforceSCMProvider {
                     return emptyDoc;
                 case Status.MOVE_ADD:
                     // diff against the old file if it is known (always a depot path)
-                    return resource.fromFile
-                        ? Utils.makePerforceDocUri(resource.fromFile, "print", "-q", {
+                    return resource.baseFile
+                        ? Utils.makePerforceDocUri(resource.baseFile, "print", "-q", {
                               depot: true,
                               workspace: resource.model.workspaceUri.fsPath
-                          })
+                          }).with({ fragment: resource.baseRev })
                         : emptyDoc;
                 case Status.INTEGRATE:
                 case Status.EDIT:
@@ -579,7 +579,7 @@ export class PerforceSCMProvider {
                         "print",
                         "-q",
                         args
-                    );
+                    ).with({ fragment: resource.workingRevision });
             }
         }
     }
