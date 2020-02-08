@@ -174,7 +174,10 @@ function TryCreateP4(uri: vscode.Uri): Promise<boolean> {
                         return CreateP4(config);
                     }
 
-                    Display.channel.appendLine(uri + ": Not initialising.");
+                    Display.channel.appendLine(
+                        uri +
+                            ": Not initialising.\n\nConsider setting/checking perforce.port, perforce.user, perforce.client in the extension settings"
+                    );
 
                     return false;
                 };
