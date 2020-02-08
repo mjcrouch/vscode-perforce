@@ -76,20 +76,7 @@ function TryCreateP4(uri: vscode.Uri): Promise<boolean> {
             _disposable.push(scm);
             _disposable.push(new FileSystemListener(wksFolder));
 
-            // Register only once
-            if (!_isRegistered) {
-                _isRegistered = true;
-
-                Display.channel.appendLine(
-                    "Performing one-time registration of perforce commands"
-                );
-
-                _disposable.push(new PerforceContentProvider());
-
-                // todo: fix dependency / order of operations issues
-                PerforceCommands.registerCommands();
-                PerforceSCMProvider.registerCommands();
-            }
+            doOneTimeRegistration();
 
             return true;
         };
@@ -251,6 +238,66 @@ export function activate(ctx: vscode.ExtensionContext): void {
         added: vscode.workspace.workspaceFolders || [],
         removed: []
     });
+
+    vscode.workspace.onDidChangeConfiguration(
+        onDidChangeConfiguration,
+        null,
+        ctx.subscriptions
+    );
+}
+
+function doOneTimeRegistration() {
+    if (!_isRegistered) {
+        _isRegistered = true;
+
+        Display.channel.appendLine(
+            "Performing one-time registration of perforce commands"
+        );
+
+        _disposable.push(new PerforceContentProvider());
+
+        // todo: fix dependency / order of operations issues
+        PerforceCommands.registerCommands();
+        PerforceSCMProvider.registerCommands();
+    }
+}
+
+const settingsRequiringRestart = [
+    "perforce.activationMode",
+    "perforce.editOnFileSave",
+    "perforce.editOnFileModified",
+    "perforce.addOnFileCreate",
+    "perforce.deleteOnFileDelete",
+    "perforce.client",
+    "perforce.port",
+    "perforce.user",
+    "perforce.password",
+    "perforce.dir",
+    "perforce.command",
+    "perforce.bottleneck.maxConcurrent"
+];
+
+let didShowConfigWarning = false;
+
+async function onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
+    if (didShowConfigWarning) {
+        return;
+    }
+
+    for (const setting of settingsRequiringRestart) {
+        if (event.affectsConfiguration(setting)) {
+            didShowConfigWarning = true;
+            const restart = "Restart Now";
+            const answer = await vscode.window.showWarningMessage(
+                "You have changed a perforce setting that may require a restart to take effect. When you are done, please restart VS Code",
+                restart
+            );
+            if (answer === restart) {
+                vscode.commands.executeCommand("workbench.action.reloadWindow");
+            }
+            return;
+        }
+    }
 }
 
 async function onDidChangeWorkspaceFolders({
