@@ -13,7 +13,12 @@ import {
     StubPerforceService,
     StubFile,
     getLocalFile,
-    returnStdErr
+    returnStdErr,
+    perforceLocalUriMatcher,
+    perforceDepotUriMatcher,
+    perforceShelvedUriMatcher,
+    perforceFromFileUriMatcher,
+    perforceLocalShelvedUriMatcher
 } from "./StubPerforceService";
 import { Display } from "../../Display";
 import { Utils } from "../../Utils";
@@ -29,17 +34,7 @@ chai.use(chaiAsPromised);
 interface TestItems {
     instance: PerforceSCMProvider;
     stubService: StubPerforceService;
-    execute: sinon.SinonStub<
-        [
-            vscode.Uri,
-            string,
-            (err: Error | null, stdout: string, stderr: string) => void,
-            (string | undefined)?,
-            (string | null | undefined)?,
-            (string | undefined)?
-        ],
-        void
-    >;
+    execute: sinon.SinonSpy;
     showMessage: sinon.SinonSpy<[string], void>;
     showModalMessage: sinon.SinonSpy<[string], void>;
     showError: sinon.SinonSpy<[string], void>;
@@ -1255,77 +1250,6 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
 
         describe("Opening", () => {
-            /**
-             * Matches against a perforce URI, containing a local file's path
-             * @param file
-             */
-            function perforceLocalUriMatcher(file: StubFile) {
-                if (!file.localFile) {
-                    throw new Error(
-                        "Can't make a local file matcher without a local file"
-                    );
-                }
-                return Utils.makePerforceDocUri(file.localFile, "print", "-q", {
-                    workspace: workspaceUri.fsPath
-                }).with({ fragment: file.depotRevision.toString() });
-            }
-
-            /**
-             * Matches against a perforce URI, using the depot path for a file
-             * @param file
-             */
-            function perforceDepotUriMatcher(file: StubFile) {
-                return Utils.makePerforceDocUri(
-                    vscode.Uri.parse("perforce:" + file.depotPath),
-                    "print",
-                    "-q",
-                    { depot: true, workspace: workspaceUri.fsPath }
-                ).with({ fragment: file.depotRevision.toString() });
-            }
-
-            /**
-             * Matches against a perforce URI, using the resolveBaseFile0 depot path
-             * @param file
-             */
-            function perforceFromFileUriMatcher(file: StubFile) {
-                return Utils.makePerforceDocUri(
-                    vscode.Uri.parse("perforce:" + file.resolveFromDepotPath),
-                    "print",
-                    "-q",
-                    { depot: true, workspace: workspaceUri.fsPath }
-                ).with({ fragment: file.resolveEndFromRev?.toString() });
-            }
-
-            /**
-             * Matches against a perforce URI, using the depot path for the file AND containing a fragment for the shelved changelist number
-             * @param file
-             * @param chnum
-             */
-            function perforceShelvedUriMatcher(file: StubFile, chnum: string) {
-                return Utils.makePerforceDocUri(
-                    vscode.Uri.parse("perforce:" + file.depotPath).with({
-                        fragment: "@=" + chnum
-                    }),
-                    "print",
-                    "-q",
-                    { depot: true, workspace: workspaceUri.fsPath }
-                );
-            }
-
-            function perforceLocalShelvedUriMatcher(file: StubFile, chnum: string) {
-                if (!file.localFile) {
-                    throw new Error(
-                        "Can't make a local file matcher without a local file"
-                    );
-                }
-                return Utils.makePerforceDocUri(
-                    file.localFile.with({ fragment: "@=" + chnum }),
-                    "print",
-                    "-q",
-                    { workspace: workspaceUri.fsPath }
-                );
-            }
-
             let execCommand: sinon.SinonSpy<[string, ...any[]], Thenable<unknown>>;
             beforeEach(function() {
                 this.timeout(4000);
