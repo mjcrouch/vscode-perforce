@@ -80,8 +80,8 @@ export interface StubFile {
     behaviours?: StubFileBehaviours;
     operation: Status;
     fileType?: string;
-    resolveBaseDepotPath?: string;
-    resolveBaseRev?: number;
+    resolveFromDepotPath?: string;
+    resolveEndFromRev?: number;
 }
 
 /**
@@ -525,8 +525,8 @@ export class StubPerforceService {
                 action: getStatusText(file.operation ?? Status.EDIT),
                 workRev: file.depotRevision?.toString(),
                 change: cl?.chnum,
-                resolveBaseFile0: file.resolveBaseDepotPath,
-                resolveBaseRev0: file.resolveBaseRev?.toString()
+                resolveFromFile0: file.resolveFromDepotPath,
+                resolveEndFromRev0: file.resolveEndFromRev?.toString()
             };
             return Object.keys(props)
                 .filter(

@@ -104,8 +104,8 @@ describe("Model & ScmProvider modules (integration)", () => {
             depotPath: "//depot/testArea/testFolder/moved.txt",
             depotRevision: 1,
             operation: Status.MOVE_ADD,
-            resolveBaseDepotPath: "//depot/testArea/testFolderOld/movedFrom.txt",
-            resolveBaseRev: 4
+            resolveFromDepotPath: "//depot/testArea/testFolderOld/movedFrom.txt",
+            resolveEndFromRev: 4
         },
         moveDelete: {
             localFile: getLocalFile(workspaceUri, "testFolderOld", "movedFrom.txt"),
@@ -118,16 +118,16 @@ describe("Model & ScmProvider modules (integration)", () => {
             depotPath: "//depot/testArea/testFolder/branched.txt",
             depotRevision: 1,
             operation: Status.BRANCH,
-            resolveBaseDepotPath: "//depot/testAreaOld/testFolder/branchedFrom.txt",
-            resolveBaseRev: 1
+            resolveFromDepotPath: "//depot/testAreaOld/testFolder/branchedFrom.txt",
+            resolveEndFromRev: 1
         },
         integrate: {
             localFile: getLocalFile(workspaceUri, "testFolder", "integrated.txt"),
             depotPath: "//depot/testArea/testFolder/integrated.txt",
             depotRevision: 7,
             operation: Status.INTEGRATE,
-            resolveBaseDepotPath: "//depot/testAreaOld/testFolder/integrated.txt",
-            resolveBaseRev: 5
+            resolveFromDepotPath: "//depot/testAreaOld/testFolder/integrated.txt",
+            resolveEndFromRev: 5
         },
         outOfWorkspaceAdd: {
             localFile: getLocalFile(workspaceUri, "..", "outOfWorkspaceAdd.txt"),
@@ -927,6 +927,19 @@ describe("Model & ScmProvider modules (integration)", () => {
                 const out = await items.instance.provideOriginalResource(inUri);
                 expect(out).to.be.undefined;
             });
+            it("Diffs moved files against the original file", async () => {
+                const out = await items.instance.provideOriginalResource(
+                    basicFiles.moveAdd.localFile
+                );
+
+                expect(out).to.deep.equal(
+                    vscode.Uri.parse(basicFiles.moveDelete.depotPath).with({
+                        scheme: "perforce",
+                        fragment: "4",
+                        query: "p4args=-q&command=print&depot"
+                    })
+                );
+            });
         });
         describe("Shelving a changelist", () => {
             it("Cannot shelve the default changelist", async () => {
@@ -1276,11 +1289,11 @@ describe("Model & ScmProvider modules (integration)", () => {
              */
             function perforceFromFileUriMatcher(file: StubFile) {
                 return Utils.makePerforceDocUri(
-                    vscode.Uri.parse("perforce:" + file.resolveBaseDepotPath),
+                    vscode.Uri.parse("perforce:" + file.resolveFromDepotPath),
                     "print",
                     "-q",
                     { depot: true, workspace: workspaceUri.fsPath }
-                ).with({ fragment: file.resolveBaseRev?.toString() });
+                ).with({ fragment: file.resolveEndFromRev?.toString() });
             }
 
             /**
@@ -1451,7 +1464,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         sinon.match({ fsPath: workspaceUri.fsPath }),
                         "print",
                         sinon.match.any,
-                        '-q "' + file.resolveBaseDepotPath + '#4"'
+                        '-q "' + file.resolveFromDepotPath + '#4"'
                     );
                 });
                 it("Displays the depot version for a move / delete", async () => {
