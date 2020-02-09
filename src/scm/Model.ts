@@ -160,7 +160,7 @@ export class Model implements Disposable {
      * @param localFile
      */
     public getOpenResource(localFile: Uri) {
-        return this._openResourcesByPath.get(localFile.path);
+        return this._openResourcesByPath.get(localFile.fsPath);
     }
 
     private async RefreshImpl(refreshClientInfo?: boolean): Promise<void> {
