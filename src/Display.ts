@@ -15,15 +15,19 @@ export namespace Display {
     export const updateEditor = debounce(updateEditorImpl, 1000);
 
     export function initialize(subscriptions: { dispose(): any }[]) {
+        initializeChannel(subscriptions);
         _statusBarItem = window.createStatusBarItem(
             StatusBarAlignment.Left,
             Number.MIN_VALUE
         );
         _statusBarItem.command = "perforce.menuFunctions";
         subscriptions.push(_statusBarItem);
-        subscriptions.push(channel);
 
         updateEditor();
+    }
+
+    export function initializeChannel(subscriptions: { dispose(): any }[]) {
+        subscriptions.push(channel);
     }
 
     function updateEditorImpl() {
@@ -74,7 +78,7 @@ export namespace Display {
 
     export function showMessage(message: string) {
         window.setStatusBarMessage("Perforce: " + message, 3000);
-        channel.append(message);
+        channel.append(message + "\n");
     }
 
     export function showModalMessage(message: string) {

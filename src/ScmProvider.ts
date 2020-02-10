@@ -498,6 +498,10 @@ export class PerforceSCMProvider {
         return Utils.makePerforceDocUri(uri, "print", "-q").with({ fragment: "have" });
     }
 
+    public static hasOpenFile(uri: Uri) {
+        return this.instances.some(inst => inst._model.getOpenResource(uri));
+    }
+
     /**
      * This is the default action when an resource is clicked in the viewlet.
      * For ADD, AND UNDELETE just show the local file.
