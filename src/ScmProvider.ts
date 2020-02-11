@@ -49,10 +49,6 @@ export class PerforceSCMProvider {
         return mapEvent(this._model.onDidChange, () => this);
     }
 
-    get onRefreshStarted(): Event<this> {
-        return mapEvent(this._model.onRefreshStarted, () => this);
-    }
-
     public get resources(): ResourceGroup[] {
         return this._model.ResourceGroups;
     }
@@ -500,6 +496,10 @@ export class PerforceSCMProvider {
 
     public static hasOpenFile(uri: Uri) {
         return this.instances.some(inst => inst._model.getOpenResource(uri));
+    }
+
+    public static mayHaveConflictForFile(uri: Uri) {
+        return this.instances.some(inst => inst._model.mayHaveConflictForFile(uri));
     }
 
     /**

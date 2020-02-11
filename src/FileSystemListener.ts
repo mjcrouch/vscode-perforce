@@ -143,7 +143,10 @@ export default class FileSystemListener {
     // in future releases.
     // https://github.com/stef-levesque/vscode-perforce/issues/110
     private static tryEditFile(uri: Uri): Promise<boolean> {
-        if (PerforceSCMProvider.hasOpenFile(uri)) {
+        if (
+            PerforceSCMProvider.hasOpenFile(uri) &&
+            !PerforceSCMProvider.mayHaveConflictForFile(uri)
+        ) {
             return Promise.resolve(true);
         } else {
             return PerforceCommands.edit(uri);

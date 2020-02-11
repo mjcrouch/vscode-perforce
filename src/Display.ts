@@ -1,4 +1,11 @@
-import { window, StatusBarAlignment, StatusBarItem, workspace } from "vscode";
+import {
+    window,
+    StatusBarAlignment,
+    StatusBarItem,
+    workspace,
+    EventEmitter,
+    Uri
+} from "vscode";
 
 import * as Path from "path";
 
@@ -8,9 +15,23 @@ import { debounce } from "./Debounce";
 
 let _statusBarItem: StatusBarItem;
 
+export enum ActiveEditorStatus {
+    OPEN,
+    NOT_OPEN,
+    NOT_IN_WORKSPACE
+}
+
+export interface ActiveStatusEvent {
+    file: Uri;
+    status: ActiveEditorStatus;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Display {
     export const channel = window.createOutputChannel("Perforce Log");
+
+    const _onActiveFileStatusKnown = new EventEmitter<ActiveStatusEvent>();
+    export const onActiveFileStatusKnown = _onActiveFileStatusKnown.event;
 
     export const updateEditor = debounce(updateEditorImpl, 1000);
 
@@ -22,6 +43,7 @@ export namespace Display {
         );
         _statusBarItem.command = "perforce.menuFunctions";
         subscriptions.push(_statusBarItem);
+        subscriptions.push(_onActiveFileStatusKnown);
 
         updateEditor();
     }
@@ -53,19 +75,25 @@ export namespace Display {
                 doc.uri,
                 "opened",
                 function(err, stdout, stderr) {
+                    let active: ActiveEditorStatus = ActiveEditorStatus.NOT_IN_WORKSPACE;
                     if (err) {
                         // file not under client root
                         _statusBarItem.text = "P4: $(circle-slash)";
                         _statusBarItem.tooltip = stderr.toString();
+                        active = ActiveEditorStatus.NOT_IN_WORKSPACE;
                     } else if (stderr) {
                         // file not opened on client
                         _statusBarItem.text = "P4: $(file-text)";
                         _statusBarItem.tooltip = stderr.toString();
+                        active = ActiveEditorStatus.NOT_OPEN;
                     } else if (stdout) {
                         // file opened in add or edit
                         _statusBarItem.text = "P4: $(check)";
                         _statusBarItem.tooltip = stdout.toString();
+                        active = ActiveEditorStatus.OPEN;
                     }
+
+                    _onActiveFileStatusKnown.fire({ file: doc.uri, status: active });
                 },
                 args,
                 directoryOverride
