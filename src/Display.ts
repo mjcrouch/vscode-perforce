@@ -33,7 +33,12 @@ export namespace Display {
     const _onActiveFileStatusKnown = new EventEmitter<ActiveStatusEvent>();
     export const onActiveFileStatusKnown = _onActiveFileStatusKnown.event;
 
-    export const updateEditor = debounce(updateEditorImpl, 1000);
+    export const updateEditor = debounce(updateEditorImpl, 1000, () => {
+        if (_statusBarItem) {
+            _statusBarItem.text = "P4: $(sync)";
+            _statusBarItem.tooltip = "Checking file status";
+        }
+    });
 
     export function initialize(subscriptions: { dispose(): any }[]) {
         initializeChannel(subscriptions);
