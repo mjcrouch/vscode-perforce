@@ -162,7 +162,7 @@ export namespace PerforceCommands {
             "revert",
             (err, stdout, stderr) => {
                 PerforceService.handleCommonServiceResponse(err, stdout, stderr);
-                if (!err) {
+                if (!err && !stderr) {
                     Display.showMessage("file reverted");
                 }
             },

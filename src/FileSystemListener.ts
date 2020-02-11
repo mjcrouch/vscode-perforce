@@ -9,7 +9,8 @@ import {
     TextDocumentChangeEvent,
     RelativePattern,
     Uri,
-    WorkspaceFolder
+    WorkspaceFolder,
+    TextDocumentSaveReason
 } from "vscode";
 
 import * as micromatch from "micromatch";
@@ -23,6 +24,7 @@ import { PerforceSCMProvider } from "./ScmProvider";
 export default class FileSystemListener {
     private static _eventRegistered: boolean = false;
     private static _lastCheckedFileUri?: Uri = undefined;
+    private static _lastSavedFileUri?: Uri = undefined;
 
     private _disposable: Disposable;
     private _watcher?: FileSystemWatcher;
@@ -39,7 +41,9 @@ export default class FileSystemListener {
             if (!FileSystemListener._eventRegistered) {
                 if (config["editOnFileSave"]) {
                     workspace.onWillSaveTextDocument(e => {
-                        e.waitUntil(FileSystemListener.onWillSaveFile(e.document));
+                        e.waitUntil(
+                            FileSystemListener.onWillSaveFile(e.document, e.reason)
+                        );
                     });
                 }
 
@@ -104,8 +108,20 @@ export default class FileSystemListener {
         this._disposable.dispose();
     }
 
-    private static onWillSaveFile(doc: TextDocument): Promise<boolean> {
-        return FileSystemListener.tryEditFile(doc.uri);
+    private static onWillSaveFile(
+        doc: TextDocument,
+        reason: TextDocumentSaveReason
+    ): Promise<boolean> {
+        if (
+            FileSystemListener._lastSavedFileUri?.fsPath === doc.uri.fsPath &&
+            reason !== TextDocumentSaveReason.Manual
+        ) {
+            // don't keep trying when auto-saving (e.g. if the file isn't intended for perforce)
+            return Promise.resolve(true);
+        } else {
+            FileSystemListener._lastSavedFileUri = doc.uri;
+            return FileSystemListener.tryEditFile(doc.uri);
+        }
     }
 
     private static onFileModified(docChange: TextDocumentChangeEvent) {
