@@ -9,7 +9,7 @@ export function mapEvent<I, O>(event: Event<I>, map: (i: I) => O): Event<O> {
         event(i => listener.call(thisArgs, map(i)), null, disposables);
 }
 
-type UriArguments = {
+export type UriArguments = {
     [key: string]: string | boolean;
 };
 
@@ -165,20 +165,25 @@ export namespace Utils {
         });
     }
 
+    export interface CommandParams {
+        file?: Uri | string;
+        revision?: string;
+        prefixArgs?: string;
+        gOpts?: string;
+        input?: string;
+    }
+
     // Get a string containing the output of the command
     export function runCommand(
         resource: Uri,
         command: string,
-        file?: Uri | string | null | undefined,
-        revision?: string | null, // must include the # or @
-        prefixArgs?: string,
-        gOpts?: string | null,
-        input?: string
+        params: CommandParams
     ): Promise<string> {
         return new Promise((resolve, reject) => {
-            let args = prefixArgs ? prefixArgs : "";
+            const { file, revision, prefixArgs, gOpts, input } = params;
+            let args = prefixArgs ?? "";
 
-            if (gOpts !== null && gOpts !== undefined) {
+            if (gOpts !== undefined) {
                 command = gOpts + " " + command;
             }
 
@@ -222,6 +227,12 @@ export namespace Utils {
         input?: string
     ): Promise<string> {
         const resource = file;
-        return runCommand(resource, command, file, revision, prefixArgs, gOpts, input);
+        return runCommand(resource, command, {
+            file,
+            revision,
+            prefixArgs,
+            gOpts,
+            input
+        });
     }
 }

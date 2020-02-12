@@ -255,13 +255,9 @@ export class Model implements Disposable {
 
     private async getChangeSpec(existingChangelist?: string): Promise<ChangeSpec> {
         const args = `-o ${existingChangelist ? existingChangelist : ""}`;
-        const spec: string = await Utils.runCommand(
-            this._workspaceUri,
-            "change",
-            null,
-            null,
-            args
-        );
+        const spec: string = await Utils.runCommand(this._workspaceUri, "change", {
+            prefixArgs: args
+        });
         const fields = spec.trim().split(/\n\r?\n/);
         const rawFields = fields
             .filter(field => !field.startsWith("#"))
@@ -330,15 +326,10 @@ export class Model implements Disposable {
             })
             .join("\n\n");
 
-        const output = await Utils.runCommand(
-            this._workspaceUri,
-            "change",
-            null,
-            null,
-            "-i",
-            null,
-            newSpec
-        );
+        const output = await Utils.runCommand(this._workspaceUri, "change", {
+            prefixArgs: "-i",
+            input: newSpec
+        });
         Display.channel.append(output);
         return output;
     }
@@ -418,13 +409,9 @@ export class Model implements Disposable {
             args += chnum;
         }
 
-        const output: string = await Utils.runCommand(
-            this._workspaceUri,
-            "change",
-            null,
-            null,
-            args
-        );
+        const output: string = await Utils.runCommand(this._workspaceUri, "change", {
+            prefixArgs: args
+        });
         const changeFields = output.trim().split(/\n\r?\n/);
         for (const field of changeFields) {
             if (field.startsWith("Description:")) {
@@ -469,13 +456,9 @@ export class Model implements Disposable {
         const noFiles = "File(s) not opened on this client.";
         let fileListStr;
         try {
-            fileListStr = await Utils.runCommand(
-                this._workspaceUri,
-                "opened",
-                null,
-                null,
-                "-c default"
-            );
+            fileListStr = await Utils.runCommand(this._workspaceUri, "opened", {
+                prefixArgs: "-c default"
+            });
             if (fileListStr === noFiles) {
                 Display.showError(noFiles);
                 return;
@@ -556,7 +539,7 @@ export class Model implements Disposable {
             }
         }
 
-        await Utils.runCommand(this._workspaceUri, command, null, null, args)
+        await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args })
             .then(output => {
                 Display.channel.append(output);
                 Display.showMessage("Changelist Submitted");
@@ -576,7 +559,7 @@ export class Model implements Disposable {
         unchanged?: boolean
     ): Promise<void> {
         const command = "revert";
-        let file = null;
+        let file;
         let args = unchanged ? "-a " : "";
         let needRefresh = false;
 
@@ -615,7 +598,7 @@ export class Model implements Disposable {
             }
         }
 
-        await Utils.runCommand(this._workspaceUri, command, file, null, args)
+        await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args, file })
             .then(output => {
                 Display.updateEditor();
                 Display.channel.append(output);
@@ -633,7 +616,7 @@ export class Model implements Disposable {
             if (id.startsWith("pending")) {
                 args = "-d " + chnum;
 
-                await Utils.runCommand(this._workspaceUri, command, null, null, args)
+                await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args })
                     .then(output => {
                         Display.updateEditor();
                         Display.channel.append(output);
@@ -654,13 +637,9 @@ export class Model implements Disposable {
         const command = "revert";
         const args = "-c " + chnum + " //...";
 
-        const output = await Utils.runCommand(
-            this._workspaceUri,
-            command,
-            null,
-            null,
-            args
-        );
+        const output = await Utils.runCommand(this._workspaceUri, command, {
+            prefixArgs: args
+        });
         Display.updateEditor();
         Display.channel.append(output);
     }
@@ -680,7 +659,7 @@ export class Model implements Disposable {
         const args = "-f -c " + chnum;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, null, null, args);
+            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
             if (revert) {
                 await this.QuietlyRevertChangelist(chnum);
             }
@@ -703,7 +682,7 @@ export class Model implements Disposable {
         const args = "-f -s " + chnum + " -c " + chnum;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, null, null, args);
+            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
             this.Refresh();
             Display.showMessage("Changelist unshelved");
         } catch (err) {
@@ -736,7 +715,7 @@ export class Model implements Disposable {
         const args = "-d -c " + chnum;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, null, null, args);
+            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
             this.Refresh();
             Display.showMessage("Shelved files deleted");
         } catch (err) {
@@ -748,22 +727,16 @@ export class Model implements Disposable {
         if (input.isShelved) {
             const args = "-c " + input.change + " -s " + input.change;
             const command = "unshelve";
-            await Utils.runCommand(
-                this._workspaceUri,
-                command,
-                input.depotPath,
-                null,
-                args
-            )
+            await Utils.runCommand(this._workspaceUri, command, {
+                prefixArgs: args,
+                file: input.depotPath
+            })
                 .then(() => {
                     const args = "-d -c " + input.change;
-                    Utils.runCommand(
-                        this._workspaceUri,
-                        "shelve",
-                        input.depotPath,
-                        null,
-                        args
-                    )
+                    Utils.runCommand(this._workspaceUri, "shelve", {
+                        prefixArgs: args,
+                        file: input.depotPath
+                    })
                         .then(output => {
                             Display.updateEditor();
                             Display.channel.append(output);
@@ -782,13 +755,10 @@ export class Model implements Disposable {
         } else {
             const args = "-f -c " + input.change;
             const command = "shelve";
-            await Utils.runCommand(
-                this._workspaceUri,
-                command,
-                input.resourceUri,
-                null,
-                args
-            )
+            await Utils.runCommand(this._workspaceUri, command, {
+                prefixArgs: args,
+                file: input.resourceUri
+            })
                 .then(() => {
                     this.Revert(input);
                 })
@@ -821,13 +791,9 @@ export class Model implements Disposable {
         const args = "-d -c " + input.change + ' "' + input.depotPath + '"';
 
         try {
-            const ret = await Utils.runCommand(
-                this._workspaceUri,
-                command,
-                null,
-                null,
-                args
-            );
+            const ret = await Utils.runCommand(this._workspaceUri, command, {
+                prefixArgs: args
+            });
             this.Refresh();
             Display.showMessage(ret);
         } catch (err) {
@@ -867,7 +833,9 @@ export class Model implements Disposable {
         const args = "-c " + chnum + " " + jobId;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, null, null, args);
+            await Utils.runCommand(this._workspaceUri, command, {
+                prefixArgs: args
+            });
             this.Refresh();
             Display.showMessage("Job " + jobId + " added");
         } catch (err) {
@@ -922,7 +890,9 @@ export class Model implements Disposable {
         const args = "-c " + chnum + " -d " + jobId;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, null, null, args);
+            await Utils.runCommand(this._workspaceUri, command, {
+                prefixArgs: args
+            });
             this.Refresh();
             Display.showMessage("Job " + jobId + " removed");
         } catch (err) {
@@ -997,7 +967,10 @@ export class Model implements Disposable {
             const file = Uri.file(resource.resourceUri.fsPath);
             const args = "-c " + chnum;
 
-            Utils.runCommand(this._workspaceUri, "reopen", file, null, args)
+            Utils.runCommand(this._workspaceUri, "reopen", {
+                prefixArgs: args,
+                file
+            })
                 .then(output => {
                     Display.channel.append(output);
                     this.Refresh();
@@ -1026,7 +999,7 @@ export class Model implements Disposable {
     private async syncUpdate(): Promise<void> {
         const trailingSlash = /^(.*)(\/)$/;
         const config = this._config;
-        let pathToSync = null;
+        let pathToSync;
         let p4Dir = config.p4Dir ? config.p4Dir : this._workspaceConfig.pwdOverride;
         if (p4Dir && p4Dir !== "none") {
             p4Dir = Utils.normalize(p4Dir);
@@ -1036,7 +1009,9 @@ export class Model implements Disposable {
             pathToSync = vscode.Uri.file(p4Dir + "...");
         }
 
-        await Utils.runCommand(this._workspaceUri, "sync", pathToSync, null, "")
+        await Utils.runCommand(this._workspaceUri, "sync", {
+            file: pathToSync
+        })
             .then(output => {
                 Display.channel.append(output);
                 this.Refresh();
@@ -1145,13 +1120,9 @@ export class Model implements Disposable {
 
     private async getChanges(): Promise<ChangeInfo[]> {
         const pendingArgs = "-c " + this.clientName + " -s pending";
-        const output: string = await Utils.runCommand(
-            this._workspaceUri,
-            "changes",
-            null,
-            null,
-            pendingArgs
-        );
+        const output: string = await Utils.runCommand(this._workspaceUri, "changes", {
+            prefixArgs: pendingArgs
+        });
         let changeNumbers = output.trim().split("\n");
 
         if (this._workspaceConfig.changelistOrder === "ascending") {
