@@ -66,6 +66,11 @@ export class PerforceContentProvider {
             );
             throw new Error(`Can't find proper workspace for command ${command} `);
         }
-        return Utils.runCommand(resource, command, { file, revision, prefixArgs: args });
+        return Utils.runCommand(resource, command, {
+            file,
+            revision,
+            prefixArgs: args,
+            hideStdErr: true
+        });
     }
 }

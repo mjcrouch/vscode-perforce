@@ -171,6 +171,7 @@ export namespace Utils {
         prefixArgs?: string;
         gOpts?: string;
         input?: string;
+        hideStdErr?: boolean; // just from the status bar - not from the log output
     }
 
     // Get a string containing the output of the command
@@ -180,7 +181,7 @@ export namespace Utils {
         params: CommandParams
     ): Promise<string> {
         return new Promise((resolve, reject) => {
-            const { file, revision, prefixArgs, gOpts, input } = params;
+            const { file, revision, prefixArgs, gOpts, input, hideStdErr } = params;
             let args = prefixArgs ?? "";
 
             if (gOpts !== undefined) {
@@ -201,7 +202,11 @@ export namespace Utils {
                 command,
                 (err, stdout, stderr) => {
                     err && Display.showError(err.toString());
-                    stderr && Display.showError(stderr.toString());
+                    if (stderr) {
+                        hideStdErr
+                            ? Display.channel.appendLine(stderr.toString())
+                            : Display.showError(stderr.toString());
+                    }
                     if (err) {
                         reject(err);
                     } else if (stderr) {
