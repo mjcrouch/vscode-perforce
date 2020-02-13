@@ -80,6 +80,12 @@ export class Model implements Disposable {
     >();
     private _openResourcesByPath = new Map<string, Resource>();
     /**
+     * The set of local paths we are known NOT to have #have revisions of.
+     * Cleared on refresh
+     */
+    private _knownHaveListByPath = new Map<string, boolean>();
+
+    /**
      * Stores the set of files where the display has checked
      * if the file is open and returned that it is not, but
      * the model believes it is open - so that we know there may
@@ -199,6 +205,33 @@ export class Model implements Disposable {
      */
     public getOpenResource(localFile: Uri) {
         return this._openResourcesByPath.get(localFile.fsPath);
+    }
+
+    /**
+     * Checks whether we have a #have revision for a given file in the perforce client
+     * The first call after a refresh is cached
+     * @param uri the local file to check
+     */
+    public async haveFile(uri: Uri): Promise<boolean> {
+        const cachedHave = this._knownHaveListByPath.get(uri.fsPath);
+        if (cachedHave !== undefined) {
+            return cachedHave;
+        }
+        let ret = false;
+        try {
+            const [, stderr] = await Utils.getOutputs(uri, 'have "' + uri.fsPath + '"');
+            if (stderr) {
+                ret = false;
+            } else {
+                ret = true;
+            }
+        } catch (err) {
+            ret = false;
+        }
+
+        this._knownHaveListByPath.set(uri.fsPath, ret);
+
+        return ret;
     }
 
     private async RefreshImpl(refreshClientInfo?: boolean): Promise<void> {
@@ -984,6 +1017,7 @@ export class Model implements Disposable {
     private clean() {
         this._openResourcesByPath.clear();
         this._conflictsByPath.clear();
+        this._knownHaveListByPath.clear();
 
         if (this._defaultGroup) {
             this._defaultGroup.dispose();
