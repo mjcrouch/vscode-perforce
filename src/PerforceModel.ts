@@ -26,9 +26,26 @@ type PerforceCommand = {
     params: Utils.CommandParams;
 };
 
+export type FstatInfo = {
+    depotFile: string;
+    [key: string]: string;
+};
+
 interface CommandOptions {
     resource: vscode.Uri;
 }
+
+const splitArray = <T>(chunkSize: number) => {
+    return (arr: T[]): T[][] => {
+        const ret: T[][] = [];
+        for (let i = 0; i < arr.length; i += chunkSize) {
+            ret.push(arr.slice(i, i + chunkSize));
+        }
+        return ret;
+    };
+};
+
+const splitIntoChunks = <T>(arr: T[]) => splitArray<T>(32)(arr);
 
 const withPromise = <I, R>(fn: (input: I) => R) => async (
     arg: Promise<I>
@@ -38,6 +55,9 @@ const withPromise = <I, R>(fn: (input: I) => R) => async (
 
 const runPerforceCommand = (args: PerforceCommand) =>
     Utils.runCommand(args.resource, args.command, args.params);
+
+const runAllCommands = async (commands: PerforceCommand[]) =>
+    await Promise.all(commands.map(args => runPerforceCommand(args)));
 
 const makePerforceCommand = (
     options: CommandOptions,
@@ -179,4 +199,60 @@ export const inputChangeSpec = pipe(
     makeChangeInputCommand,
     runPerforceCommand,
     withPromise(parseCreatedChangelist)
+);
+
+export interface FStatOptions extends CommandOptions {
+    depotPaths: string[];
+    chnum?: string;
+    limitToShelved?: boolean;
+    outputPendingRecord?: boolean;
+}
+
+const getFstatOptions = (options: FStatOptions) => {
+    return [
+        options.chnum ? "-e " + options.chnum : "",
+        options.outputPendingRecord ? "-Or" : "",
+        options.limitToShelved ? "-Rs" : ""
+    ].filter(opt => opt !== "");
+};
+
+const makeFstatCommands = (options: FStatOptions): PerforceCommand[] => {
+    return splitIntoChunks(options.depotPaths).map(paths =>
+        makePerforceCommand(options, "fstat", {
+            prefixArgs: getFstatOptions(options)
+                .concat('"' + paths.join('" "') + '"')
+                .join(" ")
+        })
+    );
+};
+
+const parseFstatOutput = (fstatOutput: string) => {
+    return fstatOutput
+        .trim()
+        .split(/\n\r?\n/)
+        .map(file => {
+            const lines = file.split("\n");
+            const lineMap: FstatInfo = { depotFile: "" };
+            lines.forEach(line => {
+                // ... Key Value
+                const matches = new RegExp(/[.]{3} (\w+)[ ]*(.+)?/).exec(line);
+                if (matches) {
+                    // A key may not have a value (e.g. `isMapped`).
+                    // Treat these as flags and map them to 'true'.
+                    lineMap[matches[1]] = matches[2] ? matches[2] : "true";
+                }
+            });
+            return lineMap;
+        });
+};
+
+const applyToEach = <T, R>(fn: (arg: T) => R) => (args: T[]) =>
+    args.map(item => fn(item));
+
+const flatten = <T>(arg: T[][]): T[] => arg.flat();
+
+export const getFstatInfo = pipe(
+    makeFstatCommands,
+    runAllCommands,
+    withPromise(pipe(applyToEach(parseFstatOutput), flatten))
 );

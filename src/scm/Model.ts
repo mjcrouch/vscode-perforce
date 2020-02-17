@@ -19,7 +19,7 @@ import { Resource } from "./Resource";
 import * as Path from "path";
 import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
-import { getChangeSpec, inputChangeSpec } from "../PerforceModel";
+import { getChangeSpec, inputChangeSpec, getFstatInfo } from "../PerforceModel";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg.id !== undefined;
@@ -275,53 +275,6 @@ export class Model implements Disposable {
             }
         }
     }
-
-    private parseRawField(value: string) {
-        if (value.startsWith("\n")) {
-            value = value.slice(1);
-        }
-        return value.split("\n").map(line => line.replace(/^\t/, ""));
-    }
-
-    private getBasicField(fields: ChangeFieldRaw[], field: string) {
-        return fields.find(i => i.name === field)?.value;
-    }
-
-    private async getChangeSpec(existingChangelist?: string): Promise<ChangeSpec> {
-        const args = `-o ${existingChangelist ? existingChangelist : ""}`;
-        const spec: string = await Utils.runCommand(this._workspaceUri, "change", {
-            prefixArgs: args
-        });
-        const fields = spec.trim().split(/\n\r?\n/);
-        const rawFields = fields
-            .filter(field => !field.startsWith("#"))
-            .map(field => {
-                const colPos = field.indexOf(":");
-                const name = field.slice(0, colPos);
-                const value = this.parseRawField(field.slice(colPos + 1));
-                return { name, value };
-            });
-        return {
-            change: this.getBasicField(rawFields, "Change")?.[0],
-            description: this.getBasicField(rawFields, "Description")?.join("\n"),
-            files: this.getBasicField(rawFields, "Files")?.map(file => {
-                const endOfFileStr = file.indexOf("#");
-                return {
-                    depotPath: file.slice(0, endOfFileStr).trim(),
-                    action: file.slice(endOfFileStr + 2)
-                };
-            }),
-            rawFields
-        };
-    }
-
-    private async getChangelistFileInfo(
-        fileList: ChangeSpecFile[]
-    ): Promise<(FstatInfo | undefined)[]> {
-        const depotFiles = fileList.map(f => f.depotPath);
-        return await this.getFstatInfoForFiles(depotFiles);
-    }
-
     private isInWorkspace(clientFile?: string): boolean {
         return !!clientFile && !!workspace.getWorkspaceFolder(Uri.file(clientFile));
     }
@@ -382,12 +335,18 @@ export class Model implements Disposable {
             descStr = "<saved by VSCode>";
         }
 
-        const changeFields = await this.getChangeSpec(existingChangelist);
+        const changeFields = await getChangeSpec({
+            resource: this._workspaceUri,
+            existingChangelist
+        });
 
         if (this._workspaceConfig.hideNonWorkspaceFiles && changeFields.files) {
-            const infos = await this.getChangelistFileInfo(changeFields.files);
+            const infos = await getFstatInfo({
+                resource: this._workspaceUri,
+                depotPaths: changeFields.files.map(file => file.depotPath)
+            });
 
-            changeFields.files = changeFields.files.filter((file, i) =>
+            changeFields.files = changeFields.files.filter((_file, i) =>
                 this.isInWorkspace(infos[i]?.["clientFile"])
             );
         }
@@ -395,10 +354,13 @@ export class Model implements Disposable {
 
         let newChangelistNumber: string | undefined;
         try {
-            const createdStr = await this.inputChangeSpec(changeFields);
+            const created = await inputChangeSpec({
+                resource: this._workspaceUri,
+                spec: changeFields
+            });
 
-            newChangelistNumber = this.getChangelistNumber(createdStr);
-            Display.channel.append(createdStr);
+            newChangelistNumber = created.chnum;
+            Display.channel.append(created.rawOutput);
             this.Refresh();
         } catch (err) {
             Display.showError(err.toString());
@@ -410,7 +372,6 @@ export class Model implements Disposable {
     private async createEmptyChangelist(descStr: string) {
         try {
             const changeFields = await getChangeSpec({ resource: this._workspaceUri });
-            //const changeFields = await this.getChangeSpec();
             changeFields.files = [];
             changeFields.description = descStr;
             const created = await inputChangeSpec({
