@@ -19,6 +19,7 @@ import { Resource } from "./Resource";
 import * as Path from "path";
 import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
+import { getChangeSpec, inputChangeSpec } from "../PerforceModel";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg.id !== undefined;
@@ -408,11 +409,15 @@ export class Model implements Disposable {
 
     private async createEmptyChangelist(descStr: string) {
         try {
-            const changeFields = await this.getChangeSpec();
+            const changeFields = await getChangeSpec({ resource: this._workspaceUri });
+            //const changeFields = await this.getChangeSpec();
             changeFields.files = [];
             changeFields.description = descStr;
-            const createdStr = await this.inputChangeSpec(changeFields);
-            return this.getChangelistNumber(createdStr);
+            const created = await inputChangeSpec({
+                resource: this._workspaceUri,
+                spec: changeFields
+            });
+            return created.chnum;
         } catch (err) {
             Display.showImportantError(err.toString());
         }
