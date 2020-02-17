@@ -1230,15 +1230,11 @@ export class Model implements Disposable {
         );
         const fstatInfo = await Promise.all(proms);
 
-        return fstatInfo.reduce((all, cur, i) => {
-            return all.concat(
-                cur
-                    .filter((f): f is FstatInfo => !!f)
-                    .map(f =>
-                        this.makeResourceForShelvedFile(files[i].chnum.toString(), f)
-                    )
-            );
-        }, [] as Resource[]);
+        return fstatInfo.flatMap((cur, i) =>
+            cur
+                .filter((f): f is FstatInfo => !!f)
+                .map(f => this.makeResourceForShelvedFile(files[i].chnum.toString(), f))
+        );
     }
 
     private async getDepotOpenedResources(): Promise<Resource[]> {
@@ -1368,7 +1364,7 @@ export class Model implements Disposable {
 
         const result = await Promise.all(promises);
 
-        return result.reduce((prev, cur) => prev.concat(cur), []);
+        return result.flat();
     }
 
     private async getFstatInfoForChunk(
