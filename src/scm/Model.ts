@@ -19,7 +19,7 @@ import { Resource } from "./Resource";
 import * as Path from "path";
 import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
-import { getChangeSpec, inputChangeSpec, getFstatInfo } from "../PerforceModel";
+import * as p4 from "../PerforceModel";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg.id !== undefined;
@@ -52,6 +52,8 @@ type ChangeSpec = {
 
 export interface ResourceGroup extends SourceControlResourceGroup {
     model: Model;
+    chnum: string;
+    isDefault: boolean;
 }
 
 export class Model implements Disposable {
@@ -143,6 +145,22 @@ export class Model implements Disposable {
         this._disposables.push(
             Display.onActiveFileStatusKnown(this.checkForConflicts.bind(this))
         );
+    }
+
+    private assertIsNotDefault(input: ResourceGroup) {
+        if (input.isDefault) {
+            throw new Error("The default changelist is not valid for this operation");
+        }
+    }
+
+    private assertIsDefault(input: ResourceGroup) {
+        if (!input.isDefault) {
+            throw new Error(
+                "The non-default changelist '" +
+                    input.chnum +
+                    "' is not valid for this operation"
+            );
+        }
     }
 
     public mayHaveConflictForFile(uri: Uri) {
@@ -279,54 +297,6 @@ export class Model implements Disposable {
         return !!clientFile && !!workspace.getWorkspaceFolder(Uri.file(clientFile));
     }
 
-    private getDefinedFields(spec: ChangeSpec): ChangeFieldRaw[] {
-        const outFields: ChangeFieldRaw[] = [];
-
-        // add defined fields
-        if (spec.change) {
-            outFields.push({ name: "Change", value: [spec.change] });
-        }
-        if (spec.description) {
-            outFields.push({ name: "Description", value: spec.description.split("\n") });
-        }
-        if (spec.files) {
-            outFields.push({
-                name: "Files",
-                value: spec.files.map(file => file.depotPath + "\t# " + file.action)
-            });
-        }
-
-        return outFields;
-    }
-
-    private async inputChangeSpec(spec: ChangeSpec): Promise<string> {
-        const outFields = this.getDefinedFields(spec).concat(
-            spec.rawFields.filter(
-                field => !spec[field.name.toLowerCase() as keyof ChangeSpec]
-            )
-        );
-
-        const newSpec = outFields
-            .map(field => {
-                const value = field.value.join("\n\t");
-                return field.name + ":\t" + value;
-            })
-            .join("\n\n");
-
-        const output = await Utils.runCommand(this._workspaceUri, "change", {
-            prefixArgs: "-i",
-            input: newSpec
-        });
-        Display.channel.append(output);
-        return output;
-    }
-
-    private getChangelistNumber(changeCreatedStr: string) {
-        const matches = new RegExp(/Change\s(\d+)\screated/).exec(changeCreatedStr);
-        // Change #### created with ...
-        return matches?.[1];
-    }
-
     public async SaveToChangelist(
         descStr: string,
         existingChangelist?: string
@@ -335,14 +305,12 @@ export class Model implements Disposable {
             descStr = "<saved by VSCode>";
         }
 
-        const changeFields = await getChangeSpec({
-            resource: this._workspaceUri,
+        const changeFields = await p4.getChangeSpec(this._workspaceUri, {
             existingChangelist
         });
 
         if (this._workspaceConfig.hideNonWorkspaceFiles && changeFields.files) {
-            const infos = await getFstatInfo({
-                resource: this._workspaceUri,
+            const infos = await p4.getFstatInfo(this._workspaceUri, {
                 depotPaths: changeFields.files.map(file => file.depotPath)
             });
 
@@ -354,8 +322,7 @@ export class Model implements Disposable {
 
         let newChangelistNumber: string | undefined;
         try {
-            const created = await inputChangeSpec({
-                resource: this._workspaceUri,
+            const created = await p4.inputChangeSpec(this._workspaceUri, {
                 spec: changeFields
             });
 
@@ -371,11 +338,10 @@ export class Model implements Disposable {
 
     private async createEmptyChangelist(descStr: string) {
         try {
-            const changeFields = await getChangeSpec({ resource: this._workspaceUri });
+            const changeFields = await p4.getChangeSpec(this._workspaceUri, {});
             changeFields.files = [];
             changeFields.description = descStr;
-            const created = await inputChangeSpec({
-                resource: this._workspaceUri,
+            const created = await p4.inputChangeSpec(this._workspaceUri, {
                 spec: changeFields
             });
             return created.chnum;
@@ -398,34 +364,17 @@ export class Model implements Disposable {
         await this.SaveToChangelist(description, existingChangelist);
     }
 
-    public async EditChangelist(input: SourceControlResourceGroup): Promise<void> {
-        let descStr = "";
-        const id = input.id;
-        let args = "-o ";
-        if (id.startsWith("pending")) {
-            const chnum = id.substr(id.indexOf(":") + 1);
-            descStr = `#${chnum}\n`;
-            args += chnum;
-        }
+    public async EditChangelist(input: ResourceGroup): Promise<void> {
+        const id = input.chnum;
 
-        const output: string = await Utils.runCommand(this._workspaceUri, "change", {
-            prefixArgs: args
+        const change = await p4.getChangeSpec(this._workspaceUri, {
+            existingChangelist: id
         });
-        const changeFields = output.trim().split(/\n\r?\n/);
-        for (const field of changeFields) {
-            if (field.startsWith("Description:")) {
-                descStr += field
-                    .substr(field.indexOf("\n"))
-                    .replace(/\n\t/g, "\n")
-                    .trim();
-                break;
-            }
-        }
 
-        this._sourceControl.inputBox.value = descStr;
+        this._sourceControl.inputBox.value = "#" + id + "\n" + change.description ?? "";
     }
 
-    public async Describe(input: SourceControlResourceGroup): Promise<void> {
+    public async Describe(input: ResourceGroup): Promise<void> {
         const id = input.id;
 
         if (id.startsWith("default")) {
@@ -452,35 +401,16 @@ export class Model implements Disposable {
             return;
         }
 
-        const noFiles = "File(s) not opened on this client.";
-        let fileListStr;
         try {
-            fileListStr = await Utils.runCommand(this._workspaceUri, "opened", {
-                prefixArgs: "-c default"
-            });
-            if (fileListStr === noFiles) {
-                Display.showError(noFiles);
-                return;
-            }
+            await p4.getOpenedFiles(this._workspaceUri, { chnum: "default" });
         } catch (err) {
             Display.showError(err.toString());
             return;
         }
 
-        const descStr = await vscode.window.showInputBox({
-            placeHolder: "New changelist description",
-            validateInput: (value: string) => {
-                if (!value || value.trim().length === 0) {
-                    return "Cannot set empty description";
-                }
-                return null;
-            },
-            ignoreFocusOut: true
-        });
+        const descStr = await this.requestChangelistDescription();
 
-        if (descStr === undefined || descStr.trim().length === 0) {
-            // pressing enter with no other input will still submit the empty string
-            Display.showError("Cannot set empty description");
+        if (descStr === undefined) {
             return;
         }
 
@@ -497,56 +427,31 @@ export class Model implements Disposable {
 
         if (pick === "Submit") {
             if (this._workspaceConfig.hideNonWorkspaceFiles) {
+                // TODO - relies on state - i.e. that savetochangelist applies hideNonWorkspaceFiles
                 const changeListNr = await this.SaveToChangelist(descStr);
 
                 if (changeListNr !== undefined) {
-                    this.Submit(parseInt(changeListNr, 10));
+                    await p4.submitChangelist(this._workspaceUri, {
+                        chnum: changeListNr
+                    });
                 }
             } else {
-                this.Submit(descStr);
+                await p4.submitChangelist(this._workspaceUri, {
+                    description: descStr
+                });
             }
-            return;
+        } else {
+            await this.SaveToChangelist(descStr);
         }
-
-        this.SaveToChangelist(descStr);
+        this.Refresh();
     }
 
-    public async Submit(
-        input: SourceControlResourceGroup | string | number
-    ): Promise<void> {
-        const command = "submit";
-        let args = "";
+    public async Submit(input: ResourceGroup): Promise<void> {
+        this.assertIsNotDefault(input);
 
-        if (typeof input === "string") {
-            args = `-d "${input}"`;
-        } else if (typeof input === "number") {
-            args = `-c ${input}`;
-        } else {
-            const group = input;
-            const id = group.id;
-            if (id) {
-                const chnum = id.substr(id.indexOf(":") + 1);
-                if (id.startsWith("pending")) {
-                    args = "-c " + chnum;
-                } else if (id.startsWith("shelved")) {
-                    args = "-e " + chnum;
-                } else {
-                    return;
-                }
-            } else {
-                return;
-            }
-        }
-
-        await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args })
-            .then(output => {
-                Display.channel.append(output);
-                Display.showMessage("Changelist Submitted");
-                this.Refresh();
-            })
-            .catch(reason => {
-                Display.showError(reason.toString());
-            });
+        await p4.submitChangelist(this._workspaceUri, { chnum: input.chnum });
+        Display.showMessage("Changelist Submitted");
+        this.Refresh();
     }
 
     private hasShelvedFiles(group: SourceControlResourceGroup) {
@@ -1085,7 +990,9 @@ export class Model implements Disposable {
             "default",
             "Default Changelist"
         ) as ResourceGroup;
+        this._defaultGroup.isDefault = true;
         this._defaultGroup.model = this;
+        this._defaultGroup.chnum = "default";
         this._defaultGroup.resourceStates = resources.filter(
             (resource): resource is Resource =>
                 !!resource && resource.change === "default"
@@ -1096,7 +1003,9 @@ export class Model implements Disposable {
                 "pending:" + c.chnum,
                 "#" + c.chnum + ": " + c.description
             ) as ResourceGroup;
-            group["model"] = this;
+            group.model = this;
+            group.isDefault = false;
+            group.chnum = c.chnum.toString();
             group.resourceStates = resources.filter(
                 (resource): resource is Resource =>
                     !!resource && resource.change === c.chnum.toString()

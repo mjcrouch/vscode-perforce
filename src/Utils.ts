@@ -172,6 +172,7 @@ export namespace Utils {
         gOpts?: string;
         input?: string;
         hideStdErr?: boolean; // just from the status bar - not from the log output
+        stdErrIsOk?: boolean;
     }
 
     // Get a string containing the output of the command
@@ -181,7 +182,15 @@ export namespace Utils {
         params: CommandParams
     ): Promise<string> {
         return new Promise((resolve, reject) => {
-            const { file, revision, prefixArgs, gOpts, input, hideStdErr } = params;
+            const {
+                file,
+                revision,
+                prefixArgs,
+                gOpts,
+                input,
+                hideStdErr,
+                stdErrIsOk
+            } = params;
             let args = prefixArgs ?? "";
 
             if (gOpts !== undefined) {
@@ -209,7 +218,7 @@ export namespace Utils {
                     }
                     if (err) {
                         reject(err);
-                    } else if (stderr) {
+                    } else if (stderr && !stdErrIsOk) {
                         reject(stderr);
                     } else {
                         resolve(stdout);
