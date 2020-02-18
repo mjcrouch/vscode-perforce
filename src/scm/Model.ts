@@ -33,23 +33,6 @@ export type FstatInfo = {
 type ChangeInfo = { chnum: number; description: string };
 type ShelvedChangeInfo = { chnum: number; paths: string[] };
 
-type ChangeFieldRaw = {
-    name: string;
-    value: string[];
-};
-
-type ChangeSpecFile = {
-    depotPath: string;
-    action: string;
-};
-
-type ChangeSpec = {
-    description?: string;
-    files?: ChangeSpecFile[];
-    change?: string;
-    rawFields: ChangeFieldRaw[];
-};
-
 export interface ResourceGroup extends SourceControlResourceGroup {
     model: Model;
     chnum: string;
@@ -1101,7 +1084,12 @@ export class Model implements Disposable {
 
     private async getShelvedResources(files: ShelvedChangeInfo[]): Promise<Resource[]> {
         const proms = files.map(f =>
-            this.getFstatInfoForFiles(f.paths, "-Or -Rs -e " + f.chnum)
+            p4.getFstatInfo(this._workspaceUri, {
+                depotPaths: f.paths,
+                limitToShelved: true,
+                outputPendingRecord: true,
+                chnum: f.chnum.toString()
+            })
         );
         const fstatInfo = await Promise.all(proms);
 
@@ -1113,11 +1101,11 @@ export class Model implements Disposable {
     }
 
     private async getDepotOpenedResources(): Promise<Resource[]> {
-        const depotOpenedFilePromises = this.getDepotOpenedFilePaths();
-        const fstatInfo = await this.getFstatInfoForFiles(
-            await depotOpenedFilePromises,
-            "-Or"
-        );
+        const depotPaths = await this.getDepotOpenedFilePaths();
+        const fstatInfo = await p4.getFstatInfo(this._workspaceUri, {
+            depotPaths,
+            outputPendingRecord: true
+        });
         return fstatInfo
             .filter((info): info is FstatInfo => !!info) // in case fstat doesn't have output for this file
             .map(info => this.makeResourceForOpenFile(info))
@@ -1218,67 +1206,5 @@ export class Model implements Disposable {
         });
 
         return files.filter(c => c.paths.length > 0);
-    }
-
-    private splitArray<T>(arr: T[], chunkSize: number): T[][] {
-        const ret: T[][] = [];
-        for (let i = 0; i < arr.length; i += chunkSize) {
-            ret.push(arr.slice(i, i + chunkSize));
-        }
-        return ret;
-    }
-
-    private async getFstatInfoForFiles(
-        files: string[],
-        additionalParams?: string
-    ): Promise<(FstatInfo | undefined)[]> {
-        const promises = this.splitArray(
-            files,
-            this._workspaceConfig.maxFilePerCommand
-        ).map(fs => this.getFstatInfoForChunk(fs, additionalParams));
-
-        const result = await Promise.all(promises);
-
-        return result.flat();
-    }
-
-    private async getFstatInfoForChunk(
-        files: string[],
-        additionalParams?: string
-    ): Promise<(FstatInfo | undefined)[]> {
-        const resource = Uri.file(this._config.localDir);
-
-        if (additionalParams === undefined) {
-            additionalParams = "";
-        }
-
-        // a shelved file may write to stderr if it doesn't exist in the workspace - so don't complain for stderr
-        const [fstatOutput] = await Utils.getOutputs(
-            resource,
-            `fstat ${additionalParams} "${files.join('" "')}"`
-        );
-
-        // Windows will have lines end with \r\n.
-        // Each file has multiple lines of output separated by a blank line.
-        // Splitting on \n\r?\n will find newlines followed immediately by a newline
-        // which will split the output for each file.
-        const fstatFiles = fstatOutput.trim().split(/\n\r?\n/);
-        const all = fstatFiles.map(file => {
-            const lines = file.split("\n");
-            const lineMap: FstatInfo = { depotFile: "" };
-            lines.forEach(line => {
-                // ... Key Value
-                const matches = new RegExp(/[.]{3} (\w+)[ ]*(.+)?/).exec(line);
-                if (matches) {
-                    // A key may not have a value (e.g. `isMapped`).
-                    // Treat these as flags and map them to 'true'.
-                    lineMap[matches[1]] = matches[2] ? matches[2] : "true";
-                }
-            });
-            return lineMap;
-        });
-
-        // there may be gaps due to missing shelved files - map to the correct positions
-        return files.map(file => all.find(fs => fs["depotFile"] === file));
     }
 }

@@ -1704,7 +1704,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
             });
             it("Can change the description of an existing changelist", async () => {
-                items.instance.sourceControl.inputBox.value = "#1\nMy updated changelist";
+                items.instance.sourceControl.inputBox.value =
+                    "#1\nMy updated changelist\nline2";
                 items.stubService.changelists = [
                     {
                         chnum: "1",
@@ -1714,7 +1715,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
                 expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy updated changelist",
+                    Description: "\tMy updated changelist\n\tline2",
                     Files:
                         "\t" +
                         basicFiles.add().depotPath +
@@ -1739,6 +1740,24 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
                 expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
             });
+            describe("Edit Changelist", () => {
+                it("Uses the source control input box for entering the description");
+            });
+        });
+        describe("Submit default", () => {
+            it("Does not submit an empty changelist");
+            it("Requests a description and asks whether to save / submit the changelist");
+            it("Saves the changelist when the option is chosen");
+            it("Submits the default changelist when it has files");
+            it("Excludes files not in the workspace when configured to hide them");
+        });
+        describe("Submit", () => {
+            it("Cannot submit the default changelist");
+            it("Submits the selected changelist");
+        });
+        describe("Describe", () => {
+            it("Can describe the default changelist");
+            it("Can describe a pending changelist");
         });
         describe("Move files to a changelist", () => {
             it("Displays a selection of changelists to choose from", async () => {
