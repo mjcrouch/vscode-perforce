@@ -25,6 +25,19 @@ export type FstatInfo = {
     [key: string]: string;
 };
 
+export type PerforceFileSpec = {
+    /** The filesystem path - without escaping special characters */
+    fsPath: string;
+    /** Optional suffix, e.g. #1, @=2 */
+    suffix?: string;
+};
+
+type PerforceFile = PerforceFileSpec | string;
+
+export function isPerforceFileSpec(obj: any): obj is PerforceFileSpec {
+    return obj && obj.fsPath;
+}
+
 function splitArray<T>(chunkSize: number) {
     return (arr: T[]): T[][] => {
         const ret: T[][] = [];
@@ -33,6 +46,28 @@ function splitArray<T>(chunkSize: number) {
         }
         return ret;
     };
+}
+
+type CmdArgs = (string | undefined)[];
+
+const joinDefinedArgs = (args: CmdArgs) =>
+    args?.filter((arg): arg is string => !!arg).join(" ");
+
+function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
+    return (
+        arr?.map(path => {
+            if (isPerforceFileSpec(path)) {
+                return (
+                    '"' +
+                    Utils.expansePath(path.fsPath) +
+                    (path.suffix ? path.suffix : "") +
+                    '"'
+                );
+            } else if (path) {
+                return '"' + path + '"';
+            }
+        }) ?? []
+    );
 }
 
 const splitIntoChunks = <T>(arr: T[]) => splitArray<T>(32)(arr);
@@ -46,6 +81,8 @@ function parseRawField(value: string) {
     return value.split("\n").map(line => line.replace(/^\t/, ""));
 }
 
+//#region Changelists
+
 function parseRawFields(parts: string[]): ChangeFieldRaw[] {
     return parts.map(field => {
         const colPos = field.indexOf(":");
@@ -54,6 +91,7 @@ function parseRawFields(parts: string[]): ChangeFieldRaw[] {
         return { name, value };
     });
 }
+
 const getBasicField = (fields: ChangeFieldRaw[], field: string) =>
     fields.find(i => i.name === field)?.value;
 const splitIntoSections = (str: string) => str.split(/\n\r?\n/);
@@ -162,6 +200,22 @@ export async function inputChangeSpec(
     return parseCreatedChangelist(output);
 }
 
+export type DeleteChangelistOptions = {
+    chnum: string;
+};
+
+function getDeleteChangelistFlags(options: DeleteChangelistOptions) {
+    return ["-d " + options.chnum];
+}
+
+export function deleteChangelist(resource: vscode.Uri, options: DeleteChangelistOptions) {
+    return runPerforceCommand(resource, "change", {
+        prefixArgs: joinDefinedArgs(getDeleteChangelistFlags(options))
+    });
+}
+
+//#endregion
+
 //#region FSTAT
 
 export interface FstatOptions {
@@ -171,7 +225,7 @@ export interface FstatOptions {
     outputPendingRecord?: boolean;
 }
 
-function getFstatFlags(options: FstatOptions) {
+function getFstatFlags(options: FstatOptions): CmdArgs {
     return [
         options.chnum ? "-e " + options.chnum : "",
         options.outputPendingRecord ? "-Or" : "",
@@ -204,9 +258,9 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
     const chunks = splitIntoChunks(options.depotPaths);
     const promises = chunks.map(paths =>
         runPerforceCommand(resource, "fstat", {
-            prefixArgs: getFstatFlags(options)
-                .concat('"' + paths.join('" "') + '"')
-                .join(" ")
+            prefixArgs: joinDefinedArgs(
+                getFstatFlags(options).concat(...pathsToArgs(paths))
+            )
         })
     );
     const fstats = await Promise.all(promises);
@@ -217,7 +271,7 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
 
 export type OpenedFileOptions = { chnum: string };
 
-function parseOpenedOutput(output: string) {
+function parseOpenedOutput(output: string): CmdArgs {
     return output
         .trim()
         .split("\n")
@@ -248,6 +302,105 @@ function getSubmitFlags(options: SubmitChangelistOptions) {
 
 export function submitChangelist(resource: vscode.Uri, options: SubmitChangelistOptions) {
     return runPerforceCommand(resource, "submit", {
-        prefixArgs: getSubmitFlags(options).join(" ")
+        prefixArgs: joinDefinedArgs(getSubmitFlags(options))
+    });
+}
+
+export interface RevertOptions {
+    paths: PerforceFile[];
+    chnum?: string;
+    unchanged?: boolean;
+}
+
+function getRevertFlags(options: RevertOptions): CmdArgs {
+    return [
+        options.unchanged ? "-a" : "",
+        options.chnum ? "-c " + options.chnum : "",
+        ...pathsToArgs(options.paths)
+    ].filter(opt => opt !== "");
+}
+
+export function revert(resource: vscode.Uri, options: RevertOptions) {
+    return runPerforceCommand(resource, "revert", {
+        prefixArgs: joinDefinedArgs(getRevertFlags(options))
+    });
+}
+
+//#region Shelving
+
+export interface ShelveOptions {
+    chnum?: string;
+    force?: boolean;
+    delete?: boolean;
+    paths?: PerforceFile[];
+}
+
+function getShelveFlags(options: ShelveOptions): CmdArgs {
+    return [
+        options.force ? "-f" : "",
+        options.delete ? "-d" : "",
+        options.chnum ? "-c " + options.chnum : "",
+        ...pathsToArgs(options.paths)
+    ];
+}
+
+export function shelve(resource: vscode.Uri, options: ShelveOptions) {
+    return runPerforceCommand(resource, "shelve", {
+        prefixArgs: joinDefinedArgs(getShelveFlags(options))
+    });
+}
+
+export interface UnshelveOptions {
+    shelvedChnum: string;
+    toChnum?: string;
+    force?: boolean;
+    paths?: PerforceFile[];
+}
+
+function getUnshelveFlags(options: UnshelveOptions): CmdArgs {
+    return [
+        options.force ? "-f" : "",
+        "-s " + options.shelvedChnum,
+        options.toChnum ? "-c " + options.toChnum : "",
+        joinDefinedArgs(pathsToArgs(options.paths))
+    ];
+}
+
+export function unshelve(resource: vscode.Uri, options: UnshelveOptions) {
+    return runPerforceCommand(resource, "unshelve", {
+        prefixArgs: joinDefinedArgs(getUnshelveFlags(options))
+    });
+}
+
+//#endregion
+
+export interface FixJobOptions {
+    chnum: string;
+    jobId: string;
+    removeFix?: boolean;
+}
+
+function getFixJobFlags(options: FixJobOptions) {
+    return ["-c " + options.chnum, options.removeFix ? "-d" : "", options.jobId];
+}
+
+export function fixJob(resource: vscode.Uri, options: FixJobOptions) {
+    return runPerforceCommand(resource, "fix", {
+        prefixArgs: joinDefinedArgs(getFixJobFlags(options))
+    });
+}
+
+export interface ReopenOptions {
+    chnum: string;
+    files: PerforceFile[];
+}
+
+function getReopenFlags(options: ReopenOptions) {
+    return ["-c " + options.chnum, ...pathsToArgs(options.files)];
+}
+
+export function reopenFiles(resource: vscode.Uri, options: ReopenOptions) {
+    return runPerforceCommand(resource, "reopen", {
+        prefixArgs: joinDefinedArgs(getReopenFlags(options))
     });
 }

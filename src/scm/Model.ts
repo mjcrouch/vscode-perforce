@@ -442,13 +442,12 @@ export class Model implements Disposable {
     }
 
     public async Revert(
-        input: Resource | SourceControlResourceGroup,
+        input: Resource | ResourceGroup,
         unchanged?: boolean
     ): Promise<void> {
-        const command = "revert";
-        let file;
-        let args = unchanged ? "-a " : "";
         let needRefresh = false;
+
+        const opts: p4.RevertOptions = { paths: [], unchanged };
 
         let message = "Are you sure you want to revert the changes ";
         if (input instanceof Resource) {
@@ -459,19 +458,15 @@ export class Model implements Disposable {
                 );
                 return;
             }
-            file = Uri.file(input.resourceUri.fsPath);
+            opts.paths = [{ fsPath: input.resourceUri.fsPath }];
             message += "to file " + Path.basename(input.resourceUri.fsPath) + "?";
         } else if (isResourceGroup(input)) {
-            const id = input.id;
-            if (id.startsWith("default")) {
-                args += "-c default //...";
+            opts.paths = ["//..."];
+            opts.chnum = input.chnum;
+            if (input.isDefault) {
                 message += "in the default changelist?";
-            } else if (id.startsWith("pending")) {
-                const chnum = id.substr(id.indexOf(":") + 1);
-                args += "-c " + chnum + " //...";
-                message += "in the changelist " + chnum + "?";
             } else {
-                return;
+                message += "in the changelist " + input.chnum + "?";
             }
         } else {
             return;
@@ -485,33 +480,26 @@ export class Model implements Disposable {
             }
         }
 
-        await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args, file })
-            .then(output => {
+        try {
+            const output = await p4.revert(this._workspaceUri, opts);
+            Display.updateEditor();
+            Display.channel.append(output);
+            needRefresh = true;
+        } catch {
+            // p4 shows error
+        }
+
+        // delete changelist after
+        if (isResourceGroup(input) && !this.hasShelvedFiles(input) && !input.isDefault) {
+            try {
+                const output = await p4.deleteChangelist(this._workspaceUri, {
+                    chnum: input.chnum
+                });
                 Display.updateEditor();
                 Display.channel.append(output);
                 needRefresh = true;
-            })
-            .catch(reason => {
-                Display.showError(reason.toString());
-            });
-
-        // delete changelist after
-        if (isResourceGroup(input) && !this.hasShelvedFiles(input)) {
-            const command = "change";
-            const id = input.id;
-            const chnum = id.substr(id.indexOf(":") + 1);
-            if (id.startsWith("pending")) {
-                args = "-d " + chnum;
-
-                await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args })
-                    .then(output => {
-                        Display.updateEditor();
-                        Display.channel.append(output);
-                        needRefresh = true;
-                    })
-                    .catch(reason => {
-                        Display.showError(reason.toString());
-                    });
+            } catch {
+                // p4 shows error
             }
         }
 
@@ -521,34 +509,23 @@ export class Model implements Disposable {
     }
 
     public async QuietlyRevertChangelist(chnum: string): Promise<void> {
-        const command = "revert";
-        const args = "-c " + chnum + " //...";
-
-        const output = await Utils.runCommand(this._workspaceUri, command, {
-            prefixArgs: args
+        const output = await p4.revert(this._workspaceUri, {
+            chnum: chnum,
+            paths: ["//..."]
         });
         Display.updateEditor();
         Display.channel.append(output);
     }
 
-    public async ShelveChangelist(
-        input: SourceControlResourceGroup,
-        revert?: boolean
-    ): Promise<void> {
-        const id = input.id;
-        const chnum = id.substr(id.indexOf(":") + 1);
-
-        if (chnum === "default") {
+    public async ShelveChangelist(input: ResourceGroup, revert?: boolean): Promise<void> {
+        if (input.isDefault) {
             throw new Error("Cannot shelve the default changelist");
         }
 
-        const command = "shelve";
-        const args = "-f -c " + chnum;
-
         try {
-            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
+            await p4.shelve(this._workspaceUri, { chnum: input.chnum, force: true });
             if (revert) {
-                await this.QuietlyRevertChangelist(chnum);
+                await this.QuietlyRevertChangelist(input.chnum);
             }
             Display.showMessage("Changelist shelved");
         } catch (err) {
@@ -557,19 +534,17 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
-    public async UnshelveChangelist(input: SourceControlResourceGroup): Promise<void> {
-        const id = input.id;
-        const chnum = id.substr(id.indexOf(":") + 1);
-
-        if (chnum === "default") {
+    public async UnshelveChangelist(input: ResourceGroup): Promise<void> {
+        if (input.isDefault) {
             throw new Error("Cannot unshelve the default changelist");
         }
 
-        const command = "unshelve";
-        const args = "-f -s " + chnum + " -c " + chnum;
-
         try {
-            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
+            await p4.unshelve(this._workspaceUri, {
+                shelvedChnum: input.chnum,
+                toChnum: input.chnum,
+                force: true
+            });
             this.Refresh();
             Display.showMessage("Changelist unshelved");
         } catch (err) {
@@ -577,19 +552,14 @@ export class Model implements Disposable {
         }
     }
 
-    public async DeleteShelvedChangelist(
-        input: SourceControlResourceGroup
-    ): Promise<void> {
-        const id = input.id;
-        const chnum = id.substr(id.indexOf(":") + 1);
-
-        if (chnum === "default") {
+    public async DeleteShelvedChangelist(input: ResourceGroup): Promise<void> {
+        if (input.isDefault) {
             throw new Error("Cannot delete shelved files from the default changelist");
         }
 
         const message =
             "Are you sure you want to delete the shelved files from changelist " +
-            chnum +
+            input.chnum +
             "?";
 
         const yes = "Delete Shelved Files";
@@ -598,11 +568,11 @@ export class Model implements Disposable {
             return;
         }
 
-        const command = "shelve";
-        const args = "-d -c " + chnum;
-
         try {
-            await Utils.runCommand(this._workspaceUri, command, { prefixArgs: args });
+            await p4.shelve(this._workspaceUri, {
+                chnum: input.chnum,
+                delete: true
+            });
             this.Refresh();
             Display.showMessage("Shelved files deleted");
         } catch (err) {
@@ -612,46 +582,34 @@ export class Model implements Disposable {
 
     public async ShelveOrUnshelve(input: Resource): Promise<void> {
         if (input.isShelved) {
-            const args = "-c " + input.change + " -s " + input.change;
-            const command = "unshelve";
-            await Utils.runCommand(this._workspaceUri, command, {
-                prefixArgs: args,
-                file: input.depotPath
-            })
-                .then(() => {
-                    const args = "-d -c " + input.change;
-                    Utils.runCommand(this._workspaceUri, "shelve", {
-                        prefixArgs: args,
-                        file: input.depotPath
-                    })
-                        .then(output => {
-                            Display.updateEditor();
-                            Display.channel.append(output);
-
-                            this.Refresh();
-                        })
-                        .catch(reason => {
-                            Display.showImportantError(reason.toString());
-
-                            this.Refresh();
-                        });
-                })
-                .catch(reason => {
-                    Display.showImportantError(reason.toString());
+            try {
+                await p4.unshelve(this._workspaceUri, {
+                    toChnum: input.change,
+                    shelvedChnum: input.change,
+                    paths: [input.depotPath]
                 });
+                const output = await p4.shelve(this._workspaceUri, {
+                    chnum: input.change,
+                    delete: true,
+                    paths: [input.depotPath]
+                });
+                Display.updateEditor();
+                Display.channel.append(output);
+            } catch (reason) {
+                Display.showImportantError(reason.toString());
+            }
+            this.Refresh();
         } else {
-            const args = "-f -c " + input.change;
-            const command = "shelve";
-            await Utils.runCommand(this._workspaceUri, command, {
-                prefixArgs: args,
-                file: input.resourceUri
-            })
-                .then(() => {
-                    this.Revert(input);
-                })
-                .catch(reason => {
-                    Display.showImportantError(reason.toString());
+            try {
+                await p4.shelve(this._workspaceUri, {
+                    chnum: input.change,
+                    delete: true,
+                    force: true,
+                    paths: [input.depotPath]
                 });
+            } catch (reason) {
+                Display.showImportantError(reason.toString());
+            }
         }
     }
 
@@ -674,12 +632,11 @@ export class Model implements Disposable {
             return;
         }
 
-        const command = "shelve";
-        const args = "-d -c " + input.change + ' "' + input.depotPath + '"';
-
         try {
-            const ret = await Utils.runCommand(this._workspaceUri, command, {
-                prefixArgs: args
+            const ret = await p4.shelve(this._workspaceUri, {
+                delete: true,
+                chnum: input.change,
+                paths: [input.depotPath]
             });
             this.Refresh();
             Display.showMessage(ret);
@@ -705,24 +662,17 @@ export class Model implements Disposable {
     }
 
     public async FixJob(input: ResourceGroup) {
-        const id = input.id;
-        const chnum = id.substr(id.indexOf(":") + 1);
-        if (chnum === "default") {
+        if (input.isDefault) {
             throw new Error("The default changelist cannot fix a job");
         }
 
-        const jobId = await this.requestJobId(chnum);
+        const jobId = await this.requestJobId(input.chnum);
         if (jobId === undefined) {
             return;
         }
 
-        const command = "fix";
-        const args = "-c " + chnum + " " + jobId;
-
         try {
-            await Utils.runCommand(this._workspaceUri, command, {
-                prefixArgs: args
-            });
+            await p4.fixJob(this._workspaceUri, { chnum: input.chnum, jobId });
             this.Refresh();
             Display.showMessage("Job " + jobId + " added");
         } catch (err) {
@@ -760,25 +710,23 @@ export class Model implements Disposable {
     }
 
     public async UnfixJob(input: ResourceGroup) {
-        const id = input.id;
-        const chnum = id.substr(id.indexOf(":") + 1);
-        if (chnum === "default") {
+        if (input.isDefault) {
             throw new Error("The default changelist cannot fix a job");
         }
 
-        const job = await this.pickJobFromChangelist(chnum);
+        const job = await this.pickJobFromChangelist(input.chnum);
 
         if (job === undefined) {
             return;
         }
 
         const jobId = job.label;
-        const command = "fix";
-        const args = "-c " + chnum + " -d " + jobId;
 
         try {
-            await Utils.runCommand(this._workspaceUri, command, {
-                prefixArgs: args
+            await p4.fixJob(this._workspaceUri, {
+                chnum: input.chnum,
+                jobId,
+                removeFix: true
             });
             this.Refresh();
             Display.showMessage("Job " + jobId + " removed");
@@ -849,23 +797,18 @@ export class Model implements Disposable {
             return;
         }
 
-        // TODO - ideally this should be a single command instead of many
-        for (const resource of resources) {
-            const file = Uri.file(resource.resourceUri.fsPath);
-            const args = "-c " + chnum;
-
-            Utils.runCommand(this._workspaceUri, "reopen", {
-                prefixArgs: args,
-                file
-            })
-                .then(output => {
-                    Display.channel.append(output);
-                    this.Refresh();
+        try {
+            const output = await p4.reopenFiles(this._workspaceUri, {
+                chnum: chnum,
+                files: resources.map(resource => {
+                    return { fsPath: resource.resourceUri.fsPath };
                 })
-                .catch(reason => {
-                    Display.showImportantError(reason.toString());
-                });
+            });
+            Display.channel.append(output);
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
         }
+        this.Refresh();
     }
 
     private clean() {

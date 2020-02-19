@@ -1113,7 +1113,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "revert",
                     sinon.match.any,
-                    "-c 1 //..."
+                    '-c 1 "//..."'
                 );
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist shelved"
@@ -1806,18 +1806,15 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
 
-                // TODO this shouldn't need to be many commands!!
                 expect(items.execute).to.have.been.calledWithMatch(
                     workspaceUri,
                     "reopen",
                     sinon.match.any,
-                    '-c 2 "' + basicFiles.edit().localFile.fsPath + '"'
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "reopen",
-                    sinon.match.any,
-                    '-c 2 "' + basicFiles.add().localFile.fsPath + '"'
+                    '-c 2 "' +
+                        basicFiles.add().localFile.fsPath +
+                        '" "' +
+                        basicFiles.edit().localFile.fsPath +
+                        '"'
                 );
             });
             it("Can move files to the default changelist", async () => {
@@ -1861,19 +1858,15 @@ describe("Model & ScmProvider modules (integration)", () => {
                     Description: "\tMy selective changelist\n\tLine 2\n\tLine 3"
                 });
 
-                // TODO this shouldn't need to be many commands
                 expect(items.execute).to.have.been.calledWithMatch(
                     workspaceUri,
                     "reopen",
                     sinon.match.any,
-                    '-c 99 "' + basicFiles.edit().localFile.fsPath + '"'
-                );
-
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "reopen",
-                    sinon.match.any,
-                    '-c 99 "' + basicFiles.add().localFile.fsPath + '"'
+                    '-c 99 "' +
+                        basicFiles.add().localFile.fsPath +
+                        '" "' +
+                        basicFiles.edit().localFile.fsPath +
+                        '"'
                 );
             });
             it("Cannot move shelved files", async () => {
@@ -2150,7 +2143,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "revert",
                     sinon.match.any,
-                    '-a  "' + basicFiles.edit().localFile.fsPath + '"'
+                    '-a "' + basicFiles.edit().localFile.fsPath + '"'
                 );
             });
         });
@@ -2244,7 +2237,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     "revert",
                     sinon.match.any,
-                    "-a -c 2 //..."
+                    '-a -c 2 "//..."'
                 );
                 expect(items.execute).to.have.been.calledWithMatch(
                     sinon.match.any,
