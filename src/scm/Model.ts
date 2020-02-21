@@ -30,9 +30,6 @@ export type FstatInfo = {
     [key: string]: string;
 };
 
-type ChangeInfo = { chnum: number; description: string };
-type ShelvedChangeInfo = { chnum: number; paths: string[] };
-
 export interface ResourceGroup extends SourceControlResourceGroup {
     model: Model;
     chnum: string;
@@ -840,16 +837,15 @@ export class Model implements Disposable {
             pathToSync = vscode.Uri.file(p4Dir + "...");
         }
 
-        await Utils.runCommand(this._workspaceUri, "sync", {
-            file: pathToSync
-        })
-            .then(output => {
-                Display.channel.append(output);
-                this.Refresh();
-            })
-            .catch(reason => {
-                Display.showImportantError(reason.toString());
+        try {
+            const output = await p4.sync(this._workspaceUri, {
+                files: pathToSync ? [{ fsPath: pathToSync.fsPath }] : []
             });
+            Display.channel.append(output);
+            this.Refresh();
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
+        }
     }
 
     private async updateInfo(): Promise<void> {
@@ -904,7 +900,7 @@ export class Model implements Disposable {
         return resource;
     }
 
-    private createResourceGroups(changelists: ChangeInfo[], resources: Resource[]) {
+    private createResourceGroups(changelists: p4.ChangeInfo[], resources: Resource[]) {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
         }
@@ -946,34 +942,27 @@ export class Model implements Disposable {
         });
 
         groups.forEach((group, i) => {
-            this._pendingGroups.set(changelists[i].chnum, {
+            this._pendingGroups.set(parseInt(changelists[i].chnum), {
                 description: changelists[i].description,
                 group: group
             });
         });
     }
 
-    private async getChanges(): Promise<ChangeInfo[]> {
-        const pendingArgs = "-c " + this.clientName + " -s pending";
-        const output: string = await Utils.runCommand(this._workspaceUri, "changes", {
-            prefixArgs: pendingArgs
-        });
-        let changeNumbers = output.trim().split("\n");
-
-        if (this._workspaceConfig.changelistOrder === "ascending") {
-            changeNumbers = changeNumbers.reverse();
-        }
-
-        const changelists = this.filterIgnoredChangelists(
-            changeNumbers
-                .map(c => this.parseChangelistDescription(c))
-                .filter((c): c is ChangeInfo => c !== undefined)
+    private async getChanges(): Promise<p4.ChangeInfo[]> {
+        const changes = this.filterIgnoredChangelists(
+            await p4.changes(this._workspaceUri, {
+                client: this.clientName,
+                status: p4.ChangelistStatus.PENDING
+            })
         );
 
-        return changelists;
+        return this._workspaceConfig.changelistOrder === "ascending"
+            ? changes.reverse()
+            : changes;
     }
 
-    private filterIgnoredChangelists(changelists: ChangeInfo[]): ChangeInfo[] {
+    private filterIgnoredChangelists(changelists: p4.ChangeInfo[]): p4.ChangeInfo[] {
         const prefix = this._workspaceConfig.ignoredChangelistPrefix;
         if (prefix) {
             changelists = changelists.filter(c => !c.description.startsWith(prefix));
@@ -981,32 +970,13 @@ export class Model implements Disposable {
         return changelists;
     }
 
-    private parseChangelistDescription(value: string): ChangeInfo | undefined {
-        // Change num on date by user@client [status] description
-        const matches = new RegExp(
-            /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/
-        ).exec(value);
-
-        if (matches) {
-            const num = matches[1];
-            // const date = matches[2];
-            // const user = matches[3];
-            // const client = matches[4];
-            // const status = matches[5];
-            const description = matches[6];
-
-            const chnum: number = parseInt(num.toString());
-            return { chnum, description };
-        }
-    }
-
-    private async getAllShelvedResources(changes: ChangeInfo[]): Promise<Resource[]> {
+    private async getAllShelvedResources(changes: p4.ChangeInfo[]): Promise<Resource[]> {
         if (this._workspaceConfig.hideShelvedFiles) {
             return [];
         }
-        const allFileInfo = await this.getDepotShelvedFilePaths(
-            changes.map(c => c.chnum)
-        );
+        const allFileInfo = await p4.getShelvedFiles(this._workspaceUri, {
+            chnums: changes.map(c => c.chnum)
+        });
         return this.getShelvedResources(allFileInfo);
     }
 
@@ -1025,7 +995,9 @@ export class Model implements Disposable {
         return resource;
     }
 
-    private async getShelvedResources(files: ShelvedChangeInfo[]): Promise<Resource[]> {
+    private async getShelvedResources(
+        files: p4.ShelvedChangeInfo[]
+    ): Promise<Resource[]> {
         const proms = files.map(f =>
             p4.getFstatInfo(this._workspaceUri, {
                 depotPaths: f.paths,
@@ -1117,37 +1089,5 @@ export class Model implements Disposable {
         }
 
         return [];
-    }
-
-    private async getDepotShelvedFilePaths(
-        chnums: number[]
-    ): Promise<ShelvedChangeInfo[]> {
-        if (chnums.length === 0) {
-            return [];
-        }
-        const resource = Uri.file(this._config.localDir);
-        const output = await Utils.getSimpleOutput(
-            resource,
-            "describe -Ss " + chnums.join(" ")
-        );
-        const shelved = output.trim().split("\n");
-        if (shelved.length === 0) {
-            return [];
-        }
-
-        const files: ShelvedChangeInfo[] = [];
-        shelved.forEach(open => {
-            const chMatch = new RegExp(/^Change (\d+) by/).exec(open);
-            if (chMatch) {
-                files.push({ chnum: parseInt(chMatch[1]), paths: [] });
-            } else if (files.length > 0) {
-                const matches = new RegExp(/(\.+)\ (.*)#(.*) (.*)/).exec(open);
-                if (matches) {
-                    files[files.length - 1].paths.push(matches[2]);
-                }
-            }
-        });
-
-        return files.filter(c => c.paths.length > 0);
     }
 }

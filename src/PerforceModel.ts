@@ -20,6 +20,15 @@ type ChangeSpecFile = {
     action: string;
 };
 
+export type ChangeInfo = {
+    chnum: string;
+    description: string;
+    date: string;
+    user: string;
+    client: string;
+    status: string;
+};
+
 export type FstatInfo = {
     depotFile: string;
     [key: string]: string;
@@ -50,8 +59,59 @@ function splitArray<T>(chunkSize: number) {
 
 type CmdArgs = (string | undefined)[];
 
-const joinDefinedArgs = (args: CmdArgs) =>
-    args?.filter((arg): arg is string => !!arg).join(" ");
+function makeFlag(flag: string, value: string | boolean | undefined) {
+    if (typeof value === "string") {
+        return value ? "-" + flag + " " + value : undefined;
+    }
+    return value ? "-" + flag : undefined;
+}
+
+function makeFlags(
+    pairs: [string, string | boolean | undefined][],
+    lastArgs?: (string | undefined)[]
+) {
+    return pairs.map(pair => makeFlag(pair[0], pair[1])).concat(...(lastArgs ?? []));
+}
+
+type FlagValue = string | boolean | PerforceFile[] | string[] | undefined;
+type FlagDefinition<T> = {
+    [P in keyof T]: FlagValue;
+};
+
+function lastArgAsStrings(
+    lastArg: FlagValue,
+    lastArgIsFormatted?: boolean
+): (string | undefined)[] | undefined {
+    if (typeof lastArg === "boolean") {
+        return undefined;
+    }
+    if (typeof lastArg === "string") {
+        return [lastArg];
+    }
+    if (lastArgIsFormatted) {
+        return lastArg as string[];
+    }
+    return pathsToArgs(lastArg);
+}
+
+function flagMapper<P extends FlagDefinition<P>>(
+    flagNames: [string, keyof P][],
+    lastArg?: keyof P,
+    lastArgIsFormatted?: boolean
+) {
+    return (options: P): CmdArgs => {
+        return makeFlags(
+            flagNames.map(fn => {
+                return [fn[0], options[fn[1]] as string | boolean | undefined];
+            }),
+            lastArg
+                ? lastArgAsStrings(options[lastArg] as FlagValue, lastArgIsFormatted)
+                : undefined
+        );
+    };
+}
+
+const joinDefinedArgs = (args: CmdArgs) => args?.filter(arg => !!arg).join(" ");
 
 function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
     return (
@@ -73,6 +133,20 @@ function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
 const splitIntoChunks = <T>(arr: T[]) => splitArray<T>(32)(arr);
 
 const runPerforceCommand = Utils.runCommand;
+
+function makeSimpleCommand<T>(command: string, fn: (opts: T) => CmdArgs) {
+    return (resource: vscode.Uri, options: T) =>
+        runPerforceCommand(resource, command, {
+            prefixArgs: joinDefinedArgs(fn(options))
+        });
+}
+
+function asyncOuputHandler<T extends any[], M, O>(
+    fn: (...args: T) => Promise<M>,
+    mapper: (arg: M) => O
+) {
+    return async (...args: T) => mapper(await fn(...args));
+}
 
 function parseRawField(value: string) {
     if (value.startsWith("\n")) {
@@ -204,13 +278,11 @@ export type DeleteChangelistOptions = {
     chnum: string;
 };
 
-function getDeleteChangelistFlags(options: DeleteChangelistOptions) {
-    return ["-d " + options.chnum];
-}
+const deleteChangelistFlags = flagMapper<DeleteChangelistOptions>([["d", "chnum"]]);
 
 export function deleteChangelist(resource: vscode.Uri, options: DeleteChangelistOptions) {
     return runPerforceCommand(resource, "change", {
-        prefixArgs: joinDefinedArgs(getDeleteChangelistFlags(options))
+        prefixArgs: joinDefinedArgs(deleteChangelistFlags(options))
     });
 }
 
@@ -226,11 +298,11 @@ export interface FstatOptions {
 }
 
 function getFstatFlags(options: FstatOptions): CmdArgs {
-    return [
-        options.chnum ? "-e " + options.chnum : "",
-        options.outputPendingRecord ? "-Or" : "",
-        options.limitToShelved ? "-Rs" : ""
-    ].filter(opt => opt !== "");
+    return makeFlags([
+        ["e", options.chnum],
+        ["Or", options.outputPendingRecord],
+        ["Rs", options.limitToShelved]
+    ]);
 }
 
 function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
@@ -260,7 +332,8 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
         runPerforceCommand(resource, "fstat", {
             prefixArgs: joinDefinedArgs(
                 getFstatFlags(options).concat(...pathsToArgs(paths))
-            )
+            ),
+            stdErrIsOk: true
         })
     );
     const fstats = await Promise.all(promises);
@@ -269,7 +342,7 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
 
 //#endregion
 
-export type OpenedFileOptions = { chnum: string };
+export type OpenedFileOptions = { chnum?: string };
 
 function parseOpenedOutput(output: string): CmdArgs {
     return output
@@ -284,27 +357,20 @@ function parseOpenedOutput(output: string): CmdArgs {
         .filter((match): match is string => !!match);
 }
 
-export async function getOpenedFiles(resource: vscode.Uri, options: OpenedFileOptions) {
-    const output = await runPerforceCommand(resource, "opened", {
-        prefixArgs: options.chnum ? "-c " + options.chnum : undefined
-    });
-    return parseOpenedOutput(output);
-}
+const openedFlags = flagMapper<OpenedFileOptions>([["c", "chnum"]]);
+
+const opened = makeSimpleCommand("opened", openedFlags);
+
+export const getOpenedFiles = asyncOuputHandler(opened, parseOpenedOutput);
 
 export type SubmitChangelistOptions = { chnum?: string; description?: string };
 
-function getSubmitFlags(options: SubmitChangelistOptions) {
-    return [
-        options.chnum ? "-c " + options.chnum : "",
-        options.description ? "-d " + options.description : ""
-    ].filter(opt => opt !== "");
-}
+const submitFlags = flagMapper<SubmitChangelistOptions>([
+    ["c", "chnum"],
+    ["d", "description"]
+]);
 
-export function submitChangelist(resource: vscode.Uri, options: SubmitChangelistOptions) {
-    return runPerforceCommand(resource, "submit", {
-        prefixArgs: joinDefinedArgs(getSubmitFlags(options))
-    });
-}
+export const submitChangelist = makeSimpleCommand("submit", submitFlags);
 
 export interface RevertOptions {
     paths: PerforceFile[];
@@ -312,19 +378,15 @@ export interface RevertOptions {
     unchanged?: boolean;
 }
 
-function getRevertFlags(options: RevertOptions): CmdArgs {
-    return [
-        options.unchanged ? "-a" : "",
-        options.chnum ? "-c " + options.chnum : "",
-        ...pathsToArgs(options.paths)
-    ].filter(opt => opt !== "");
-}
+export const revertFlags = flagMapper<RevertOptions>(
+    [
+        ["a", "unchanged"],
+        ["c", "chnum"]
+    ],
+    "paths"
+);
 
-export function revert(resource: vscode.Uri, options: RevertOptions) {
-    return runPerforceCommand(resource, "revert", {
-        prefixArgs: joinDefinedArgs(getRevertFlags(options))
-    });
-}
+export const revert = makeSimpleCommand("revert", revertFlags);
 
 //#region Shelving
 
@@ -335,20 +397,16 @@ export interface ShelveOptions {
     paths?: PerforceFile[];
 }
 
-function getShelveFlags(options: ShelveOptions): CmdArgs {
-    return [
-        options.force ? "-f" : "",
-        options.delete ? "-d" : "",
-        options.chnum ? "-c " + options.chnum : "",
-        ...pathsToArgs(options.paths)
-    ];
-}
+const shelveFlags = flagMapper<ShelveOptions>(
+    [
+        ["f", "force"],
+        ["d", "delete"],
+        ["c", "chnum"]
+    ],
+    "paths"
+);
 
-export function shelve(resource: vscode.Uri, options: ShelveOptions) {
-    return runPerforceCommand(resource, "shelve", {
-        prefixArgs: joinDefinedArgs(getShelveFlags(options))
-    });
-}
+export const shelve = makeSimpleCommand("shelve", shelveFlags);
 
 export interface UnshelveOptions {
     shelvedChnum: string;
@@ -357,20 +415,16 @@ export interface UnshelveOptions {
     paths?: PerforceFile[];
 }
 
-function getUnshelveFlags(options: UnshelveOptions): CmdArgs {
-    return [
-        options.force ? "-f" : "",
-        "-s " + options.shelvedChnum,
-        options.toChnum ? "-c " + options.toChnum : "",
-        joinDefinedArgs(pathsToArgs(options.paths))
-    ];
-}
+const unshelveFlags = flagMapper<UnshelveOptions>(
+    [
+        ["f", "force"],
+        ["s", "shelvedChnum"],
+        ["c", "toChnum"]
+    ],
+    "paths"
+);
 
-export function unshelve(resource: vscode.Uri, options: UnshelveOptions) {
-    return runPerforceCommand(resource, "unshelve", {
-        prefixArgs: joinDefinedArgs(getUnshelveFlags(options))
-    });
-}
+export const unshelve = makeSimpleCommand("unshelve", unshelveFlags);
 
 //#endregion
 
@@ -380,15 +434,15 @@ export interface FixJobOptions {
     removeFix?: boolean;
 }
 
-function getFixJobFlags(options: FixJobOptions) {
-    return ["-c " + options.chnum, options.removeFix ? "-d" : "", options.jobId];
-}
+const fixJobFlags = flagMapper<FixJobOptions>(
+    [
+        ["c", "chnum"],
+        ["d", "removeFix"]
+    ],
+    "jobId"
+);
 
-export function fixJob(resource: vscode.Uri, options: FixJobOptions) {
-    return runPerforceCommand(resource, "fix", {
-        prefixArgs: joinDefinedArgs(getFixJobFlags(options))
-    });
-}
+export const fixJob = makeSimpleCommand("fix", fixJobFlags);
 
 export interface ReopenOptions {
     chnum: string;
@@ -396,11 +450,112 @@ export interface ReopenOptions {
 }
 
 function getReopenFlags(options: ReopenOptions) {
-    return ["-c " + options.chnum, ...pathsToArgs(options.files)];
+    return makeFlags([["c", options.chnum]], pathsToArgs(options.files));
 }
 
-export function reopenFiles(resource: vscode.Uri, options: ReopenOptions) {
-    return runPerforceCommand(resource, "reopen", {
-        prefixArgs: joinDefinedArgs(getReopenFlags(options))
+export const reopenFiles = makeSimpleCommand("reopen", getReopenFlags);
+
+export interface SyncOptions {
+    files?: PerforceFile[];
+}
+
+function getSyncFlags(options: SyncOptions) {
+    return pathsToArgs(options.files);
+}
+
+export const sync = makeSimpleCommand("sync", getSyncFlags);
+
+export enum ChangelistStatus {
+    PENDING = "pending",
+    SHELVED = "shelved",
+    SUBMITTED = "submitted"
+}
+export interface ChangesOptions {
+    client?: string;
+    status?: ChangelistStatus;
+}
+
+function parseChangelistDescription(value: string): ChangeInfo | undefined {
+    const matches = new RegExp(
+        /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/
+    ).exec(value);
+
+    if (matches) {
+        const [, chnum, date, user, client, status, description] = matches;
+        return { chnum, date, user, client, status, description };
+    }
+}
+
+function parseChangesOutput(output: string): ChangeInfo[] {
+    return output
+        .split(/\r?\n/)
+        .map(parseChangelistDescription)
+        .filter((cl): cl is ChangeInfo => !!cl);
+}
+
+function getChangesFlags(options: ChangesOptions) {
+    return makeFlags([
+        ["c", options.client],
+        ["s", options.status]
+    ]);
+}
+
+export const changes = asyncOuputHandler(
+    makeSimpleCommand("changes", getChangesFlags),
+    parseChangesOutput
+);
+
+export interface DescribeOptions {
+    chnums: string[];
+    omitDiffs?: boolean;
+    shelved?: boolean;
+}
+
+function getDescribeFlags(options: DescribeOptions) {
+    return makeFlags(
+        [
+            ["S", options.shelved],
+            ["s", options.omitDiffs]
+        ],
+        options.chnums
+    );
+}
+
+const describe = makeSimpleCommand("describe", getDescribeFlags);
+
+export interface GetShelvedOptions {
+    chnums: string[];
+}
+
+export type ShelvedChangeInfo = { chnum: number; paths: string[] };
+
+function parseDescribeOuput(output: string): ShelvedChangeInfo[] {
+    const shelved = output.trim().split("\n");
+    if (shelved.length === 0) {
+        return [];
+    }
+
+    const changes: ShelvedChangeInfo[] = [];
+    shelved.forEach(open => {
+        const chMatch = new RegExp(/^Change (\d+) by/).exec(open);
+        if (chMatch) {
+            changes.push({ chnum: parseInt(chMatch[1]), paths: [] });
+        } else if (changes.length > 0) {
+            const matches = new RegExp(/(\.+)\ (.*)#(.*) (.*)/).exec(open);
+            if (matches) {
+                changes[changes.length - 1].paths.push(matches[2]);
+            }
+        }
     });
+
+    return changes.filter(c => c.paths.length > 0);
+}
+
+export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedOptions) {
+    const output = await describe(resource, {
+        chnums: options.chnums,
+        omitDiffs: true,
+        shelved: true
+    });
+    return parseDescribeOuput(output);
 }

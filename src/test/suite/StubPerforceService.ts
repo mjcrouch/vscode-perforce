@@ -303,11 +303,17 @@ export const makeResponses = (
                   if (!args) {
                       return stderr("No arguments supplied to describe");
                   }
-                  const chnums = args.split(" ");
-                  let opts = "";
-                  if (chnums[0]?.startsWith("-")) {
-                      opts = chnums.splice(0, 1)[0];
-                  }
+                  const opts: string[] = [];
+                  const chnums: string[] = [];
+                  let doneOpts = false;
+                  args.split(" ").forEach(arg => {
+                      if (!doneOpts && arg.startsWith("-")) {
+                          opts.push(arg);
+                      } else {
+                          doneOpts = true;
+                          chnums.push(arg);
+                      }
+                  });
                   const allStds = chnums.map(chnum => {
                       const c = service.changelists.find(c => c.chnum === chnum);
                       if (c && c.behaviours?.describe) {
@@ -339,7 +345,7 @@ export const makeResponses = (
                           }
 
                           ret +=
-                              c.submitted || opts !== "-Ss"
+                              c.submitted || !opts.includes("-S")
                                   ? "Affected files ...\n"
                                   : "Shelved files ...\n\n";
 
