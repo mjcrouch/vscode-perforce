@@ -47,7 +47,7 @@ export function isPerforceFileSpec(obj: any): obj is PerforceFileSpec {
     return obj && obj.fsPath;
 }
 
-function splitArray<T>(chunkSize: number) {
+function arraySplitter<T>(chunkSize: number) {
     return (arr: T[]): T[][] => {
         const ret: T[][] = [];
         for (let i = 0; i < arr.length; i += chunkSize) {
@@ -57,7 +57,17 @@ function splitArray<T>(chunkSize: number) {
     };
 }
 
-type CmdArgs = (string | undefined)[];
+const splitIntoChunks = <T>(arr: T[]) => arraySplitter<T>(32)(arr);
+
+function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined)[]) {
+    return (arg: T) =>
+        fns.reduce((all, fn) => {
+            const val = fn(arg);
+            return val !== undefined ? all.concat([val]) : all;
+        }, [] as R[]);
+}
+
+type CmdlineArgs = (string | undefined)[];
 
 function makeFlag(flag: string, value: string | boolean | undefined) {
     if (typeof value === "string") {
@@ -75,7 +85,7 @@ function makeFlags(
 
 type FlagValue = string | boolean | PerforceFile[] | string[] | undefined;
 type FlagDefinition<T> = {
-    [P in keyof T]: FlagValue;
+    [key in keyof T]: FlagValue;
 };
 
 function lastArgAsStrings(
@@ -94,24 +104,35 @@ function lastArgAsStrings(
     return pathsToArgs(lastArg);
 }
 
+/**
+ * Create a function that maps an object of type P into an array of command arguments
+ * @param flagNames A set of tuples - flag name to output (e.g. "c" produces "-c") and key from the object to use.
+ * For example, given an object `{chnum: "1", delete: true}`, the parameter `[["c", "chnum"], ["d", "delete"]]` would map this object to `["-c", "1", "-d"]`
+ * @param lastArg The field on the object that contains the final argument(s), that do not require a command line switch. Typically a list of paths to append to the end of the command. (must not be a boolean field)
+ * @param lastArgIsFormatted If the last argument is a string array, disable putting quotes around the strings
+ * @param fixedPrefix A fixed string to always put first in the perforce command
+ */
 function flagMapper<P extends FlagDefinition<P>>(
     flagNames: [string, keyof P][],
     lastArg?: keyof P,
-    lastArgIsFormatted?: boolean
+    lastArgIsFormatted?: boolean,
+    fixedPrefix?: string
 ) {
-    return (options: P): CmdArgs => {
-        return makeFlags(
-            flagNames.map(fn => {
-                return [fn[0], options[fn[1]] as string | boolean | undefined];
-            }),
-            lastArg
-                ? lastArgAsStrings(options[lastArg] as FlagValue, lastArgIsFormatted)
-                : undefined
+    return (options: P): CmdlineArgs => {
+        return [fixedPrefix].concat(
+            makeFlags(
+                flagNames.map(fn => {
+                    return [fn[0], options[fn[1]] as string | boolean | undefined];
+                }),
+                lastArg
+                    ? lastArgAsStrings(options[lastArg] as FlagValue, lastArgIsFormatted)
+                    : undefined
+            )
         );
     };
 }
 
-const joinDefinedArgs = (args: CmdArgs) => args?.filter(arg => !!arg).join(" ");
+const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(arg => !!arg).join(" ");
 
 function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
     return (
@@ -130,17 +151,49 @@ function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
     );
 }
 
-const splitIntoChunks = <T>(arr: T[]) => splitArray<T>(32)(arr);
+const fixedParams = (ps: Utils.CommandParams) => () => ps;
 
 const runPerforceCommand = Utils.runCommand;
 
-function makeSimpleCommand<T>(command: string, fn: (opts: T) => CmdArgs) {
-    return (resource: vscode.Uri, options: T) =>
-        runPerforceCommand(resource, command, {
-            prefixArgs: joinDefinedArgs(fn(options))
-        });
+/**
+ * merge n objects of the same type, where the left hand value has precedence
+ * @param args the objects to merge
+ */
+function mergeWithoutOverriding<T>(...args: T[]): T {
+    return args.reduce((all, cur) => {
+        return { ...cur, ...all };
+    });
 }
 
+/**
+ * Returns a function that, when called with options of type T, runs a defined perforce command
+ * @param command The name of the perforce command to run
+ * @param fn A function that maps from the input options of type T to a set of arguments to pass into the command
+ * @param otherParams An optional function that maps from the input options to the additional options to pass in to runCommand (not command line options!)
+ */
+function makeSimpleCommand<T>(
+    command: string,
+    fn: (opts: T) => CmdlineArgs,
+    otherParams?: (opts: T) => Exclude<Utils.CommandParams, { prefixArgs: string }>
+) {
+    return (resource: vscode.Uri, options: T) =>
+        runPerforceCommand(
+            resource,
+            command,
+            mergeWithoutOverriding(
+                {
+                    prefixArgs: joinDefinedArgs(fn(options))
+                },
+                otherParams?.(options) ?? {}
+            )
+        );
+}
+
+/**
+ * Create a function that awaits the result of the first async function, and passes it to the mapper function
+ * @param fn The async function to await
+ * @param mapper The function that accepts the result of the async function
+ */
 function asyncOuputHandler<T extends any[], M, O>(
     fn: (...args: T) => Promise<M>,
     mapper: (arg: M) => O
@@ -194,18 +247,6 @@ const parseChangeSpec = pipe(
     mapToChangeFields
 );
 
-export type ChangeSpecOptions = {
-    existingChangelist?: string;
-};
-
-function concatIfDefined<T, R>(...fns: ((arg: T) => R | undefined)[]) {
-    return (arg: T) =>
-        fns.reduce((all, fn) => {
-            const val = fn(arg);
-            return val !== undefined ? all.concat([val]) : all;
-        }, [] as R[]);
-}
-
 const getChangeAsRawField = (spec: ChangeSpec) =>
     spec.change ? { name: "Change", value: [spec.change] } : undefined;
 
@@ -223,20 +264,27 @@ const getFilesAsRawField = (spec: ChangeSpec) =>
         : undefined;
 
 function getDefinedSpecFields(spec: ChangeSpec): ChangeFieldRaw[] {
-    return concatIfDefined(
+    return concatIfOutputIsDefined(
         getChangeAsRawField,
         getDescriptionAsRawField,
         getFilesAsRawField
     )(spec);
 }
 
-export async function getChangeSpec(resource: vscode.Uri, options: ChangeSpecOptions) {
-    const output = await runPerforceCommand(resource, "change", {
-        prefixArgs:
-            "-o" + (options.existingChangelist ? " " + options.existingChangelist : "")
-    });
-    return parseChangeSpec(output);
-}
+export type ChangeSpecOptions = {
+    existingChangelist?: string;
+};
+
+export const changeFlags = flagMapper<ChangeSpecOptions>(
+    [],
+    "existingChangelist",
+    true,
+    "-o"
+);
+
+const outputChange = makeSimpleCommand("change", changeFlags);
+
+export const getChangeSpec = asyncOuputHandler(outputChange, parseChangeSpec);
 
 export type InputChangeSpecOptions = {
     spec: ChangeSpec;
@@ -255,24 +303,25 @@ function parseCreatedChangelist(createdStr: string): CreatedChangelist {
     };
 }
 
-export async function inputChangeSpec(
-    resource: vscode.Uri,
-    options: InputChangeSpecOptions
-) {
-    const output = await runPerforceCommand(resource, "change", {
-        input: getDefinedSpecFields(options.spec)
-            .concat(
-                options.spec.rawFields.filter(
-                    field => !options.spec[field.name.toLowerCase() as keyof ChangeSpec]
+const inputChange = makeSimpleCommand(
+    "change",
+    () => ["-i"],
+    (options: InputChangeSpecOptions) => {
+        return {
+            input: getDefinedSpecFields(options.spec)
+                .concat(
+                    options.spec.rawFields.filter(
+                        field =>
+                            !options.spec[field.name.toLowerCase() as keyof ChangeSpec]
+                    )
                 )
-            )
-            .map(field => field.name + ":\t" + field.value.join("\n\t"))
-            .join("\n\n"),
-        prefixArgs: "-i"
-    });
+                .map(field => field.name + ":\t" + field.value.join("\n\t"))
+                .join("\n\n")
+        };
+    }
+);
 
-    return parseCreatedChangelist(output);
-}
+export const inputChangeSpec = asyncOuputHandler(inputChange, parseCreatedChangelist);
 
 export type DeleteChangelistOptions = {
     chnum: string;
@@ -280,11 +329,7 @@ export type DeleteChangelistOptions = {
 
 const deleteChangelistFlags = flagMapper<DeleteChangelistOptions>([["d", "chnum"]]);
 
-export function deleteChangelist(resource: vscode.Uri, options: DeleteChangelistOptions) {
-    return runPerforceCommand(resource, "change", {
-        prefixArgs: joinDefinedArgs(deleteChangelistFlags(options))
-    });
-}
+export const deleteChangelist = makeSimpleCommand("change", deleteChangelistFlags);
 
 //#endregion
 
@@ -295,14 +340,6 @@ export interface FstatOptions {
     chnum?: string;
     limitToShelved?: boolean;
     outputPendingRecord?: boolean;
-}
-
-function getFstatFlags(options: FstatOptions): CmdArgs {
-    return makeFlags([
-        ["e", options.chnum],
-        ["Or", options.outputPendingRecord],
-        ["Rs", options.limitToShelved]
-    ]);
 }
 
 function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
@@ -326,16 +363,27 @@ function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
     return expectedFiles.map(file => all.find(fs => fs["depotFile"] === file));
 }
 
+const fstatFlags = flagMapper<FstatOptions>(
+    [
+        ["e", "chnum"],
+        ["Or", "outputPendingRecord"],
+        ["Rs", "limitToShelved"]
+    ],
+    "depotPaths"
+);
+
+const fstatBasic = makeSimpleCommand(
+    "fstat",
+    fstatFlags,
+    fixedParams({ stdErrIsOk: true })
+);
+
 export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) {
     const chunks = splitIntoChunks(options.depotPaths);
     const promises = chunks.map(paths =>
-        runPerforceCommand(resource, "fstat", {
-            prefixArgs: joinDefinedArgs(
-                getFstatFlags(options).concat(...pathsToArgs(paths))
-            ),
-            stdErrIsOk: true
-        })
+        fstatBasic(resource, { ...options, ...{ depotPaths: paths } })
     );
+
     const fstats = await Promise.all(promises);
     return fstats.flatMap((output, i) => parseFstatOutput(chunks[i], output));
 }
@@ -344,7 +392,7 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
 
 export type OpenedFileOptions = { chnum?: string };
 
-function parseOpenedOutput(output: string): CmdArgs {
+function parseOpenedOutput(output: string): string[] {
     return output
         .trim()
         .split("\n")
@@ -359,7 +407,11 @@ function parseOpenedOutput(output: string): CmdArgs {
 
 const openedFlags = flagMapper<OpenedFileOptions>([["c", "chnum"]]);
 
-const opened = makeSimpleCommand("opened", openedFlags);
+const opened = makeSimpleCommand(
+    "opened",
+    openedFlags,
+    fixedParams({ stdErrIsOk: true }) // stderr when no files are opened
+);
 
 export const getOpenedFiles = asyncOuputHandler(opened, parseOpenedOutput);
 
@@ -459,11 +511,9 @@ export interface SyncOptions {
     files?: PerforceFile[];
 }
 
-function getSyncFlags(options: SyncOptions) {
-    return pathsToArgs(options.files);
-}
+const syncFlags = flagMapper<SyncOptions>([], "files");
 
-export const sync = makeSimpleCommand("sync", getSyncFlags);
+export const sync = makeSimpleCommand("sync", syncFlags);
 
 export enum ChangelistStatus {
     PENDING = "pending",
@@ -474,6 +524,14 @@ export interface ChangesOptions {
     client?: string;
     status?: ChangelistStatus;
 }
+
+const changes = makeSimpleCommand(
+    "changes",
+    flagMapper<ChangesOptions>([
+        ["c", "client"],
+        ["s", "status"]
+    ])
+);
 
 function parseChangelistDescription(value: string): ChangeInfo | undefined {
     const matches = new RegExp(
@@ -493,17 +551,7 @@ function parseChangesOutput(output: string): ChangeInfo[] {
         .filter((cl): cl is ChangeInfo => !!cl);
 }
 
-function getChangesFlags(options: ChangesOptions) {
-    return makeFlags([
-        ["c", options.client],
-        ["s", options.status]
-    ]);
-}
-
-export const changes = asyncOuputHandler(
-    makeSimpleCommand("changes", getChangesFlags),
-    parseChangesOutput
-);
+export const getChangelists = asyncOuputHandler(changes, parseChangesOutput);
 
 export interface DescribeOptions {
     chnums: string[];
@@ -511,17 +559,16 @@ export interface DescribeOptions {
     shelved?: boolean;
 }
 
-function getDescribeFlags(options: DescribeOptions) {
-    return makeFlags(
-        [
-            ["S", options.shelved],
-            ["s", options.omitDiffs]
-        ],
-        options.chnums
-    );
-}
+export const describeFlags = flagMapper<DescribeOptions>(
+    [
+        ["S", "shelved"],
+        ["s", "omitDiffs"]
+    ],
+    "chnums",
+    true
+);
 
-const describe = makeSimpleCommand("describe", getDescribeFlags);
+const describe = makeSimpleCommand("describe", describeFlags);
 
 export interface GetShelvedOptions {
     chnums: string[];
@@ -529,7 +576,7 @@ export interface GetShelvedOptions {
 
 export type ShelvedChangeInfo = { chnum: number; paths: string[] };
 
-function parseDescribeOuput(output: string): ShelvedChangeInfo[] {
+function parseShelvedDescribeOuput(output: string): ShelvedChangeInfo[] {
     const shelved = output.trim().split("\n");
     if (shelved.length === 0) {
         return [];
@@ -557,5 +604,5 @@ export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedO
         omitDiffs: true,
         shelved: true
     });
-    return parseDescribeOuput(output);
+    return parseShelvedDescribeOuput(output);
 }

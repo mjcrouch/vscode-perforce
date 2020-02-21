@@ -951,7 +951,7 @@ export class Model implements Disposable {
 
     private async getChanges(): Promise<p4.ChangeInfo[]> {
         const changes = this.filterIgnoredChangelists(
-            await p4.changes(this._workspaceUri, {
+            await p4.getChangelists(this._workspaceUri, {
                 client: this.clientName,
                 status: p4.ChangelistStatus.PENDING
             })
@@ -1028,27 +1028,7 @@ export class Model implements Disposable {
     }
 
     private async getDepotOpenedFilePaths(): Promise<string[]> {
-        const resource = Uri.file(this._config.localDir);
-        let opened: string[] = [];
-        try {
-            const output = await Utils.getSimpleOutput(resource, "opened");
-            opened = output.trim().split("\n");
-        } catch (err) {
-            // perforce writes to stderr if no files are opened.
-            //console.log("ERROR: " + err);
-        }
-
-        const files: string[] = [];
-        opened.forEach(open => {
-            const matches = new RegExp(
-                /(.+)#(\d+)\s-\s([\w\/]+)\s(default\schange|change\s\d+)\s\(([\w\+]+)\)/
-            ).exec(open);
-            if (matches) {
-                files.push(matches[1]);
-            }
-        });
-
-        return files;
+        return await p4.getOpenedFiles(this._workspaceUri, {});
     }
 
     private async getFixedJobs(chnum: string) {
