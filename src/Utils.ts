@@ -97,22 +97,6 @@ export namespace Utils {
         return allArgs;
     }
 
-    export function processInfo(output: string): Map<string, string> {
-        const map = new Map<string, string>();
-        const lines = output.trim().split("\n");
-
-        for (let i = 0, n = lines.length; i < n; ++i) {
-            // Property Name: Property Value
-            const matches = new RegExp(/([^:]+): (.+)/).exec(lines[i]);
-
-            if (matches) {
-                map.set(matches[1], matches[2]);
-            }
-        }
-
-        return map;
-    }
-
     export function isLoggedIn(resource: Uri): Promise<boolean> {
         return new Promise((resolve, reject) => {
             PerforceService.execute(

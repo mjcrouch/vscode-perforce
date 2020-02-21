@@ -19,7 +19,8 @@ import { Resource } from "./Resource";
 import * as Path from "path";
 import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
-import * as p4 from "../PerforceModel";
+import * as p4 from "../model/PerforceModel";
+import { ChangeInfo } from "../model/CommonTypes";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg.id !== undefined;
@@ -216,17 +217,7 @@ export class Model implements Disposable {
         if (cachedHave !== undefined) {
             return cachedHave;
         }
-        let ret = false;
-        try {
-            const [, stderr] = await Utils.getOutputs(uri, 'have "' + uri.fsPath + '"');
-            if (stderr) {
-                ret = false;
-            } else {
-                ret = true;
-            }
-        } catch (err) {
-            ret = false;
-        }
+        const ret = await p4.haveFile(uri, { fsPath: uri.fsPath });
 
         this._knownHaveListByPath.set(uri.fsPath, ret);
 
@@ -355,18 +346,16 @@ export class Model implements Disposable {
     }
 
     public async Describe(input: ResourceGroup): Promise<void> {
-        const id = input.id;
-
-        if (id.startsWith("default")) {
+        if (input.isDefault) {
             const command = "change";
             const args = "-o";
             const uri: Uri = Uri.parse("perforce:").with({
                 query: Utils.makePerforceUriQuery(command, args)
             });
             await commands.executeCommand<void>("vscode.open", uri);
-        } else if (id.startsWith("pending")) {
+        } else {
             const command = "describe";
-            const args = id.substr(id.indexOf(":") + 1);
+            const args = input.chnum;
 
             const uri: Uri = Uri.parse("perforce:").with({
                 query: Utils.makePerforceUriQuery(command, args)
@@ -678,7 +667,7 @@ export class Model implements Disposable {
     }
 
     private async pickJobFromChangelist(chnum: string) {
-        const allJobs = await this.getFixedJobs(chnum);
+        const allJobs = await p4.getFixedJobs(this._workspaceUri, { chnum });
 
         const items = allJobs.map(
             (job): vscode.QuickPickItem => {
@@ -849,8 +838,7 @@ export class Model implements Disposable {
     }
 
     private async updateInfo(): Promise<void> {
-        const resource = Uri.file(this._config.localDir);
-        this._infos = Utils.processInfo(await Utils.getSimpleOutput(resource, "info"));
+        this._infos = await p4.getInfo(Uri.file(this._config.localDir), {});
     }
 
     private async updateStatus(): Promise<void> {
@@ -900,7 +888,7 @@ export class Model implements Disposable {
         return resource;
     }
 
-    private createResourceGroups(changelists: p4.ChangeInfo[], resources: Resource[]) {
+    private createResourceGroups(changelists: ChangeInfo[], resources: Resource[]) {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
         }
@@ -949,7 +937,7 @@ export class Model implements Disposable {
         });
     }
 
-    private async getChanges(): Promise<p4.ChangeInfo[]> {
+    private async getChanges(): Promise<ChangeInfo[]> {
         const changes = this.filterIgnoredChangelists(
             await p4.getChangelists(this._workspaceUri, {
                 client: this.clientName,
@@ -962,7 +950,7 @@ export class Model implements Disposable {
             : changes;
     }
 
-    private filterIgnoredChangelists(changelists: p4.ChangeInfo[]): p4.ChangeInfo[] {
+    private filterIgnoredChangelists(changelists: ChangeInfo[]): ChangeInfo[] {
         const prefix = this._workspaceConfig.ignoredChangelistPrefix;
         if (prefix) {
             changelists = changelists.filter(c => !c.description.startsWith(prefix));
@@ -970,7 +958,7 @@ export class Model implements Disposable {
         return changelists;
     }
 
-    private async getAllShelvedResources(changes: p4.ChangeInfo[]): Promise<Resource[]> {
+    private async getAllShelvedResources(changes: ChangeInfo[]): Promise<Resource[]> {
         if (this._workspaceConfig.hideShelvedFiles) {
             return [];
         }
@@ -1029,45 +1017,5 @@ export class Model implements Disposable {
 
     private async getDepotOpenedFilePaths(): Promise<string[]> {
         return await p4.getOpenedFiles(this._workspaceUri, {});
-    }
-
-    private async getFixedJobs(chnum: string) {
-        const resource = Uri.file(this._config.localDir);
-        const output = await Utils.getSimpleOutput(resource, "describe -s " + chnum);
-
-        type FixedJob = { id: string; description: string[] };
-
-        const allLines = output.trim().split("\n");
-        const startIndex = allLines.findIndex(line => line.startsWith("Jobs fixed ..."));
-        if (startIndex >= 0) {
-            const endIndex = allLines.findIndex(
-                line => !line.startsWith("\t") && line.includes("files ...")
-            );
-            const subLines =
-                endIndex > 0
-                    ? allLines.slice(startIndex + 1, endIndex)
-                    : allLines.slice(startIndex + 1);
-
-            let curJob: FixedJob;
-            const allJobs: FixedJob[] = [];
-            subLines.forEach(line => {
-                line = line.replace(/\r/g, "");
-                if (!line.startsWith("\t")) {
-                    const matches = new RegExp(/^(.*?) on/).exec(line);
-                    if (matches) {
-                        curJob = { id: matches[1], description: [] };
-                        if (curJob) {
-                            allJobs.push(curJob);
-                        }
-                    }
-                } else if (curJob) {
-                    curJob.description.push(line.slice(1));
-                }
-            });
-
-            return allJobs;
-        }
-
-        return [];
     }
 }

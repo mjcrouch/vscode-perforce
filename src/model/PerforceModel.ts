@@ -1,205 +1,23 @@
 import * as vscode from "vscode";
-import { Utils } from "./Utils";
-
 import { pipe } from "@arrows/composition";
+import {
+    concatIfOutputIsDefined,
+    flagMapper,
+    makeSimpleCommand,
+    asyncOuputHandler,
+    fixedParams,
+    splitIntoChunks
+} from "./CommandUtils";
+import {
+    FstatInfo,
+    PerforceFile,
+    ChangeInfo,
+    FixedJob,
+    ChangeFieldRaw,
+    ChangeSpec
+} from "./CommonTypes";
 
-type ChangeSpec = {
-    description?: string;
-    files?: ChangeSpecFile[];
-    change?: string;
-    rawFields: ChangeFieldRaw[];
-};
-
-type ChangeFieldRaw = {
-    name: string;
-    value: string[];
-};
-
-type ChangeSpecFile = {
-    depotPath: string;
-    action: string;
-};
-
-export type ChangeInfo = {
-    chnum: string;
-    description: string;
-    date: string;
-    user: string;
-    client: string;
-    status: string;
-};
-
-export type FstatInfo = {
-    depotFile: string;
-    [key: string]: string;
-};
-
-export type PerforceFileSpec = {
-    /** The filesystem path - without escaping special characters */
-    fsPath: string;
-    /** Optional suffix, e.g. #1, @=2 */
-    suffix?: string;
-};
-
-type PerforceFile = PerforceFileSpec | string;
-
-export function isPerforceFileSpec(obj: any): obj is PerforceFileSpec {
-    return obj && obj.fsPath;
-}
-
-function arraySplitter<T>(chunkSize: number) {
-    return (arr: T[]): T[][] => {
-        const ret: T[][] = [];
-        for (let i = 0; i < arr.length; i += chunkSize) {
-            ret.push(arr.slice(i, i + chunkSize));
-        }
-        return ret;
-    };
-}
-
-const splitIntoChunks = <T>(arr: T[]) => arraySplitter<T>(32)(arr);
-
-function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined)[]) {
-    return (arg: T) =>
-        fns.reduce((all, fn) => {
-            const val = fn(arg);
-            return val !== undefined ? all.concat([val]) : all;
-        }, [] as R[]);
-}
-
-type CmdlineArgs = (string | undefined)[];
-
-function makeFlag(flag: string, value: string | boolean | undefined) {
-    if (typeof value === "string") {
-        return value ? "-" + flag + " " + value : undefined;
-    }
-    return value ? "-" + flag : undefined;
-}
-
-function makeFlags(
-    pairs: [string, string | boolean | undefined][],
-    lastArgs?: (string | undefined)[]
-) {
-    return pairs.map(pair => makeFlag(pair[0], pair[1])).concat(...(lastArgs ?? []));
-}
-
-type FlagValue = string | boolean | PerforceFile[] | string[] | undefined;
-type FlagDefinition<T> = {
-    [key in keyof T]: FlagValue;
-};
-
-function lastArgAsStrings(
-    lastArg: FlagValue,
-    lastArgIsFormatted?: boolean
-): (string | undefined)[] | undefined {
-    if (typeof lastArg === "boolean") {
-        return undefined;
-    }
-    if (typeof lastArg === "string") {
-        return [lastArg];
-    }
-    if (lastArgIsFormatted) {
-        return lastArg as string[];
-    }
-    return pathsToArgs(lastArg);
-}
-
-/**
- * Create a function that maps an object of type P into an array of command arguments
- * @param flagNames A set of tuples - flag name to output (e.g. "c" produces "-c") and key from the object to use.
- * For example, given an object `{chnum: "1", delete: true}`, the parameter `[["c", "chnum"], ["d", "delete"]]` would map this object to `["-c", "1", "-d"]`
- * @param lastArg The field on the object that contains the final argument(s), that do not require a command line switch. Typically a list of paths to append to the end of the command. (must not be a boolean field)
- * @param lastArgIsFormatted If the last argument is a string array, disable putting quotes around the strings
- * @param fixedPrefix A fixed string to always put first in the perforce command
- */
-function flagMapper<P extends FlagDefinition<P>>(
-    flagNames: [string, keyof P][],
-    lastArg?: keyof P,
-    lastArgIsFormatted?: boolean,
-    fixedPrefix?: string
-) {
-    return (options: P): CmdlineArgs => {
-        return [fixedPrefix].concat(
-            makeFlags(
-                flagNames.map(fn => {
-                    return [fn[0], options[fn[1]] as string | boolean | undefined];
-                }),
-                lastArg
-                    ? lastArgAsStrings(options[lastArg] as FlagValue, lastArgIsFormatted)
-                    : undefined
-            )
-        );
-    };
-}
-
-const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(arg => !!arg).join(" ");
-
-function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
-    return (
-        arr?.map(path => {
-            if (isPerforceFileSpec(path)) {
-                return (
-                    '"' +
-                    Utils.expansePath(path.fsPath) +
-                    (path.suffix ? path.suffix : "") +
-                    '"'
-                );
-            } else if (path) {
-                return '"' + path + '"';
-            }
-        }) ?? []
-    );
-}
-
-const fixedParams = (ps: Utils.CommandParams) => () => ps;
-
-const runPerforceCommand = Utils.runCommand;
-
-/**
- * merge n objects of the same type, where the left hand value has precedence
- * @param args the objects to merge
- */
-function mergeWithoutOverriding<T>(...args: T[]): T {
-    return args.reduce((all, cur) => {
-        return { ...cur, ...all };
-    });
-}
-
-/**
- * Returns a function that, when called with options of type T, runs a defined perforce command
- * @param command The name of the perforce command to run
- * @param fn A function that maps from the input options of type T to a set of arguments to pass into the command
- * @param otherParams An optional function that maps from the input options to the additional options to pass in to runCommand (not command line options!)
- */
-function makeSimpleCommand<T>(
-    command: string,
-    fn: (opts: T) => CmdlineArgs,
-    otherParams?: (opts: T) => Exclude<Utils.CommandParams, { prefixArgs: string }>
-) {
-    return (resource: vscode.Uri, options: T) =>
-        runPerforceCommand(
-            resource,
-            command,
-            mergeWithoutOverriding(
-                {
-                    prefixArgs: joinDefinedArgs(fn(options))
-                },
-                otherParams?.(options) ?? {}
-            )
-        );
-}
-
-/**
- * Create a function that awaits the result of the first async function, and passes it to the mapper function
- * @param fn The async function to await
- * @param mapper The function that accepts the result of the async function
- */
-function asyncOuputHandler<T extends any[], M, O>(
-    fn: (...args: T) => Promise<M>,
-    mapper: (arg: M) => O
-) {
-    return async (...args: T) => mapper(await fn(...args));
-}
+//#region Changelists
 
 function parseRawField(value: string) {
     if (value.startsWith("\n")) {
@@ -207,8 +25,6 @@ function parseRawField(value: string) {
     }
     return value.split("\n").map(line => line.replace(/^\t/, ""));
 }
-
-//#region Changelists
 
 function parseRawFields(parts: string[]): ChangeFieldRaw[] {
     return parts.map(field => {
@@ -296,7 +112,7 @@ export type CreatedChangelist = {
 };
 
 function parseCreatedChangelist(createdStr: string): CreatedChangelist {
-    const matches = new RegExp(/Change\s(\d+)\screated/).exec(createdStr);
+    const matches = /Change\s(\d+)\screated/.exec(createdStr);
     return {
         rawOutput: createdStr,
         chnum: matches?.[1]
@@ -351,7 +167,7 @@ function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
             const lineMap: FstatInfo = { depotFile: "" };
             lines.forEach(line => {
                 // ... Key Value
-                const matches = new RegExp(/[.]{3} (\w+)[ ]*(.+)?/).exec(line);
+                const matches = /[.]{3} (\w+)[ ]*(.+)?/.exec(line);
                 if (matches) {
                     // A key may not have a value (e.g. `isMapped`).
                     // Treat these as flags and map them to 'true'.
@@ -501,11 +317,9 @@ export interface ReopenOptions {
     files: PerforceFile[];
 }
 
-function getReopenFlags(options: ReopenOptions) {
-    return makeFlags([["c", options.chnum]], pathsToArgs(options.files));
-}
+const reopenFlags = flagMapper<ReopenOptions>([["c", "chnum"]], "files");
 
-export const reopenFiles = makeSimpleCommand("reopen", getReopenFlags);
+export const reopenFiles = makeSimpleCommand("reopen", reopenFlags);
 
 export interface SyncOptions {
     files?: PerforceFile[];
@@ -534,9 +348,9 @@ const changes = makeSimpleCommand(
 );
 
 function parseChangelistDescription(value: string): ChangeInfo | undefined {
-    const matches = new RegExp(
-        /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/
-    ).exec(value);
+    const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/.exec(
+        value
+    );
 
     if (matches) {
         const [, chnum, date, user, client, status, description] = matches;
@@ -584,11 +398,11 @@ function parseShelvedDescribeOuput(output: string): ShelvedChangeInfo[] {
 
     const changes: ShelvedChangeInfo[] = [];
     shelved.forEach(open => {
-        const chMatch = new RegExp(/^Change (\d+) by/).exec(open);
+        const chMatch = /^Change (\d+) by/.exec(open);
         if (chMatch) {
             changes.push({ chnum: parseInt(chMatch[1]), paths: [] });
         } else if (changes.length > 0) {
-            const matches = new RegExp(/(\.+)\ (.*)#(.*) (.*)/).exec(open);
+            const matches = /(\.+)\ (.*)#(.*) (.*)/.exec(open);
             if (matches) {
                 changes[changes.length - 1].paths.push(matches[2]);
             }
@@ -606,3 +420,87 @@ export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedO
     });
     return parseShelvedDescribeOuput(output);
 }
+
+// TODO can this be merged into common handling for describe output?
+function parseFixedJobsOutput(output: string) {
+    const allLines = output.trim().split("\n");
+    const startIndex = allLines.findIndex(line => line.startsWith("Jobs fixed ..."));
+    if (startIndex >= 0) {
+        const endIndex = allLines.findIndex(
+            line => !line.startsWith("\t") && line.includes("files ...")
+        );
+        const subLines =
+            endIndex > 0
+                ? allLines.slice(startIndex + 1, endIndex)
+                : allLines.slice(startIndex + 1);
+
+        let curJob: FixedJob;
+        const allJobs: FixedJob[] = [];
+        subLines.forEach(line => {
+            line = line.replace(/\r/g, "");
+            if (!line.startsWith("\t")) {
+                const matches = /^(.*?) on/.exec(line);
+                if (matches) {
+                    curJob = { id: matches[1], description: [] };
+                    if (curJob) {
+                        allJobs.push(curJob);
+                    }
+                }
+            } else if (curJob) {
+                curJob.description.push(line.slice(1));
+            }
+        });
+
+        return allJobs;
+    }
+    return [];
+}
+
+export interface GetFixedJobsOptoins {
+    chnum: string;
+}
+
+export async function getFixedJobs(resource: vscode.Uri, options: GetFixedJobsOptoins) {
+    const output = await describe(resource, {
+        chnums: [options.chnum],
+        omitDiffs: true
+    });
+    return parseFixedJobsOutput(output);
+}
+
+function parseInfo(output: string): Map<string, string> {
+    const map = new Map<string, string>();
+    const lines = output.trim().split("\n");
+
+    for (let i = 0, n = lines.length; i < n; ++i) {
+        // Property Name: Property Value
+        const matches = /([^:]+): (.+)/.exec(lines[i]);
+
+        if (matches) {
+            map.set(matches[1], matches[2]);
+        }
+    }
+
+    return map;
+}
+
+export const info = makeSimpleCommand("info", () => []);
+
+export const getInfo = asyncOuputHandler(info, parseInfo);
+
+export interface HaveFileOptions {
+    fsPath: string;
+}
+
+const haveFileFlags = flagMapper<HaveFileOptions>([], "fsPath");
+
+const haveFileCmd = makeSimpleCommand(
+    "have",
+    haveFileFlags,
+    fixedParams({ stdErrIsOk: true, hideStdErr: true })
+);
+
+// if stdout has any value, we have the file (stderr indicates we don't)
+const handleHaveOutput = (output: string) => !!output;
+
+export const haveFile = asyncOuputHandler(haveFileCmd, handleHaveOutput);
