@@ -173,7 +173,7 @@ export class Model implements Disposable {
     }
 
     public async Sync(): Promise<void> {
-        const loggedin = await Utils.isLoggedIn(this._workspaceUri);
+        const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
         }
@@ -229,7 +229,7 @@ export class Model implements Disposable {
         // seeing an empty scm view and waiting for it to populate makes it feel slower.
         this._refreshInProgress = true;
 
-        const loggedin = await Utils.isLoggedIn(this._workspaceUri);
+        const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
         }
@@ -362,7 +362,7 @@ export class Model implements Disposable {
     }
 
     public async SubmitDefault(): Promise<void> {
-        const loggedin = await Utils.isLoggedIn(this._workspaceUri);
+        const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
         }
@@ -742,7 +742,7 @@ export class Model implements Disposable {
             throw new Error("Cannot reopen shelved file");
         }
 
-        const loggedin = await Utils.isLoggedIn(this._workspaceUri);
+        const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
         }
@@ -839,7 +839,7 @@ export class Model implements Disposable {
     }
 
     private async updateStatus(): Promise<void> {
-        const loggedin = await Utils.isLoggedIn(this._workspaceUri);
+        const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
         }

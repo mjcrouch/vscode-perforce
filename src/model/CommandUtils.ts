@@ -178,7 +178,7 @@ function mergeWithoutOverriding<T>(...args: T[]): T {
 
 /**
  * merge n object of the same type, where the right hand value has precedence
- * @param args THe objects to merge
+ * @param args The objects to merge
  */
 export function mergeAll<T>(...args: T[]): T {
     return args.reduce((all, cur) => {

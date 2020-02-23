@@ -97,27 +97,6 @@ export namespace Utils {
         return allArgs;
     }
 
-    export function isLoggedIn(resource: Uri): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            PerforceService.execute(
-                resource,
-                "login",
-                (err, stdout, stderr) => {
-                    err && Display.showError(err.toString());
-                    stderr && Display.showError(stderr.toString());
-                    if (err) {
-                        reject(err);
-                    } else if (stderr) {
-                        reject(stderr);
-                    } else {
-                        resolve(true);
-                    }
-                },
-                "-s"
-            );
-        });
-    }
-
     export function getSimpleOutput(resource: Uri, command: string): Promise<string> {
         return new Promise((resolve, reject) => {
             PerforceService.execute(resource, command, (err, stdout, stderr) => {

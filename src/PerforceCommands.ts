@@ -16,6 +16,7 @@ import {
 import * as Path from "path";
 
 import { PerforceService } from "./PerforceService";
+import * as p4 from "./model/PerforceModel";
 import { Display } from "./Display";
 import { Utils } from "./Utils";
 
@@ -460,62 +461,41 @@ export namespace PerforceCommands {
         }
     }
 
-    export function logout() {
+    export async function logout() {
         const resource = guessWorkspaceUri();
-        PerforceService.execute(resource, "logout", (err, stdout, stderr) => {
-            if (err) {
-                Display.showError(err.message);
-                return false;
-            } else if (stderr) {
-                Display.showError(stderr.toString());
-                return false;
-            } else {
-                Display.showMessage("Logout successful");
-                Display.updateEditor();
-                return true;
-            }
-        });
+        try {
+            await p4.logout(resource, {});
+            Display.showMessage("Logout successful");
+            Display.updateEditor();
+            return true;
+        } catch {}
+        return false;
     }
 
-    export function login() {
+    export async function login() {
         const resource = guessWorkspaceUri();
-        PerforceService.execute(
-            resource,
-            "login",
-            (err, stdout, stderr) => {
-                if (err || stderr) {
-                    window
-                        .showInputBox({ prompt: "Enter password", password: true })
-                        .then(passwd => {
-                            PerforceService.execute(
-                                resource,
-                                "login",
-                                (err, stdout, stderr) => {
-                                    if (err) {
-                                        Display.showError(err.message);
-                                        return false;
-                                    } else if (stderr) {
-                                        Display.showError(stderr.toString());
-                                        return false;
-                                    } else {
-                                        Display.showMessage("Login successful");
-                                        Display.updateEditor();
-                                        return true;
-                                    }
-                                },
-                                undefined,
-                                undefined,
-                                passwd
-                            );
-                        });
-                } else {
+
+        let loggedIn = await p4.isLoggedIn(resource);
+        if (!loggedIn) {
+            const password = await window.showInputBox({
+                prompt: "Enter password",
+                password: true
+            });
+            if (password) {
+                try {
+                    await p4.login(resource, { password });
+
                     Display.showMessage("Login successful");
                     Display.updateEditor();
-                    return true;
-                }
-            },
-            "-s"
-        );
+                    loggedIn = true;
+                } catch {}
+            }
+        } else {
+            Display.showMessage("Login successful");
+            Display.updateEditor();
+            loggedIn = true;
+        }
+        return loggedIn;
     }
 
     export function menuFunctions() {

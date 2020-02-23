@@ -516,3 +516,32 @@ const haveFileCmd = makeSimpleCommand(
 
 // if stdout has any value, we have the file (stderr indicates we don't)
 export const haveFile = asyncOuputHandler(haveFileCmd, isTruthy);
+
+export type NoOpts = {};
+
+export type LoginOptions = {
+    password: string;
+};
+
+export const login = makeSimpleCommand(
+    "login",
+    () => [],
+    (options: LoginOptions) => {
+        return {
+            input: options.password
+        };
+    }
+);
+
+const getLoggedInStatus = makeSimpleCommand<NoOpts>("login", () => ["-s"]);
+
+export async function isLoggedIn(resource: vscode.Uri): Promise<boolean> {
+    try {
+        await getLoggedInStatus(resource, {});
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export const logout = makeSimpleCommand<NoOpts>("logout", () => []);
