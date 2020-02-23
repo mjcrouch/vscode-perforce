@@ -6,27 +6,31 @@ import {
     makeSimpleCommand,
     asyncOuputHandler,
     fixedParams,
-    splitIntoChunks
+    splitIntoChunks,
+    mergeAll,
+    extractSection,
+    sectionArrayBy
 } from "./CommandUtils";
 import {
     FstatInfo,
     PerforceFile,
     ChangeInfo,
     FixedJob,
-    ChangeFieldRaw,
+    RawField,
     ChangeSpec
 } from "./CommonTypes";
 
+//const prepareOutput = (value: string) => value.trim();
+const removeLeadingNewline = (value: string) => value.replace(/^\r?\n/, "");
+const splitIntoLines = (value: string) => value.split(/\r?\n/);
+const splitIntoSections = (str: string) => str.split(/\r?\n\r?\n/);
+const removeIndent = (lines: string[]) => lines.map(line => line.replace(/^t/, ""));
+
 //#region Changelists
 
-function parseRawField(value: string) {
-    if (value.startsWith("\n")) {
-        value = value.slice(1);
-    }
-    return value.split("\n").map(line => line.replace(/^\t/, ""));
-}
+const parseRawField = pipe(removeLeadingNewline, splitIntoLines, removeIndent);
 
-function parseRawFields(parts: string[]): ChangeFieldRaw[] {
+function parseRawFields(parts: string[]): RawField[] {
     return parts.map(field => {
         const colPos = field.indexOf(":");
         const name = field.slice(0, colPos);
@@ -35,13 +39,13 @@ function parseRawFields(parts: string[]): ChangeFieldRaw[] {
     });
 }
 
-const getBasicField = (fields: ChangeFieldRaw[], field: string) =>
+const getBasicField = (fields: RawField[], field: string) =>
     fields.find(i => i.name === field)?.value;
-const splitIntoSections = (str: string) => str.split(/\n\r?\n/);
+
 const excludeNonFields = (parts: string[]) =>
     parts.filter(part => !part.startsWith("#") && part !== "");
 
-function mapToChangeFields(rawFields: ChangeFieldRaw[]): ChangeSpec {
+function mapToChangeFields(rawFields: RawField[]): ChangeSpec {
     return {
         change: getBasicField(rawFields, "Change")?.[0],
         description: getBasicField(rawFields, "Description")?.join("\n"),
@@ -68,7 +72,7 @@ const getChangeAsRawField = (spec: ChangeSpec) =>
 
 const getDescriptionAsRawField = (spec: ChangeSpec) =>
     spec.description
-        ? { name: "Description", value: spec.description.split("\n") }
+        ? { name: "Description", value: splitIntoLines(spec.description) }
         : undefined;
 
 const getFilesAsRawField = (spec: ChangeSpec) =>
@@ -79,7 +83,7 @@ const getFilesAsRawField = (spec: ChangeSpec) =>
           }
         : undefined;
 
-function getDefinedSpecFields(spec: ChangeSpec): ChangeFieldRaw[] {
+function getDefinedSpecFields(spec: ChangeSpec): RawField[] {
     return concatIfOutputIsDefined(
         getChangeAsRawField,
         getDescriptionAsRawField,
@@ -158,24 +162,30 @@ export interface FstatOptions {
     outputPendingRecord?: boolean;
 }
 
+function parseZTagField(field: string) {
+    // examples:
+    // ... depotFile //depot/testArea/stuff
+    // ... mapped
+    const matches = /[.]{3} (\w+)[ ]*(.+)?/.exec(field);
+    if (matches) {
+        return { [matches[1]]: matches[2] ? matches[2] : "true" } as Partial<FstatInfo>;
+    }
+}
+
+function parseZTagBlock(block: string) {
+    return splitIntoLines(block)
+        .map(parseZTagField)
+        .filter((field): field is Partial<FstatInfo> => !!field);
+}
+
+function parseFstatSection(file: string) {
+    return mergeAll({ depotFile: "" }, ...parseZTagBlock(file)) as FstatInfo;
+}
+
 function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
-    const all = fstatOutput
-        .trim()
-        .split(/\n\r?\n/)
-        .map(file => {
-            const lines = file.split("\n");
-            const lineMap: FstatInfo = { depotFile: "" };
-            lines.forEach(line => {
-                // ... Key Value
-                const matches = /[.]{3} (\w+)[ ]*(.+)?/.exec(line);
-                if (matches) {
-                    // A key may not have a value (e.g. `isMapped`).
-                    // Treat these as flags and map them to 'true'.
-                    lineMap[matches[1]] = matches[2] ? matches[2] : "true";
-                }
-            });
-            return lineMap;
-        });
+    const all = splitIntoSections(fstatOutput.trim()).map(file =>
+        parseFstatSection(file)
+    );
     return expectedFiles.map(file => all.find(fs => fs["depotFile"] === file));
 }
 
@@ -209,6 +219,8 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
 export type OpenedFileOptions = { chnum?: string };
 
 function parseOpenedOutput(output: string): string[] {
+    // example:
+    // //depot/testArea/stuff#1 - edit change 46 (text)
     return output
         .trim()
         .split("\n")
@@ -348,6 +360,11 @@ const changes = makeSimpleCommand(
 );
 
 function parseChangelistDescription(value: string): ChangeInfo | undefined {
+    // example:
+    // Change 45 on 2020/02/15 by super@matto 'a new changelist with a much lo'
+
+    // with -t flag
+    // Change 45 on 2020/02/15 18:48:43 by super@matto 'a new changelist with a much lo'
     const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/.exec(
         value
     );
@@ -391,25 +408,19 @@ export interface GetShelvedOptions {
 export type ShelvedChangeInfo = { chnum: number; paths: string[] };
 
 function parseShelvedDescribeOuput(output: string): ShelvedChangeInfo[] {
-    const shelved = output.trim().split("\n");
-    if (shelved.length === 0) {
-        return [];
-    }
+    const allLines = splitIntoLines(output.trim());
 
-    const changes: ShelvedChangeInfo[] = [];
-    shelved.forEach(open => {
-        const chMatch = /^Change (\d+) by/.exec(open);
-        if (chMatch) {
-            changes.push({ chnum: parseInt(chMatch[1]), paths: [] });
-        } else if (changes.length > 0) {
-            const matches = /(\.+)\ (.*)#(.*) (.*)/.exec(open);
-            if (matches) {
-                changes[changes.length - 1].paths.push(matches[2]);
-            }
-        }
-    });
+    const changelists = sectionArrayBy(allLines, line => /^Change \d+ by/.test(line));
 
-    return changes.filter(c => c.paths.length > 0);
+    return changelists
+        .map(section => {
+            const matches = section
+                .slice(1)
+                .map(line => /(\.+)\ (.*)#(.*) (.*)/.exec(line)?.[2])
+                .filter((line): line is string => !!line);
+            return { chnum: parseInt(section[0].split(" ")[1]), paths: matches };
+        })
+        .filter((c): c is ShelvedChangeInfo => !!c && c.paths.length > 0);
 }
 
 export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedOptions) {
@@ -422,45 +433,46 @@ export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedO
 }
 
 // TODO can this be merged into common handling for describe output?
-function parseFixedJobsOutput(output: string) {
-    const allLines = output.trim().split("\n");
-    const startIndex = allLines.findIndex(line => line.startsWith("Jobs fixed ..."));
-    if (startIndex >= 0) {
-        const endIndex = allLines.findIndex(
-            line => !line.startsWith("\t") && line.includes("files ...")
-        );
-        const subLines =
-            endIndex > 0
-                ? allLines.slice(startIndex + 1, endIndex)
-                : allLines.slice(startIndex + 1);
+function parseFixedJobsOutput(output: string): FixedJob[] {
+    /**
+     * example:
+     *
+     * Jobs fixed ...
+     *
+     * job000001 on 2020/02/22 by super *open*
+     *
+     * \ta job
+     * \thooray
+     *
+     * etc
+     * Affected files ...
+     */
+    const allLines = splitIntoLines(output.trim());
+    const subLines = extractSection(
+        allLines,
+        line => line.startsWith("Jobs fixed ..."),
+        line => !line.startsWith("\t") && line.includes("files ...")
+    );
 
-        let curJob: FixedJob;
-        const allJobs: FixedJob[] = [];
-        subLines.forEach(line => {
-            line = line.replace(/\r/g, "");
-            if (!line.startsWith("\t")) {
-                const matches = /^(.*?) on/.exec(line);
-                if (matches) {
-                    curJob = { id: matches[1], description: [] };
-                    if (curJob) {
-                        allJobs.push(curJob);
-                    }
-                }
-            } else if (curJob) {
-                curJob.description.push(line.slice(1));
-            }
+    if (subLines) {
+        return sectionArrayBy(subLines, line => /^\w*? on/.test(line)).map(job => {
+            return {
+                id: job[0].split(" ")[0],
+                description: job
+                    .slice(1)
+                    .filter(line => line.startsWith("\t"))
+                    .map(line => line.slice(1))
+            };
         });
-
-        return allJobs;
     }
     return [];
 }
 
-export interface GetFixedJobsOptoins {
+export interface GetFixedJobsOptions {
     chnum: string;
 }
 
-export async function getFixedJobs(resource: vscode.Uri, options: GetFixedJobsOptoins) {
+export async function getFixedJobs(resource: vscode.Uri, options: GetFixedJobsOptions) {
     const output = await describe(resource, {
         chnums: [options.chnum],
         omitDiffs: true
@@ -470,7 +482,7 @@ export async function getFixedJobs(resource: vscode.Uri, options: GetFixedJobsOp
 
 function parseInfo(output: string): Map<string, string> {
     const map = new Map<string, string>();
-    const lines = output.trim().split("\n");
+    const lines = output.trim().split(/\r?\n/);
 
     for (let i = 0, n = lines.length; i < n; ++i) {
         // Property Name: Property Value

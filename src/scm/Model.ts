@@ -1,4 +1,4 @@
-import { PerforceService, IPerforceConfig } from "./../PerforceService";
+import { IPerforceConfig } from "./../PerforceService";
 import {
     Uri,
     EventEmitter,
@@ -256,12 +256,9 @@ export class Model implements Disposable {
         const resource = this._sourceControl.rootUri;
         if (resource) {
             Display.channel.show();
-            try {
-                const output = await PerforceService.executeAsPromise(resource, "info");
-                Display.channel.append(output);
-            } catch (err) {
-                Display.showError(err.toString());
-            }
+
+            const output = await p4.info(resource, {});
+            Display.channel.append(output);
         }
     }
     private isInWorkspace(clientFile?: string): boolean {

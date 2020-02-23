@@ -1,6 +1,48 @@
 import { Utils } from "../Utils";
-import { PerforceFileSpec, isPerforceFileSpec, PerforceFile } from "./CommonTypes";
+import { FileSpec, isFileSpec, PerforceFile } from "./CommonTypes";
 import * as vscode from "vscode";
+
+/**
+ * Extract a section of an array between two matching predicates
+ * @param allLines The array to extract from
+ * @param startingWith Matches the first line of the section (exclusive)
+ * @param endingWith Matches the last line of the section - if not found, returns all elements after the start index
+ */
+export function extractSection<T>(
+    allLines: T[],
+    startingWith: (line: T) => boolean,
+    endingWith: (line: T) => boolean
+) {
+    const startIndex = allLines.findIndex(startingWith);
+    if (startIndex >= 0) {
+        const endIndex = allLines.findIndex(endingWith);
+        return allLines.slice(startIndex + 1, endIndex >= 0 ? endIndex : undefined);
+    }
+}
+
+/**
+ * Divides an array into sections that start with the matching line
+ *
+ * @param lines the array to divide
+ * @param sectionMatcher a predicate that matches the first line of a section
+ * @returns An array of string arrays. Each array is a section **starting** with the matching line.
+ * If no matching line is present, the returned array is empty
+ */
+export function sectionArrayBy<T>(lines: T[], sectionMatcher: (line: T) => boolean) {
+    const sections: T[][] = [];
+
+    let nextMatch = lines.findIndex(sectionMatcher);
+    let prevMatch = -1;
+    while (nextMatch > prevMatch) {
+        prevMatch = nextMatch;
+        nextMatch = lines.slice(prevMatch + 1).findIndex(sectionMatcher) + prevMatch + 1;
+        sections.push(
+            lines.slice(prevMatch, nextMatch > prevMatch ? nextMatch : undefined)
+        );
+    }
+
+    return sections;
+}
 
 function arraySplitter<T>(chunkSize: number) {
     return (arr: T[]): T[][] => {
@@ -13,6 +55,10 @@ function arraySplitter<T>(chunkSize: number) {
 }
 
 export const splitIntoChunks = <T>(arr: T[]) => arraySplitter<T>(32)(arr);
+
+export function applyToEach<T, R>(fn: (input: T) => R) {
+    return (input: T[]) => input.map(i => fn(i));
+}
 
 export function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined)[]) {
     return (arg: T) =>
@@ -89,10 +135,10 @@ export function flagMapper<P extends FlagDefinition<P>>(
 
 const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(arg => !!arg).join(" ");
 
-function pathsToArgs(arr?: (string | PerforceFileSpec)[]) {
+function pathsToArgs(arr?: (string | FileSpec)[]) {
     return (
         arr?.map(path => {
-            if (isPerforceFileSpec(path)) {
+            if (isFileSpec(path)) {
                 return (
                     '"' +
                     Utils.expansePath(path.fsPath) +
@@ -117,6 +163,16 @@ const runPerforceCommand = Utils.runCommand;
 function mergeWithoutOverriding<T>(...args: T[]): T {
     return args.reduce((all, cur) => {
         return { ...cur, ...all };
+    });
+}
+
+/**
+ * merge n object of the same type, where the right hand value has precedence
+ * @param args THe objects to merge
+ */
+export function mergeAll<T>(...args: T[]): T {
+    return args.reduce((all, cur) => {
+        return { ...all, ...cur };
     });
 }
 

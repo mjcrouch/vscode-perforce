@@ -13,10 +13,10 @@ export type ChangeSpec = {
     description?: string;
     files?: ChangeSpecFile[];
     change?: string;
-    rawFields: ChangeFieldRaw[];
+    rawFields: RawField[];
 };
 
-export type ChangeFieldRaw = {
+export type RawField = {
     name: string;
     value: string[];
 };
@@ -31,15 +31,15 @@ export type FstatInfo = {
     [key: string]: string;
 };
 
-export type PerforceFileSpec = {
+export type FileSpec = {
     /** The filesystem path - without escaping special characters */
     fsPath: string;
     /** Optional suffix, e.g. #1, @=2 */
     suffix?: string;
 };
 
-export type PerforceFile = PerforceFileSpec | string;
+export type PerforceFile = FileSpec | string;
 
-export function isPerforceFileSpec(obj: any): obj is PerforceFileSpec {
+export function isFileSpec(obj: any): obj is FileSpec {
     return obj && obj.fsPath;
 }
