@@ -3,6 +3,16 @@ import { FileSpec, isFileSpec, PerforceFile } from "./CommonTypes";
 import * as vscode from "vscode";
 
 /**
+ * Predicate used for filtering out undefined or null values from an array,
+ * and resulting in an array of type T
+ * @param obj a single element
+ * @returns the truthiness of the value, and narrows the type to T
+ */
+export function isTruthy<T>(obj: T | undefined | null): obj is T {
+    return !!obj;
+}
+
+/**
  * Extract a section of an array between two matching predicates
  * @param allLines The array to extract from
  * @param startingWith Matches the first line of the section (exclusive)
@@ -133,7 +143,7 @@ export function flagMapper<P extends FlagDefinition<P>>(
     };
 }
 
-const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(arg => !!arg).join(" ");
+const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(isTruthy).join(" ");
 
 function pathsToArgs(arr?: (string | FileSpec)[]) {
     return (

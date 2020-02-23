@@ -9,7 +9,8 @@ import {
     splitIntoChunks,
     mergeAll,
     extractSection,
-    sectionArrayBy
+    sectionArrayBy,
+    isTruthy
 } from "./CommandUtils";
 import {
     FstatInfo,
@@ -175,7 +176,7 @@ function parseZTagField(field: string) {
 function parseZTagBlock(block: string) {
     return splitIntoLines(block)
         .map(parseZTagField)
-        .filter((field): field is Partial<FstatInfo> => !!field);
+        .filter(isTruthy);
 }
 
 function parseFstatSection(file: string) {
@@ -230,7 +231,7 @@ function parseOpenedOutput(output: string): string[] {
                     line
                 )?.[1]
         )
-        .filter((match): match is string => !!match);
+        .filter(isTruthy);
 }
 
 const openedFlags = flagMapper<OpenedFileOptions>([["c", "chnum"]]);
@@ -379,7 +380,7 @@ function parseChangesOutput(output: string): ChangeInfo[] {
     return output
         .split(/\r?\n/)
         .map(parseChangelistDescription)
-        .filter((cl): cl is ChangeInfo => !!cl);
+        .filter(isTruthy);
 }
 
 export const getChangelists = asyncOuputHandler(changes, parseChangesOutput);
@@ -417,10 +418,11 @@ function parseShelvedDescribeOuput(output: string): ShelvedChangeInfo[] {
             const matches = section
                 .slice(1)
                 .map(line => /(\.+)\ (.*)#(.*) (.*)/.exec(line)?.[2])
-                .filter((line): line is string => !!line);
+                .filter(isTruthy);
             return { chnum: parseInt(section[0].split(" ")[1]), paths: matches };
         })
-        .filter((c): c is ShelvedChangeInfo => !!c && c.paths.length > 0);
+        .filter(isTruthy)
+        .filter(c => c.paths.length > 0);
 }
 
 export async function getShelvedFiles(resource: vscode.Uri, options: GetShelvedOptions) {
@@ -513,6 +515,4 @@ const haveFileCmd = makeSimpleCommand(
 );
 
 // if stdout has any value, we have the file (stderr indicates we don't)
-const handleHaveOutput = (output: string) => !!output;
-
-export const haveFile = asyncOuputHandler(haveFileCmd, handleHaveOutput);
+export const haveFile = asyncOuputHandler(haveFileCmd, isTruthy);
