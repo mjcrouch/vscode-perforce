@@ -23,7 +23,7 @@ import * as p4 from "../model/PerforceModel";
 import { ChangeInfo } from "../model/CommonTypes";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
-    return arg.id !== undefined;
+    return arg && arg.id !== undefined;
 }
 
 export type FstatInfo = {

@@ -26,12 +26,14 @@ import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
 import { WorkspaceConfigAccessor } from "../../ConfigService";
+import { StubPerforceModel } from "./StubPerforceModel";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
 chai.use(chaiAsPromised);
 
 interface TestItems {
+    stubModel: StubPerforceModel;
     instance: PerforceSCMProvider;
     stubService: StubPerforceService;
     execute: sinon.SinonSpy;
@@ -964,6 +966,38 @@ describe("Model & ScmProvider modules (integration)", () => {
             const showMessage = sinon.spy(Display, "showMessage");
             const showError = sinon.spy(Display, "showError");
 
+            const stubModel = new StubPerforceModel();
+            stubModel.changelists = [
+                {
+                    chnum: "1",
+                    description: "Changelist 1",
+                    files: [
+                        basicFiles.edit(),
+                        basicFiles.delete(),
+                        basicFiles.add(),
+                        basicFiles.moveAdd(),
+                        basicFiles.moveDelete(),
+                        basicFiles.branch(),
+                        basicFiles.integrate()
+                    ],
+                    shelvedFiles: [basicFiles.shelveEdit(), basicFiles.shelveDelete()]
+                },
+                {
+                    chnum: "2",
+                    description: "Changelist 2",
+                    files: [],
+                    behaviours: {
+                        shelve: returnStdErr("my shelve error"),
+                        unshelve: returnStdErr("my unshelve error")
+                    }
+                },
+                {
+                    chnum: "3",
+                    description: "Changelist 3",
+                    submitted: true,
+                    files: []
+                }
+            ];
             const stubService = new StubPerforceService();
             stubService.changelists = [
                 {
@@ -1018,6 +1052,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             sinon.stub((instance as any)._model, "RefreshPolitely").callsFake(refresh);
 
             items = {
+                stubModel,
                 stubService,
                 instance,
                 execute,
@@ -1087,11 +1122,12 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             it("Can shelve a valid Changelist", async () => {
                 await PerforceSCMProvider.ShelveChangelist(items.instance.resources[1]);
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.shelve).to.have.been.been.calledOnceWith(
                     workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-f -c 1"
+                    {
+                        chnum: "1",
+                        force: true
+                    }
                 );
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist shelved"
@@ -1103,17 +1139,19 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.ShelveRevertChangelist(
                     items.instance.resources[1]
                 );
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.shelve).to.have.been.been.calledOnceWith(
                     workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-f -c 1"
+                    {
+                        chnum: "1",
+                        force: true
+                    }
                 );
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.revert).to.have.been.been.calledOnceWith(
                     workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '-c 1 "//..."'
+                    {
+                        chnum: "1",
+                        paths: ["//..."]
+                    }
                 );
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist shelved"
@@ -1122,13 +1160,10 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
 
             it("Can handle an error when shelving a changelist", async () => {
+                items.stubModel.shelve
+                    .withArgs(sinon.match.any, sinon.match({ chnum: "2" }))
+                    .rejects("my shelve error");
                 await PerforceSCMProvider.ShelveChangelist(items.instance.resources[2]);
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-f -c 2"
-                );
                 expect(items.showMessage).not.to.have.been.called;
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my shelve error"
@@ -1137,22 +1172,15 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
 
             it("Can handle an error when shelving and reverting a changelist", async () => {
+                items.stubModel.shelve
+                    .withArgs(sinon.match.any, sinon.match({ chnum: "2" }))
+                    .rejects("my shelve error");
                 await PerforceSCMProvider.ShelveRevertChangelist(
                     items.instance.resources[2]
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-f -c 2"
                 );
                 expect(items.showMessage).not.to.have.been.called;
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my shelve error"
-                );
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert"
                 );
                 expect(items.refresh).to.have.been.calledOnce;
             });
@@ -1161,12 +1189,11 @@ describe("Model & ScmProvider modules (integration)", () => {
         describe("Unshelving a changelist", () => {
             it("Can unshelve a valid Changelist", async () => {
                 await PerforceSCMProvider.UnshelveChangelist(items.instance.resources[1]);
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "unshelve",
-                    sinon.match.any,
-                    "-f -s 1"
-                );
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    force: true,
+                    shelvedChnum: "1",
+                    toChnum: "1"
+                });
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist unshelved"
                 );
@@ -1177,21 +1204,16 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await expect(
                     PerforceSCMProvider.UnshelveChangelist(items.instance.resources[0])
                 ).to.eventually.be.rejectedWith("Cannot unshelve the default changelist");
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "unshelve"
-                );
+                expect(items.stubModel.unshelve).not.to.have.been.called;
                 expect(items.refresh).not.to.have.been.called;
             });
 
             it("Can handle an error when unshelving a changelist", async () => {
+                items.stubModel.unshelve
+                    .withArgs(sinon.match.any, sinon.match({ toChnum: "2" }))
+                    .rejects("my unshelve error");
                 await PerforceSCMProvider.UnshelveChangelist(items.instance.resources[2]);
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "unshelve",
-                    sinon.match.any,
-                    "-f -s 2 -c 2"
-                );
+
                 expect(items.showMessage).not.to.have.been.called;
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my unshelve error"
@@ -1213,13 +1235,11 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(warn).to.have.been.calledOnce;
 
-                expect(items.refresh).to.have.been.calledOnce;
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.shelve).to.have.been.calledWithMatch(
                     workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-d -c 1"
+                    { chnum: "1", delete: true }
                 );
+                expect(items.refresh).to.have.been.calledOnce;
             });
 
             it("Can cancel deleting a shelved changelist", async () => {
@@ -1234,10 +1254,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(warn).to.have.been.calledOnce;
                 expect(items.refresh).not.to.have.been.called;
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve"
-                );
+                expect(items.stubModel.shelve).not.to.have.been.called;
             });
 
             it("Can handle an error when deleting a shelved changelist", async () => {
@@ -1246,17 +1263,15 @@ describe("Model & ScmProvider modules (integration)", () => {
                     .stub(vscode.window, "showWarningMessage")
                     .resolvesArg(2);
 
+                items.stubModel.shelve
+                    .withArgs(sinon.match.any, sinon.match({ chnum: "2" }))
+                    .rejects("my shelve error");
+
                 await PerforceSCMProvider.DeleteShelvedChangelist(
                     items.instance.resources[2]
                 );
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "-d -c 2"
-                );
                 expect(items.showImportantError).to.have.been.calledOnceWith(
                     "my shelve error"
                 );
@@ -1271,10 +1286,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ).to.eventually.be.rejectedWith(
                     "Cannot delete shelved files from the default changelist"
                 );
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve"
-                );
+                expect(items.stubModel.shelve).not.to.have.been.called;
                 expect(items.refresh).not.to.have.been.called;
             });
         });
@@ -1293,10 +1305,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.DeleteShelvedFile(resource as Resource);
 
                 expect(prompt).to.be.calledOnce;
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "shelve"
-                );
+                expect(items.stubModel.shelve).not.to.have.been.called;
             });
             it("Deletes the shelved file", async () => {
                 sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
@@ -1308,12 +1317,11 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.DeleteShelvedFile(resource as Resource);
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    '-d -c 1 "' + basicFiles.shelveDelete().depotPath + '"'
-                );
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    delete: true,
+                    chnum: "1",
+                    paths: [basicFiles.shelveDelete().depotPath]
+                });
             });
             it("Can delete multiple shelved files", async () => {
                 const warn = sinon
@@ -1335,18 +1343,16 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
 
                 expect(warn).to.have.been.calledTwice;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    '-d -c 1 "' + basicFiles.shelveDelete().depotPath + '"'
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    '-d -c 1 "' + basicFiles.shelveEdit().depotPath + '"'
-                );
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    delete: true,
+                    chnum: "1",
+                    paths: [basicFiles.shelveDelete().depotPath]
+                });
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    delete: true,
+                    chnum: "1",
+                    paths: [basicFiles.shelveEdit().depotPath]
+                });
             });
             it("Cannot be used on normal files", async () => {
                 const warn = sinon
@@ -1371,18 +1377,12 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledWith(
                     "Shelve cannot be used on normal file: new.txt"
                 );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    '-d -c 1 "' + basicFiles.shelveDelete().depotPath + '"'
-                );
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve",
-                    sinon.match.any,
-                    "new.txt"
-                );
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    delete: true,
+                    chnum: "1",
+                    paths: [basicFiles.shelveDelete().depotPath]
+                });
+                expect(items.stubModel.shelve).to.have.been.calledOnce;
             });
         });
 
@@ -1669,7 +1669,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             it("Can save the default changelist", async () => {
                 items.instance.sourceControl.inputBox.value =
                     "My new changelist\nline 2\nline 3";
-                items.stubService.changelists = [
+                items.stubModel.changelists = [
                     {
                         chnum: "default",
                         files: [basicFiles.add(), basicFiles.edit()],
@@ -1677,15 +1677,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy new changelist\n\tline 2\n\tline 3",
-                    Files:
-                        "\t" +
-                        basicFiles.add().depotPath +
-                        "\t# add" +
-                        "\n\t" +
-                        basicFiles.edit().depotPath +
-                        "\t# edit"
+                expect(items.stubModel.lastChangeInput).to.deep.include({
+                    description: "My new changelist\nline 2\nline 3",
+                    files: [
+                        { depotPath: basicFiles.add().depotPath, action: "add" },
+                        { depotPath: basicFiles.edit().depotPath, action: "edit" }
+                    ],
+                    rawFields: [{ name: "A field", value: ["don't know"] }]
                 });
             });
             it("Can save from an empty default changelist", async () => {

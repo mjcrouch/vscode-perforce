@@ -65,7 +65,7 @@ interface StubJob {
     description: string[];
 }
 
-interface StubChangelist {
+export interface StubChangelist {
     chnum: string;
     description: string;
     submitted?: boolean;
@@ -140,7 +140,7 @@ function getDepotPathAndOp(f: StubFile, withHyphen: boolean) {
     );
 }
 
-function getStatusText(status: Status): string {
+export function getStatusText(status: Status): string {
     switch (status) {
         case Status.ADD:
             return "add";

@@ -96,12 +96,7 @@ export type ChangeSpecOptions = {
     existingChangelist?: string;
 };
 
-export const changeFlags = flagMapper<ChangeSpecOptions>(
-    [],
-    "existingChangelist",
-    true,
-    "-o"
-);
+const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", true, "-o");
 
 const outputChange = makeSimpleCommand("change", changeFlags);
 
@@ -259,7 +254,7 @@ export interface RevertOptions {
     unchanged?: boolean;
 }
 
-export const revertFlags = flagMapper<RevertOptions>(
+const revertFlags = flagMapper<RevertOptions>(
     [
         ["a", "unchanged"],
         ["c", "chnum"]
@@ -391,7 +386,7 @@ export interface DescribeOptions {
     shelved?: boolean;
 }
 
-export const describeFlags = flagMapper<DescribeOptions>(
+const describeFlags = flagMapper<DescribeOptions>(
     [
         ["S", "shelved"],
         ["s", "omitDiffs"]
