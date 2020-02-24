@@ -49,7 +49,7 @@ export function getStatusText(status: Status): string {
     }
 }
 
-function getWorkspaceUri() {
+export function getWorkspaceUri() {
     if (!vscode.workspace.workspaceFolders) {
         throw new Error("No workspace folders open");
     }
