@@ -15,8 +15,6 @@ function makeDefaultInfo(resource: vscode.Uri) {
 }
 
 export class StubPerforceModel {
-    public lastChangeInput?: ChangeSpec;
-
     public changelists: StubChangelist[];
 
     public isLoggedIn: sinon.SinonStub<any>;
@@ -74,21 +72,13 @@ export class StubPerforceModel {
         this.unshelve = sinon.stub(p4, "unshelve").resolves("unshelved");
         this.inputChangeSpec = sinon
             .stub(p4, "inputChangeSpec")
-            .callsFake(this.inputChange.bind(this));
+            .resolves({ chnum: "99", rawOutput: "Change 99 created" });
     }
 
     resolveOpenFiles(): Promise<string[]> {
         return Promise.resolve(
             this.changelists.flatMap(cl => cl.files.map(file => file.depotPath))
         );
-    }
-
-    inputChange(
-        _resource: vscode.Uri,
-        options: p4.InputChangeSpecOptions
-    ): Promise<p4.CreatedChangelist> {
-        this.lastChangeInput = options.spec;
-        return Promise.resolve({ chnum: "99", rawOutput: "Change 99 created" });
     }
 
     resolveChangelists(): Promise<ChangeInfo[]> {

@@ -1114,10 +1114,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await expect(
                     PerforceSCMProvider.ShelveChangelist(items.instance.resources[0])
                 ).to.eventually.be.rejectedWith("Cannot shelve the default changelist");
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "shelve"
-                );
+                expect(items.stubModel.shelve).not.to.have.been.called;
                 expect(items.refresh).not.to.have.been.called;
             });
 
@@ -1678,14 +1675,19 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubModel.lastChangeInput).to.deep.equal({
-                    description: "My new changelist\nline 2\nline 3",
-                    files: [
-                        { depotPath: basicFiles.add().depotPath, action: "add" },
-                        { depotPath: basicFiles.edit().depotPath, action: "edit" }
-                    ],
-                    rawFields: defaultRawFields
-                });
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        spec: {
+                            description: "My new changelist\nline 2\nline 3",
+                            files: [
+                                { depotPath: basicFiles.add().depotPath, action: "add" },
+                                { depotPath: basicFiles.edit().depotPath, action: "edit" }
+                            ],
+                            rawFields: defaultRawFields
+                        }
+                    }
+                );
             });
             it("Can save from an empty default changelist", async () => {
                 items.instance.sourceControl.inputBox.value = "My new changelist";
@@ -1697,12 +1699,16 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubModel.lastChangeInput).to.deep.equal({
-                    description: "My new changelist",
-                    files: undefined,
-                    rawFields: defaultRawFields
-                });
-                //expect(items.stubModel.lastChangeInput).not.to.have.any.keys("files");
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        spec: {
+                            description: "My new changelist",
+                            files: undefined,
+                            rawFields: defaultRawFields
+                        }
+                    }
+                );
             });
             it("Can change the description of an existing changelist", async () => {
                 items.instance.sourceControl.inputBox.value =
@@ -1715,19 +1721,24 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubModel.lastChangeInput).to.deep.equal({
-                    change: "1",
-                    description: "My updated changelist\nline2",
-                    files: [
-                        { action: "add", depotPath: basicFiles.add().depotPath },
-                        { action: "edit", depotPath: basicFiles.edit().depotPath }
-                    ],
-                    rawFields: defaultRawFields
-                });
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        spec: {
+                            change: "1",
+                            description: "My updated changelist\nline2",
+                            files: [
+                                { action: "add", depotPath: basicFiles.add().depotPath },
+                                { action: "edit", depotPath: basicFiles.edit().depotPath }
+                            ],
+                            rawFields: defaultRawFields
+                        }
+                    }
+                );
             });
             it("Can change the description of an empty changelist", async () => {
                 items.instance.sourceControl.inputBox.value = "#1\nMy updated changelist";
-                items.stubService.changelists = [
+                items.stubModel.changelists = [
                     {
                         chnum: "1",
                         files: [],
@@ -1735,10 +1746,17 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy updated changelist"
-                });
-                expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        spec: {
+                            change: "1",
+                            description: "My updated changelist",
+                            files: [],
+                            rawFields: defaultRawFields
+                        }
+                    }
+                );
             });
             describe("Edit Changelist", () => {
                 it("Uses the source control input box for entering the description");
@@ -1786,10 +1804,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     description: "Changelist 2"
                 });
 
-                expect(items.execute).not.to.have.been.calledWith(
-                    sinon.match.any,
-                    "reopen"
-                );
+                expect(items.stubModel.reopenFiles).not.to.have.been.called;
             });
             it("Can move files to a changelist", async () => {
                 sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
@@ -1829,11 +1844,12 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.ReopenFile(resource1 as Resource);
 
                 // TODO this shouldn't need to be many commands
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.reopenFiles).to.have.been.calledWith(
                     workspaceUri,
-                    "reopen",
-                    sinon.match.any,
-                    '-c default "' + basicFiles.edit().localFile.fsPath + '"'
+                    {
+                        chnum: "default",
+                        files: [{ fsPath: basicFiles.edit().localFile.fsPath }]
+                    }
                 );
             });
             it("Can move files to a new changelist", async () => {
@@ -1854,19 +1870,26 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
 
-                expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy selective changelist\n\tLine 2\n\tLine 3"
-                });
-
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
                     workspaceUri,
-                    "reopen",
-                    sinon.match.any,
-                    '-c 99 "' +
-                        basicFiles.add().localFile.fsPath +
-                        '" "' +
-                        basicFiles.edit().localFile.fsPath +
-                        '"'
+                    {
+                        spec: {
+                            description: "My selective changelist\nLine 2\nLine 3",
+                            files: [],
+                            rawFields: defaultRawFields
+                        }
+                    }
+                );
+
+                expect(items.stubModel.reopenFiles).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        chnum: "99",
+                        files: [
+                            { fsPath: basicFiles.add().localFile.fsPath },
+                            { fsPath: basicFiles.edit().localFile.fsPath }
+                        ]
+                    }
                 );
             });
             it("Cannot move shelved files", async () => {
@@ -1894,7 +1917,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                 sinon
                     .stub(vscode.window, "showInputBox")
                     .resolves("My selective changelist");
-                items.stubService.setResponse("change", returnStdErr("My change error"));
+
+                items.stubModel.inputChangeSpec.rejects("My change error");
 
                 const resource1 = findResourceForFile(
                     items.instance.resources[1],
@@ -1905,10 +1929,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledWith(
                     "My change error"
                 );
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "reopen"
-                );
+                expect(items.stubModel.reopenFiles).not.to.have.been.called;
             });
         });
         describe("Fix a Job", () => {
@@ -1916,12 +1937,10 @@ describe("Model & ScmProvider modules (integration)", () => {
                 sinon.stub(vscode.window, "showInputBox").resolves("job00001");
                 await PerforceSCMProvider.FixJob(items.instance.resources[1]);
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "fix",
-                    sinon.match.any,
-                    "-c 1 job00001"
-                );
+                expect(items.stubModel.fixJob).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    jobId: "job00001"
+                });
 
                 expect(items.showMessage).to.have.been.calledWithMatch(
                     "Job job00001 added"
@@ -1938,11 +1957,11 @@ describe("Model & ScmProvider modules (integration)", () => {
                 sinon.stub(vscode.window, "showInputBox").resolves(undefined);
                 await PerforceSCMProvider.FixJob(items.instance.resources[1]);
 
-                expect(items.execute).not.to.have.been.calledWith(sinon.match.any, "fix");
+                expect(items.stubModel.fixJob).not.to.have.been.called;
             });
             it("Can handle an error fixing a perforce job", async () => {
                 sinon.stub(vscode.window, "showInputBox").resolves("job00001");
-                items.stubService.setResponse("fix", returnStdErr("My fix error"));
+                items.stubModel.fixJob.rejects("My fix error");
 
                 await PerforceSCMProvider.FixJob(items.instance.resources[1]);
 
@@ -1951,7 +1970,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         describe("Unfix a Job", () => {
             it("Displays a list of fixed jobs to unfix", async () => {
-                items.stubService.changelists[0].jobs = [
+                items.stubModel.changelists[0].jobs = [
                     { name: "job00001", description: ["a job"] },
                     {
                         name: "job00002",
@@ -1977,10 +1996,10 @@ describe("Model & ScmProvider modules (integration)", () => {
                     detail: "with multiple lines to show"
                 });
 
-                expect(items.execute).not.to.have.been.calledWith(sinon.match.any, "fix");
+                expect(items.stubModel.fixJob).not.to.have.been.called;
             });
             it("Unfixes a perforce job", async () => {
-                items.stubService.changelists[0].jobs = [
+                items.stubModel.changelists[0].jobs = [
                     { name: "job00001", description: ["a job"] }
                 ];
                 sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
@@ -1988,12 +2007,11 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
                 await PerforceSCMProvider.UnfixJob(items.instance.resources[1]);
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "fix",
-                    sinon.match.any,
-                    "-c 1 -d job00001"
-                );
+                expect(items.stubModel.fixJob).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    jobId: "job00001",
+                    removeFix: true
+                });
                 expect(items.showMessage).to.have.been.calledWithMatch(
                     "Job job00001 removed"
                 );
@@ -2010,15 +2028,17 @@ describe("Model & ScmProvider modules (integration)", () => {
                 ).to.eventually.be.rejectedWith(
                     "The default changelist cannot fix a job"
                 );
+
+                expect(items.stubModel.fixJob).not.to.have.been.called;
             });
             it("Can handle an error unfixing a perforce job", async () => {
-                items.stubService.changelists[0].jobs = [
+                items.stubModel.changelists[0].jobs = [
                     { name: "job00001", description: ["a job"] }
                 ];
                 sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
                     return Promise.resolve((items as vscode.QuickPickItem[])[0]);
                 });
-                items.stubService.setResponse("fix", returnStdErr("My fix error"));
+                items.stubModel.fixJob.rejects("My fix error");
 
                 await PerforceSCMProvider.UnfixJob(items.instance.resources[1]);
 
@@ -2039,10 +2059,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(resource as Resource);
 
                 expect(prompt).to.be.calledOnce;
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "revert"
-                );
+                expect(items.stubModel.revert).not.to.have.been.called;
             });
             it("Reverts an open file", async () => {
                 sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
@@ -2054,12 +2071,10 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.Revert(resource as Resource);
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '"' + basicFiles.edit().localFile.fsPath + '"'
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    unchanged: undefined
+                });
             });
             it("Can revert multiple files", async () => {
                 const warn = sinon
@@ -2080,18 +2095,14 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(warn).to.have.been.calledTwice;
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '"' + basicFiles.add().localFile.fsPath + '"'
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '"' + basicFiles.delete().localFile.fsPath + '"'
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.add().localFile.fsPath }],
+                    unchanged: undefined
+                });
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.delete().localFile.fsPath }],
+                    unchanged: undefined
+                });
             });
             it("Cannot revert a shelved file", async () => {
                 sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
@@ -2108,19 +2119,11 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.Revert(resource1 as Resource, resource2);
 
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '"' + basicFiles.moveAdd().localFile.fsPath + '"'
-                );
-
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    "a.txt"
-                );
+                expect(items.stubModel.revert).to.have.been.calledOnce;
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.moveAdd().localFile.fsPath }],
+                    unchanged: undefined
+                });
 
                 expect(items.showImportantError).to.have.been.calledWith(
                     "Revert cannot be used on shelved file: a.txt"
@@ -2139,12 +2142,10 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.RevertUnchanged(resource as Resource);
 
                 expect(warn).not.to.have.been.called;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '-a "' + basicFiles.edit().localFile.fsPath + '"'
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    unchanged: true
+                });
             });
         });
         describe("Revert changelist", () => {
@@ -2156,10 +2157,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(items.instance.resources[1]);
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "revert"
-                );
+                expect(items.stubModel.revert).not.to.have.been.called;
             });
             it("Reverts a changelist and deletes it", async () => {
                 const warn = sinon
@@ -2169,18 +2167,14 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(items.instance.resources[2]);
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    "-c 2"
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "change",
-                    sinon.match.any,
-                    "-d 2"
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    chnum: "2",
+                    paths: ["//..."],
+                    unchanged: undefined
+                });
+                expect(
+                    items.stubModel.deleteChangelist
+                ).to.have.been.calledWith(workspaceUri, { chnum: "2" });
             });
             it("Can revert the default changelist and does not attempt to delete it", async () => {
                 const warn = sinon
@@ -2190,19 +2184,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(items.instance.resources[0]);
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    "-c default"
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    chnum: "default",
+                    paths: ["//..."],
+                    unchanged: undefined
+                });
 
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "change",
-                    sinon.match.any,
-                    "-d"
-                );
+                expect(items.stubModel.deleteChangelist).not.to.have.been.called;
             });
             it("Does not try to delete a changelist with shelved files", async () => {
                 const warn = sinon
@@ -2212,18 +2200,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(items.instance.resources[1]);
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    "-c 1"
-                );
-                expect(items.execute).not.to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "change",
-                    sinon.match.any,
-                    "-d"
-                );
+
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    paths: ["//..."],
+                    unchanged: undefined
+                });
+                expect(items.stubModel.deleteChangelist).not.to.have.been.called;
             });
             it("Can revert if unchanged", async () => {
                 const warn = sinon
@@ -2233,34 +2216,30 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.RevertUnchanged(items.instance.resources[2]);
 
                 expect(warn).not.to.have.been.called;
-                expect(items.execute).to.have.been.calledWithMatch(
-                    workspaceUri,
-                    "revert",
-                    sinon.match.any,
-                    '-a -c 2 "//..."'
-                );
-                expect(items.execute).to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "change",
-                    sinon.match.any,
-                    "-d 2"
-                );
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    chnum: "2",
+                    paths: ["//..."],
+                    unchanged: true
+                });
+                expect(
+                    items.stubModel.deleteChangelist
+                ).to.have.been.calledWith(workspaceUri, { chnum: "2" });
             });
             it("Can handle an error reverting a changelist", async () => {
                 sinon.stub(vscode.window, "showWarningMessage").resolvesArg(2);
 
-                items.stubService.setResponse("revert", returnStdErr("My revert error"));
+                items.stubModel.revert.rejects("My revert error");
 
                 await PerforceSCMProvider.RevertUnchanged(items.instance.resources[2]);
 
-                expect(items.showError).to.have.been.calledWith("My revert error");
-                // it still tries to revert, even with an error - because the changelist may already be empty
-                expect(items.execute).to.have.been.calledWithMatch(
-                    sinon.match.any,
-                    "change",
-                    sinon.match.any,
-                    "-d 2"
-                );
+                // showError not called - because stub model doesn't do this, but Utils.runCommand does!
+                // expect(items.showError).to.have.been.calledWith("My revert error");
+                // TODO - suggests all the other things that do call this are probably duplicating the error as this should already be done by runCommand
+
+                // it still tries to delete, even with an error - because the changelist may already be empty
+                expect(
+                    items.stubModel.deleteChangelist
+                ).to.have.been.calledWith(workspaceUri, { chnum: "2" });
             });
         });
     });
