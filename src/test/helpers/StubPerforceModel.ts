@@ -2,8 +2,57 @@ import * as sinon from "sinon";
 import * as vscode from "vscode";
 import * as p4 from "../../model/PerforceModel";
 
-import { StubChangelist, getStatusText } from "./StubPerforceService";
 import { ChangeInfo, ChangeSpec, FixedJob, FstatInfo } from "../../model/CommonTypes";
+import { Status } from "../../scm/Status";
+import { PerforceService } from "../../PerforceService";
+import { getStatusText } from "./testUtils";
+
+type PerforceResponseCallback = (
+    err: Error | null,
+    stdout: string,
+    stderr: string
+) => void;
+
+export interface StubJob {
+    name: string;
+    description: string[];
+}
+
+export interface StubChangelist {
+    chnum: string;
+    description: string;
+    submitted?: boolean;
+    files: StubFile[];
+    shelvedFiles?: StubFile[];
+    jobs?: StubJob[];
+}
+
+export interface StubFile {
+    localFile: vscode.Uri;
+    depotPath: string;
+    depotRevision: number;
+    operation: Status;
+    fileType?: string;
+    resolveFromDepotPath?: string;
+    resolveEndFromRev?: number;
+}
+
+export function stubExecute() {
+    return sinon.stub(PerforceService, "execute").callsFake(executeStub);
+}
+
+function executeStub(
+    _resource: vscode.Uri,
+    command: string,
+    responseCallback: PerforceResponseCallback,
+    _args?: string,
+    _directoryOverride?: string | null,
+    _input?: string
+) {
+    setImmediate(() => {
+        responseCallback(null, command, "");
+    });
+}
 
 function makeDefaultInfo(resource: vscode.Uri) {
     const ret = new Map<string, string>();

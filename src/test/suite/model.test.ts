@@ -9,24 +9,22 @@ import * as sinon from "sinon";
 import { IPerforceConfig } from "../../PerforceService";
 import { PerforceSCMProvider } from "../../ScmProvider";
 import { PerforceContentProvider } from "../../ContentProvider";
-import {
-    StubPerforceService,
-    StubFile,
-    getLocalFile,
-    returnStdErr,
-    perforceLocalUriMatcher,
-    perforceDepotUriMatcher,
-    perforceShelvedUriMatcher,
-    perforceFromFileUriMatcher,
-    perforceLocalShelvedUriMatcher
-} from "./StubPerforceService";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../../Display";
 import { Utils } from "../../Utils";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
 import { WorkspaceConfigAccessor } from "../../ConfigService";
-import { StubPerforceModel } from "./StubPerforceModel";
+import { StubPerforceModel, stubExecute, StubFile } from "../helpers/StubPerforceModel";
+
+import {
+    getLocalFile,
+    perforceLocalUriMatcher,
+    perforceDepotUriMatcher,
+    perforceShelvedUriMatcher,
+    perforceFromFileUriMatcher,
+    perforceLocalShelvedUriMatcher
+} from "../helpers/testUtils";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -35,7 +33,6 @@ chai.use(chaiAsPromised);
 interface TestItems {
     stubModel: StubPerforceModel;
     instance: PerforceSCMProvider;
-    stubService: StubPerforceService;
     execute: sinon.SinonSpy;
     showMessage: sinon.SinonSpy<[string], void>;
     showModalMessage: sinon.SinonSpy<[string], void>;
@@ -211,7 +208,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         doc.dispose();
     });
     describe("Refresh / Initialize", function() {
-        let stubService: StubPerforceService;
+        let stubModel: StubPerforceModel;
         let instance: PerforceSCMProvider;
         let workspaceConfig: WorkspaceConfigAccessor;
         let emitter: vscode.EventEmitter<ActiveStatusEvent>;
@@ -222,9 +219,10 @@ describe("Model & ScmProvider modules (integration)", () => {
             emitter = new vscode.EventEmitter<ActiveStatusEvent>();
             sinon.replace(Display, "onActiveFileStatusKnown", emitter.event);
 
-            stubService = new StubPerforceService();
-            stubService.changelists = [];
-            stubService.stubExecute();
+            // ensure p4 functions don't get called
+            stubExecute();
+
+            stubModel = new StubPerforceModel();
 
             workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
 
@@ -241,7 +239,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             await vscode.commands.executeCommand("workbench.action.closeAllEditors");
         });
         it("Handles no changelists", async () => {
-            stubService.changelists = [];
+            stubModel.changelists = [];
 
             await instance.Initialize();
             expect(instance.resources).to.have.lengthOf(1);
@@ -250,7 +248,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[0].label).to.equal("Default Changelist");
         });
         it("Handles changelists with no open files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "1",
                     description: "changelist 1",
@@ -267,7 +265,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].resourceStates).to.be.resources([]);
         });
         it("Handles open files with no shelved files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -315,7 +313,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Handles shelved files with no open files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "3",
                     description: "shelved changelist 1",
@@ -350,7 +348,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Handles open and shelved files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "5",
                     description: "mixed changelist 1",
@@ -392,7 +390,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Includes new files open for shelve and not in the workspace", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "7",
                     description: "changelist 1",
@@ -414,7 +412,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Handles the same file shelved in two changelists", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "8",
                     description: "changelist 1",
@@ -452,7 +450,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Can sort changelists ascending", async () => {
             sinon.stub(workspaceConfig, "changelistOrder").get(() => "ascending");
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -493,7 +491,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Handles shelved files with no open files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "3",
                     description: "shelved changelist 1",
@@ -528,7 +526,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Has decorations for files", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "1",
                     description: "changelist 1",
@@ -562,7 +560,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         it("Handles more than the max files per command", async () => {
             sinon.stub(workspaceConfig, "maxFilePerCommand").get(() => 1);
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -610,14 +608,14 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Can be refreshed", async () => {
-            stubService.changelists = [];
+            stubModel.changelists = [];
             await instance.Initialize();
             expect(instance.resources).to.have.lengthOf(1);
             expect(instance.resources[0].id).to.equal("default");
             expect(instance.resources[0].label).to.equal("Default Changelist");
             expect(instance.resources[0].resourceStates).to.be.resources([]);
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -644,7 +642,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Can be refreshed multiple times without duplication", async () => {
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -677,7 +675,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         it("Can ignore shelved files", async () => {
             sinon.stub(workspaceConfig, "hideShelvedFiles").get(() => true);
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "1",
                     description: "mixed changelist 1",
@@ -702,7 +700,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         it("Can hide non-workspace files", async () => {
             sinon.stub(workspaceConfig, "hideNonWorkspaceFiles").get(() => true);
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "1",
                     description: "mixed changelist 1",
@@ -730,7 +728,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         it("Can ignore changelists with a defined prefix", async () => {
             sinon.stub(workspaceConfig, "ignoredChangelistPrefix").get(() => "ignore:");
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "1",
                     description: "ignore:me",
@@ -758,7 +756,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Counts open files but not shelved files", async () => {
             sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -783,7 +781,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Can count shelved files", async () => {
             sinon.stub(workspaceConfig, "countBadge").get(() => "all");
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -808,7 +806,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Can disable counting files", async () => {
             sinon.stub(workspaceConfig, "countBadge").get(() => "off");
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -829,7 +827,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         it("Updates the count after refresh", async () => {
             sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -845,7 +843,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             await instance.Initialize();
             expect(instance.count).to.equal(4);
 
-            stubService.changelists = [
+            stubModel.changelists = [
                 {
                     chnum: "default",
                     description: "n/a",
@@ -867,7 +865,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         describe("State conflicts", () => {
             it("Marks open files as conflicting when the display indicates they are not open", async () => {
-                stubService.changelists = [
+                stubModel.changelists = [
                     {
                         chnum: "default",
                         description: "n/a",
@@ -881,7 +879,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(PerforceSCMProvider.mayHaveConflictForFile(uri)).to.be.true;
             });
             it("Does not mark files as conflicting if states match", async () => {
-                stubService.changelists = [
+                stubModel.changelists = [
                     {
                         chnum: "default",
                         description: "n/a",
@@ -895,7 +893,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(PerforceSCMProvider.mayHaveConflictForFile(uri)).to.be.false;
             });
             it("Considers everything open as potentially conflicting during a refresh", async () => {
-                stubService.changelists = [
+                stubModel.changelists = [
                     {
                         chnum: "1",
                         description: "change 1",
@@ -915,7 +913,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(PerforceSCMProvider.mayHaveConflictForFile(uri)).to.be.false;
             });
             it("Ignores shelved files", async () => {
-                stubService.changelists = [
+                stubModel.changelists = [
                     {
                         chnum: "1",
                         description: "change 1",
@@ -931,7 +929,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(PerforceSCMProvider.mayHaveConflictForFile(uri)).to.be.false;
             });
             it("Ignores files where the active status is not NOT_OPEN", async () => {
-                stubService.changelists = [
+                stubModel.changelists = [
                     {
                         chnum: "default",
                         description: "n/a",
@@ -986,11 +984,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 {
                     chnum: "2",
                     description: "Changelist 2",
-                    files: [],
-                    behaviours: {
-                        shelve: returnStdErr("my shelve error"),
-                        unshelve: returnStdErr("my unshelve error")
-                    }
+                    files: []
                 },
                 {
                     chnum: "3",
@@ -999,39 +993,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     files: []
                 }
             ];
-            const stubService = new StubPerforceService();
-            stubService.changelists = [
-                {
-                    chnum: "1",
-                    description: "Changelist 1",
-                    files: [
-                        basicFiles.edit(),
-                        basicFiles.delete(),
-                        basicFiles.add(),
-                        basicFiles.moveAdd(),
-                        basicFiles.moveDelete(),
-                        basicFiles.branch(),
-                        basicFiles.integrate()
-                    ],
-                    shelvedFiles: [basicFiles.shelveEdit(), basicFiles.shelveDelete()]
-                },
-                {
-                    chnum: "2",
-                    description: "Changelist 2",
-                    files: [],
-                    behaviours: {
-                        shelve: returnStdErr("my shelve error"),
-                        unshelve: returnStdErr("my unshelve error")
-                    }
-                },
-                {
-                    chnum: "3",
-                    description: "Changelist 3",
-                    submitted: true,
-                    files: []
-                }
-            ];
-            const execute = stubService.stubExecute();
+            const execute = stubExecute();
             const workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
             sinon.stub(workspaceConfig, "refreshDebounceTime").get(() => 0);
 
@@ -1054,7 +1016,6 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             items = {
                 stubModel,
-                stubService,
                 instance,
                 execute,
                 showMessage,
@@ -1691,7 +1652,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
             it("Can save from an empty default changelist", async () => {
                 items.instance.sourceControl.inputBox.value = "My new changelist";
-                items.stubService.changelists = [
+                items.stubModel.changelists = [
                     {
                         chnum: "default",
                         files: [],
@@ -1704,7 +1665,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     {
                         spec: {
                             description: "My new changelist",
-                            files: undefined,
+                            files: [],
                             rawFields: defaultRawFields
                         }
                     }
