@@ -64,7 +64,6 @@ function findResourceForShelvedFile(
         setTimeout(() => res(), 1);
     });
 }*/
-
 function findResourceForFile(group: vscode.SourceControlResourceGroup, file: StubFile) {
     const res = group.resourceStates.find(
         resource =>
@@ -76,6 +75,8 @@ function findResourceForFile(group: vscode.SourceControlResourceGroup, file: Stu
     }
     return res;
 }
+
+const defaultRawFields = [{ name: "A field", value: ["don't know"] }];
 
 describe("Model & ScmProvider modules (integration)", () => {
     if (!vscode.workspace.workspaceFolders?.[0]) {
@@ -1677,13 +1678,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubModel.lastChangeInput).to.deep.include({
+                expect(items.stubModel.lastChangeInput).to.deep.equal({
                     description: "My new changelist\nline 2\nline 3",
                     files: [
                         { depotPath: basicFiles.add().depotPath, action: "add" },
                         { depotPath: basicFiles.edit().depotPath, action: "edit" }
                     ],
-                    rawFields: [{ name: "A field", value: ["don't know"] }]
+                    rawFields: defaultRawFields
                 });
             });
             it("Can save from an empty default changelist", async () => {
@@ -1696,15 +1697,17 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy new changelist"
+                expect(items.stubModel.lastChangeInput).to.deep.equal({
+                    description: "My new changelist",
+                    files: undefined,
+                    rawFields: defaultRawFields
                 });
-                expect(items.stubService.lastChangeInput).not.to.have.any.keys("Files");
+                //expect(items.stubModel.lastChangeInput).not.to.have.any.keys("files");
             });
             it("Can change the description of an existing changelist", async () => {
                 items.instance.sourceControl.inputBox.value =
                     "#1\nMy updated changelist\nline2";
-                items.stubService.changelists = [
+                items.stubModel.changelists = [
                     {
                         chnum: "1",
                         files: [basicFiles.add(), basicFiles.edit()],
@@ -1712,15 +1715,14 @@ describe("Model & ScmProvider modules (integration)", () => {
                     }
                 ];
                 await PerforceSCMProvider.ProcessChangelist(items.instance.sourceControl);
-                expect(items.stubService.lastChangeInput).to.include({
-                    Description: "\tMy updated changelist\n\tline2",
-                    Files:
-                        "\t" +
-                        basicFiles.add().depotPath +
-                        "\t# add" +
-                        "\n\t" +
-                        basicFiles.edit().depotPath +
-                        "\t# edit"
+                expect(items.stubModel.lastChangeInput).to.deep.equal({
+                    change: "1",
+                    description: "My updated changelist\nline2",
+                    files: [
+                        { action: "add", depotPath: basicFiles.add().depotPath },
+                        { action: "edit", depotPath: basicFiles.edit().depotPath }
+                    ],
+                    rawFields: defaultRawFields
                 });
             });
             it("Can change the description of an empty changelist", async () => {
@@ -1804,15 +1806,15 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.ReopenFile(resource1 as Resource, resource2);
 
-                expect(items.execute).to.have.been.calledWithMatch(
+                expect(items.stubModel.reopenFiles).to.have.been.calledWith(
                     workspaceUri,
-                    "reopen",
-                    sinon.match.any,
-                    '-c 2 "' +
-                        basicFiles.add().localFile.fsPath +
-                        '" "' +
-                        basicFiles.edit().localFile.fsPath +
-                        '"'
+                    {
+                        chnum: "2",
+                        files: [
+                            { fsPath: basicFiles.add().localFile.fsPath },
+                            { fsPath: basicFiles.edit().localFile.fsPath }
+                        ]
+                    }
                 );
             });
             it("Can move files to the default changelist", async () => {
