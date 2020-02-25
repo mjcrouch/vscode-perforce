@@ -2,7 +2,7 @@ import * as p4 from "../../model/PerforceModel";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 import { PerforceService } from "../../PerforceService";
-import { getWorkspaceUri } from "../helpers/testUtils";
+import { getWorkspaceUri, returnStdOut } from "../helpers/testUtils";
 
 import { expect } from "chai";
 import * as chai from "chai";
@@ -27,7 +27,6 @@ function basicExecuteStub(
     setImmediate(() => responseCallback(null, out, ""));
 }
 
-/*
 function execWithResult(err: Error | null, stdout: string, stderr: string) {
     return (
         _resource: any,
@@ -49,7 +48,6 @@ function execWithStdErr(stderr: string) {
 function execWithErr(err: Error) {
     return execWithResult(err, "", "");
 }
-*/
 
 describe("Perforce Model", () => {
     let execute: sinon.SinonStub<Parameters<typeof basicExecuteStub>, void>;
@@ -68,8 +66,44 @@ describe("Perforce Model", () => {
     describe("Simple commands", () => {
         it("makes a simple command");
     });
-    describe("Change Spec", () => {
-        it("Outputs a change spec");
+    describe("Get change Spec", () => {
+        it("Outputs a change spec", async () => {
+            execute.callsFake(
+                returnStdOut(
+                    "# A Perforce Change Specification.\n" +
+                        "#\n" +
+                        "#  Change:      The change number. 'new' on a new changelist.\n" +
+                        "#  Date:        The date this specification was last modified.\n" +
+                        "#  etc\n" +
+                        "\n" +
+                        "Change:	new\n" +
+                        "\n" +
+                        "Client:	cli\n" +
+                        "\n" +
+                        "User:	user\n" +
+                        "\n" +
+                        "Status:	new\n" +
+                        "\n" +
+                        "Description:\n" +
+                        "<enter description here>\n" +
+                        "\n" +
+                        "Files:\n" +
+                        "//depot/testArea/testFile	# edit\n"
+                )
+            );
+            await expect(p4.getChangeSpec(ws, {})).to.eventually.deep.equal({
+                description: "<enter description here>",
+                files: [{ depotPath: "//depot/testArea/testFile", action: "edit" }],
+                change: "new",
+                rawFields: [
+                    { name: "Change", value: "\tnew" },
+                    { name: "Client", value: "\tcli" },
+                    { name: "User", value: "\tuser" }
+                ]
+            });
+        });
+    });
+    describe("Input change spec", () => {
         it("Inputs a change spec and returns the change number");
     });
     describe("fstat", () => {
@@ -78,6 +112,10 @@ describe("Perforce Model", () => {
     });
     describe("get opened files", () => {
         it("Returns the list of opened files");
+        it("Does not throw on stderr", async () => {
+            execute.callsFake(execWithStdErr("no open files"));
+            await expect(p4.getOpenedFiles(ws, {})).to.eventually.eql([]);
+        });
     });
     describe("submit", () => {
         it("uses the correct arguments", async () => {
@@ -133,10 +171,19 @@ describe("Perforce Model", () => {
         });
     });
     describe("reopen", () => {
-        it("uses the correct arguments");
+        it("uses the correct arguments", async () => {
+            await expect(
+                p4.reopenFiles(ws, {
+                    chnum: "default",
+                    files: ["a.txt", "b.txt"]
+                })
+            ).to.eventually.equal('reopen -c default "a.txt" "b.txt"');
+        });
     });
     describe("sync", () => {
-        it("uses the correct arguments");
+        it("uses the correct arguments", async () => {
+            await expect(p4.sync(ws, {})).to.eventually.equal("sync");
+        });
     });
     describe("getChangelists", () => {
         it("Returns the list of open changelists");
@@ -155,10 +202,26 @@ describe("Perforce Model", () => {
         it("Returns false if stderr has output");
         it("Returns false on error");
     });
+    describe("isLoggedIn", () => {
+        it("Returns true on stdout", async () => {
+            execute.callsFake(execWithStdOut("login ok"));
+            await expect(p4.isLoggedIn(ws)).to.eventually.equal(true);
+        });
+        it("Returns false on stderr", async () => {
+            execute.callsFake(execWithStdErr("not logged in"));
+            await expect(p4.isLoggedIn(ws)).to.eventually.equal(false);
+        });
+        it("Returns false on err", async () => {
+            execute.callsFake(execWithErr(new Error("oh no")));
+            await expect(p4.isLoggedIn(ws)).to.eventually.equal(false);
+        });
+    });
     describe("login", () => {
         it("uses the correct arguments");
     });
     describe("logout", () => {
-        it("uses the correct arguments");
+        it("uses the correct arguments", async () => {
+            await expect(p4.logout(ws, {})).to.eventually.equal("logout");
+        });
     });
 });
