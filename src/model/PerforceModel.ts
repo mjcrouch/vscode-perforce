@@ -25,7 +25,7 @@ import {
 const removeLeadingNewline = (value: string) => value.replace(/^\r?\n/, "");
 const splitIntoLines = (value: string) => value.split(/\r?\n/);
 const splitIntoSections = (str: string) => str.split(/\r?\n\r?\n/);
-const removeIndent = (lines: string[]) => lines.map(line => line.replace(/^t/, ""));
+const removeIndent = (lines: string[]) => lines.map(line => line.replace(/^\t/, ""));
 
 //#region Changelists
 
@@ -48,7 +48,7 @@ const excludeNonFields = (parts: string[]) =>
 
 function mapToChangeFields(rawFields: RawField[]): ChangeSpec {
     return {
-        change: getBasicField(rawFields, "Change")?.[0],
+        change: getBasicField(rawFields, "Change")?.[0].trim(),
         description: getBasicField(rawFields, "Description")?.join("\n"),
         files: getBasicField(rawFields, "Files")?.map(file => {
             const endOfFileStr = file.indexOf("#");
@@ -112,7 +112,7 @@ export type CreatedChangelist = {
 };
 
 function parseCreatedChangelist(createdStr: string): CreatedChangelist {
-    const matches = /Change\s(\d+)\screated/.exec(createdStr);
+    const matches = /Change\s(\d+)\s/.exec(createdStr);
     return {
         rawOutput: createdStr,
         chnum: matches?.[1]
@@ -498,10 +498,10 @@ export const info = makeSimpleCommand("info", () => []);
 export const getInfo = asyncOuputHandler(info, parseInfo);
 
 export interface HaveFileOptions {
-    fsPath: string;
+    file: PerforceFile;
 }
 
-const haveFileFlags = flagMapper<HaveFileOptions>([], "fsPath");
+const haveFileFlags = flagMapper<HaveFileOptions>([], "file");
 
 const haveFileCmd = makeSimpleCommand(
     "have",

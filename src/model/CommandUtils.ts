@@ -94,22 +94,30 @@ export function makeFlags(
     return pairs.map(pair => makeFlag(pair[0], pair[1])).concat(...(lastArgs ?? []));
 }
 
-type FlagValue = string | boolean | PerforceFile[] | string[] | undefined;
+type FlagValue = string | boolean | PerforceFile | PerforceFile[] | string[] | undefined;
 type FlagDefinition<T> = {
     [key in keyof T]: FlagValue;
 };
 
 function lastArgAsStrings(
     lastArg: FlagValue,
-    lastArgIsFormatted?: boolean
+    lastArgIsFormattedArray?: boolean
 ): (string | undefined)[] | undefined {
     if (typeof lastArg === "boolean") {
         return undefined;
     }
     if (typeof lastArg === "string") {
-        return [lastArg];
+        return ['"' + lastArg + '"'];
     }
-    if (lastArgIsFormatted) {
+    if (isFileSpec(lastArg)) {
+        return [
+            '"' +
+                Utils.expansePath(lastArg.fsPath) +
+                (lastArg.suffix ? lastArg.suffix : "") +
+                '"'
+        ];
+    }
+    if (lastArgIsFormattedArray) {
         return lastArg as string[];
     }
     return pathsToArgs(lastArg);
@@ -120,13 +128,13 @@ function lastArgAsStrings(
  * @param flagNames A set of tuples - flag name to output (e.g. "c" produces "-c") and key from the object to use.
  * For example, given an object `{chnum: "1", delete: true}`, the parameter `[["c", "chnum"], ["d", "delete"]]` would map this object to `["-c", "1", "-d"]`
  * @param lastArg The field on the object that contains the final argument(s), that do not require a command line switch. Typically a list of paths to append to the end of the command. (must not be a boolean field)
- * @param lastArgIsFormatted If the last argument is a string array, disable putting quotes around the strings
+ * @param lastArgIsFormattedArray If the last argument is a string array, disable putting quotes around the strings
  * @param fixedPrefix A fixed string to always put first in the perforce command
  */
 export function flagMapper<P extends FlagDefinition<P>>(
     flagNames: [string, keyof P][],
     lastArg?: keyof P,
-    lastArgIsFormatted?: boolean,
+    lastArgIsFormattedArray?: boolean,
     fixedPrefix?: string
 ) {
     return (options: P): CmdlineArgs => {
@@ -136,7 +144,10 @@ export function flagMapper<P extends FlagDefinition<P>>(
                     return [fn[0], options[fn[1]] as string | boolean | undefined];
                 }),
                 lastArg
-                    ? lastArgAsStrings(options[lastArg] as FlagValue, lastArgIsFormatted)
+                    ? lastArgAsStrings(
+                          options[lastArg] as FlagValue,
+                          lastArgIsFormattedArray
+                      )
                     : undefined
             )
         );

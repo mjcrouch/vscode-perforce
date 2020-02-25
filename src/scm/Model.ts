@@ -217,7 +217,7 @@ export class Model implements Disposable {
         if (cachedHave !== undefined) {
             return cachedHave;
         }
-        const ret = await p4.haveFile(uri, { fsPath: uri.fsPath });
+        const ret = await p4.haveFile(uri, { file: { fsPath: uri.fsPath } });
 
         this._knownHaveListByPath.set(uri.fsPath, ret);
 
