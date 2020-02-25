@@ -241,11 +241,149 @@ describe("Perforce Model", () => {
         });
     });
     describe("fstat", () => {
-        it("Returns fstat info in the same order as the input");
-        it("Uses multiple fstat commands if necessary");
+        it("Uses the correct arguments", async () => {
+            execute.callsFake(execWithStdOut(""));
+            await p4.getFstatInfo(ws, {
+                depotPaths: ["a", "b", "c"],
+                chnum: "99",
+                limitToShelved: true,
+                outputPendingRecord: true
+            });
+
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "fstat",
+                sinon.match.any,
+                '-e 99 -Or -Rs "a" "b" "c"'
+            );
+        });
+        it("Returns fstat info in the same order as the input, ignoring stderr", async () => {
+            execute.callsFake(
+                execWithResult(
+                    null,
+                    "... depotFile //depot/testArea/ilikenewfiles\n" +
+                        "... clientFile /home/perforce/depot/testArea/newPlace/ilikenewfiles\n" +
+                        "... isMapped \n" +
+                        "... headAction add\n" +
+                        "... headType text\n" +
+                        "... headTime 1581622617\n" +
+                        "... headRev 1\n" +
+                        "... headChange 38\n" +
+                        "... headModTime 1581622605\n" +
+                        "... haveRev 1\n" +
+                        "\n" +
+                        "... depotFile //depot/testArea/ireallylikenewfiles\n" +
+                        "... clientFile /home/perforce/depot/testArea/newPlace/ireallylikenewfiles\n" +
+                        "... isMapped \n" +
+                        "... headAction add\n" +
+                        "... headType text\n" +
+                        "... headTime 1581622799\n" +
+                        "... headRev 1\n" +
+                        "... headChange 38\n" +
+                        "... headModTime 1581622774\n" +
+                        "... haveRev 1\n" +
+                        "\n" +
+                        "... depotFile //depot/testArea/stuff\n" +
+                        "... clientFile /home/perforce/depot/testArea/stuff\n" +
+                        "... isMapped \n" +
+                        "... headAction add\n" +
+                        "... headType text\n" +
+                        "... headTime 1581023705\n" +
+                        "... headRev 1\n" +
+                        "... headChange 38\n" +
+                        "... headModTime 1580943006\n" +
+                        "... haveRev 1\n",
+                    "//depot/testArea/filewithnooutput - no such file"
+                )
+            );
+
+            const output = await p4.getFstatInfo(ws, {
+                chnum: "38",
+                depotPaths: [
+                    "//depot/testArea/ireallylikenewfiles",
+                    "//depot/testArea/ilikenewfiles",
+                    "//depot/testArea/filewithnooutput"
+                ]
+            });
+
+            expect(output).to.have.length(3);
+            expect(output[0]).to.deep.include({
+                depotFile: "//depot/testArea/ireallylikenewfiles",
+                clientFile: "/home/perforce/depot/testArea/newPlace/ireallylikenewfiles",
+                isMapped: "true"
+            });
+            expect(output[1]).to.deep.include({
+                depotFile: "//depot/testArea/ilikenewfiles",
+                clientFile: "/home/perforce/depot/testArea/newPlace/ilikenewfiles",
+                isMapped: "true"
+            });
+            expect(output[2]).to.be.undefined;
+        });
+        it("Uses multiple fstat commands if necessary", async () => {
+            const paths = Array.from({ length: 35 }, (x, i) => "//depot/f" + i);
+            const allOuputPaths = paths.map(path => '"' + path + '"');
+
+            execute.onFirstCall().callsFake(
+                execWithStdOut(
+                    paths
+                        .slice(0, 32)
+                        .map(path => "... depotFile " + path)
+                        .join("\n\n")
+                )
+            );
+            execute.onSecondCall().callsFake(
+                execWithStdOut(
+                    paths
+                        .slice(32)
+                        .map(path => "... depotFile " + path)
+                        .join("\n\n")
+                )
+            );
+
+            const expected = paths.map(path => {
+                return { depotFile: path };
+            });
+
+            const firstPortion = allOuputPaths.slice(0, 32).join(" ");
+            const secondPortion = allOuputPaths.slice(32).join(" ");
+
+            await expect(
+                p4.getFstatInfo(ws, { depotPaths: paths })
+            ).to.eventually.deep.equal(expected);
+
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "fstat",
+                sinon.match.any,
+                firstPortion
+            );
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "fstat",
+                sinon.match.any,
+                secondPortion
+            );
+        });
     });
     describe("get opened files", () => {
-        it("Returns the list of opened files");
+        it("Returns the list of opened files", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "//depot/testArea/anotherfile#1 - move/delete change 35 (text) by super@matto\n" +
+                        "//depot/testArea/anotherfile-moved#1 - move/add change 35 (text) by super@matto"
+                )
+            );
+            await expect(p4.getOpenedFiles(ws, { chnum: "3" })).to.eventually.eql([
+                "//depot/testArea/anotherfile",
+                "//depot/testArea/anotherfile-moved"
+            ]);
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "opened",
+                sinon.match.any,
+                "-c 3"
+            );
+        });
         it("Does not throw on stderr", async () => {
             execute.callsFake(execWithStdErr("no open files"));
             await expect(p4.getOpenedFiles(ws, {})).to.eventually.eql([]);
@@ -264,9 +402,9 @@ describe("Perforce Model", () => {
                 p4.revert(ws, {
                     unchanged: true,
                     chnum: "1",
-                    paths: [{ fsPath: "myfile.txt" }]
+                    paths: [{ fsPath: "c:\\my f#ile.txt" }]
                 })
-            ).to.eventually.equal('revert -a -c 1 "myfile.txt"');
+            ).to.eventually.equal('revert -a -c 1 "c:\\my f%23ile.txt"');
         });
     });
     describe("shelve", () => {
@@ -360,7 +498,29 @@ describe("Perforce Model", () => {
         });
     });
     describe("login", () => {
-        it("uses the correct arguments");
+        it("uses the correct arguments", async () => {
+            await p4.login(ws, { password: "hunter2" });
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "login",
+                sinon.match.any,
+                "",
+                null,
+                "hunter2"
+            );
+        });
+        it("Throws on stderr", async () => {
+            execute.callsFake(execWithStdErr("bad password"));
+            await expect(
+                p4.login(ws, { password: "hunter3" })
+            ).to.eventually.be.rejectedWith("bad password");
+        });
+        it("Throws on err", async () => {
+            execute.callsFake(execWithErr(new Error("more bad password")));
+            await expect(
+                p4.login(ws, { password: "hunter4" })
+            ).to.eventually.be.rejectedWith("more bad password");
+        });
     });
     describe("logout", () => {
         it("uses the correct arguments", async () => {
