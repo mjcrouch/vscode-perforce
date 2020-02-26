@@ -1346,10 +1346,55 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
 
         describe("Shelve / Unshelve a file", () => {
-            it("Shelves an open file and presents an option to revert");
-            it("Shelves and reverts an open file");
+            it("Shelves an open file and presents an option to revert", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolves(undefined);
+
+                const resource = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }]
+                });
+
+                expect(warn).to.have.been.calledOnce;
+
+                expect(items.stubModel.revert).not.to.have.been.called;
+            });
+            it("Shelves and reverts an open file", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                const resource = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }]
+                });
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    unchanged: undefined
+                });
+            });
             it("Unshelves a shelved file and deletes the shelved file");
             it("Does not delete the shelved file if the unshelve fails");
+            it("Can shelve or unshelve multiple files");
         });
 
         describe("Opening", () => {
