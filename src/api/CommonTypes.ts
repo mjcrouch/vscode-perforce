@@ -6,7 +6,7 @@ export type ChangeInfo = {
     date: string;
     user: string;
     client: string;
-    status: string;
+    status?: string;
 };
 
 export type ChangeSpec = {

@@ -8,7 +8,7 @@ import { expect } from "chai";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import * as sinonChai from "sinon-chai";
-import { ChangeSpec } from "../../api/CommonTypes";
+import { ChangeSpec, ChangeInfo, FixedJob } from "../../api/CommonTypes";
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
@@ -50,7 +50,7 @@ function execWithErr(err: Error) {
     return execWithResult(err, "", "");
 }
 
-describe("Perforce Model", () => {
+describe("Perforce API", () => {
     let execute: sinon.SinonStub<Parameters<typeof basicExecuteStub>, void>;
     const ws = getWorkspaceUri();
 
@@ -458,16 +458,178 @@ describe("Perforce Model", () => {
         });
     });
     describe("getChangelists", () => {
-        it("Returns the list of open changelists");
+        it("Returns the list of open changelists", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "Change 2148153 on 2020/01/21 by user3@client 'Update things'\n" +
+                        "Change 2148152 on 2020/01/20 by user2@client *pending* 'Do some updates '\n" +
+                        "Change 2148150 on 2020/01/12 by user1@client *pending* 'Update more things'"
+                )
+            );
+
+            await expect(
+                p4.getChangelists(ws, {
+                    client: "client",
+                    status: p4.ChangelistStatus.PENDING
+                })
+            ).to.eventually.deep.equal([
+                {
+                    chnum: "2148153",
+                    date: "2020/01/21",
+                    user: "user3",
+                    client: "client",
+                    status: undefined,
+                    description: "Update things"
+                },
+                {
+                    chnum: "2148152",
+                    date: "2020/01/20",
+                    user: "user2",
+                    client: "client",
+                    status: "pending",
+                    description: "Do some updates "
+                },
+                {
+                    chnum: "2148150",
+                    date: "2020/01/12",
+                    user: "user1",
+                    client: "client",
+                    status: "pending",
+                    description: "Update more things"
+                }
+            ] as ChangeInfo[]);
+
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "changes",
+                sinon.match.any,
+                "-c client -s pending"
+            );
+        });
     });
     describe("getShelvedFiles", () => {
-        it("Returns the list of shelved files");
+        it("Returns the list of shelved files", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "Change 123 by user@cli on 2020/01/22 10:38:30 *pending*\n" +
+                        "\n" +
+                        "\tNot sure what I'm doing\n" +
+                        "\n" +
+                        "Shelved files ...\n" +
+                        "\n" +
+                        "\n" +
+                        "Change 456 by user@cli on 2016/09/16 11:40:19 *pending*\n" +
+                        "\n" +
+                        "\tUpdate stuff\n" +
+                        "\n" +
+                        "Jobs fixed ...\n" +
+                        "\n" +
+                        "job000001 on 2016/09/27 by Bob.Bobson *closed*\n" +
+                        "\n" +
+                        "\tDo something good\n" +
+                        "\n" +
+                        "Shelved files ...\n" +
+                        "\n" +
+                        "... //depot/testArea/file1#7 edit\n" +
+                        "... //depot/testArea/file2.cc#12 edit\n" +
+                        "\n" +
+                        "Change 789 by user@cli on 2016/09/16 11:30:19 *pending*\n" +
+                        "\n" +
+                        "\tUpdate stuff\n" +
+                        "\n" +
+                        "Shelved files ...\n" +
+                        "\n" +
+                        "... //depot/testArea/file3#7 move/delete\n" +
+                        "... //depot/testArea/file4.cc#1 move/add\n" +
+                        "\n"
+                )
+            );
+
+            await expect(
+                p4.getShelvedFiles(ws, { chnums: ["123", "456", "789"] })
+            ).to.eventually.deep.equal([
+                {
+                    chnum: 456,
+                    paths: ["//depot/testArea/file1", "//depot/testArea/file2.cc"]
+                },
+                {
+                    chnum: 789,
+                    paths: ["//depot/testArea/file3", "//depot/testArea/file4.cc"]
+                }
+            ] as p4.ShelvedChangeInfo[]);
+
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "describe",
+                sinon.match.any,
+                "-S -s 123 456 789"
+            );
+        });
     });
     describe("fixedJobs", () => {
-        it("Returns the list of jobs fixed by a changelist");
+        it("Returns the list of jobs fixed by a changelist", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "Change 456 by user@cli on 2016/09/16 11:40:19 *pending*\n" +
+                        "\n" +
+                        "\tUpdate stuff\n" +
+                        "\n" +
+                        "Jobs fixed ...\n" +
+                        "\n" +
+                        "job00001 on 2016/09/27 by Bob.Bobson *closed*\n" +
+                        "\n" +
+                        "\tDo something good\n" +
+                        "\n" +
+                        "job00002 on 2016/09/27 by Bob.Bobson *closed*\n" +
+                        "\n" +
+                        "\tDo something better\n" +
+                        "\tAnd do it over multiple lines\n" +
+                        "\n" +
+                        "Shelved files ...\n" +
+                        "\n" +
+                        "... //depot/testArea/file1#7 edit\n" +
+                        "... //depot/testArea/file2.cc#12 edit\n" +
+                        "\n"
+                )
+            );
+
+            await expect(p4.getFixedJobs(ws, { chnum: "456" })).to.eventually.deep.equal([
+                { description: ["Do something good"], id: "job00001" },
+                {
+                    description: ["Do something better", "And do it over multiple lines"],
+                    id: "job00002"
+                }
+            ] as FixedJob[]);
+
+            expect(execute).to.have.been.calledWith(
+                ws,
+                "describe",
+                sinon.match.any,
+                "-s 456"
+            );
+        });
     });
     describe("info", () => {
-        it("Returns a map of info fields");
+        it("Returns a map of info fields", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "User name: user\n" +
+                        "Client name: cli\n" +
+                        "Client host: skynet\n" +
+                        "Client root: /home/user/perforce\n" +
+                        "Current directory: /home/user/perforce/sub\n"
+                )
+            );
+
+            const output = await p4.getInfo(ws, {});
+            expect(output.get("User name")).to.equal("user");
+            expect(output.get("Client name")).to.equal("cli");
+            expect(output.get("Client host")).to.equal("skynet");
+            expect(output.get("Client root")).to.equal("/home/user/perforce");
+            expect(output.get("Current directory")).to.equal("/home/user/perforce/sub");
+
+            expect(execute).to.have.been.calledWith(ws, "info");
+        });
     });
     describe("have file", () => {
         it("Uses the correct arguments", async () => {
@@ -479,9 +641,28 @@ describe("Perforce Model", () => {
                 '"//depot/testArea/myFile.txt"'
             );
         });
-        it("Returns true if stdout has output");
-        it("Returns false if stderr has output");
-        it("Returns false on error");
+        it("Returns true if stdout has output", async () => {
+            execute.callsFake(
+                execWithStdOut(
+                    "//depot/testArea/Makefile#4 - /home/peforce/TestArea/Makefile"
+                )
+            );
+            await expect(p4.haveFile(ws, { file: "/home/peforce/TestArea/Makefile" })).to
+                .eventually.be.true;
+        });
+        it("Returns false if stderr has output", async () => {
+            execute.callsFake(
+                execWithStdErr("//depot/testArea/Makefile#4 - no such file")
+            );
+            await expect(p4.haveFile(ws, { file: "/home/peforce/TestArea/Makefile" })).to
+                .eventually.be.false;
+        });
+        it("Throws on error", async () => {
+            execute.callsFake(execWithErr(new Error("oh no")));
+            await expect(
+                p4.haveFile(ws, { file: "/home/peforce/TestArea/Makefile" })
+            ).to.eventually.be.rejectedWith("oh no");
+        });
     });
     describe("isLoggedIn", () => {
         it("Returns true on stdout", async () => {

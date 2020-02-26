@@ -361,7 +361,7 @@ function parseChangelistDescription(value: string): ChangeInfo | undefined {
 
     // with -t flag
     // Change 45 on 2020/02/15 18:48:43 by super@matto 'a new changelist with a much lo'
-    const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+)\s\*(.+)\*\s\'(.*)\'/.exec(
+    const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+?)\s(?:\*(.+)\*\s)?\'(.*)\'/.exec(
         value
     );
 

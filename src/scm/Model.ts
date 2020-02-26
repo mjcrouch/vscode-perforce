@@ -586,13 +586,14 @@ export class Model implements Disposable {
             try {
                 await p4.shelve(this._workspaceUri, {
                     chnum: input.change,
-                    delete: true,
                     force: true,
-                    paths: [input.depotPath]
+                    paths: [{ fsPath: input.resourceUri.fsPath }]
                 });
+                await this.Revert(input);
             } catch (reason) {
                 Display.showImportantError(reason.toString());
             }
+            this.Refresh();
         }
     }
 

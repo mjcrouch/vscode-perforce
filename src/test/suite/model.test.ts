@@ -1345,6 +1345,13 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
         });
 
+        describe("Shelve / Unshelve a file", () => {
+            it("Shelves an open file and presents an option to revert");
+            it("Shelves and reverts an open file");
+            it("Unshelves a shelved file and deletes the shelved file");
+            it("Does not delete the shelved file if the unshelve fails");
+        });
+
         describe("Opening", () => {
             let execCommand: sinon.SinonSpy<[string, ...any[]], Thenable<unknown>>;
             beforeEach(function() {
