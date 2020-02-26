@@ -1,8 +1,8 @@
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import * as p4 from "../../model/PerforceModel";
+import * as p4 from "../../api/PerforceApi";
 
-import { ChangeInfo, ChangeSpec, FixedJob, FstatInfo } from "../../model/CommonTypes";
+import { ChangeInfo, ChangeSpec, FixedJob, FstatInfo } from "../../api/CommonTypes";
 import { Status } from "../../scm/Status";
 import { PerforceService } from "../../PerforceService";
 import { getStatusText } from "./testUtils";

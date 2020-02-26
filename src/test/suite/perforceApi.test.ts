@@ -1,4 +1,4 @@
-import * as p4 from "../../model/PerforceModel";
+import * as p4 from "../../api/PerforceApi";
 import * as vscode from "vscode";
 import * as sinon from "sinon";
 import { PerforceService } from "../../PerforceService";
@@ -8,7 +8,7 @@ import { expect } from "chai";
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 import * as sinonChai from "sinon-chai";
-import { ChangeSpec } from "../../model/CommonTypes";
+import { ChangeSpec } from "../../api/CommonTypes";
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);

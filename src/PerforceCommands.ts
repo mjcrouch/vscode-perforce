@@ -16,7 +16,7 @@ import {
 import * as Path from "path";
 
 import { PerforceService } from "./PerforceService";
-import * as p4 from "./model/PerforceModel";
+import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
 import { Utils } from "./Utils";
 

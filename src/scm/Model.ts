@@ -19,8 +19,8 @@ import { Resource } from "./Resource";
 import * as Path from "path";
 import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
-import * as p4 from "../model/PerforceModel";
-import { ChangeInfo } from "../model/CommonTypes";
+import * as p4 from "../api/PerforceApi";
+import { ChangeInfo } from "../api/CommonTypes";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
