@@ -80,18 +80,18 @@ export function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined
 
 export type CmdlineArgs = (string | undefined)[];
 
-function makeFlag(flag: string, value: string | boolean | undefined) {
+function makeFlag(flag: string, value: string | boolean | undefined): CmdlineArgs {
     if (typeof value === "string") {
-        return value ? "-" + flag + " " + value : undefined;
+        return value ? ["-" + flag, value] : [];
     }
-    return value ? "-" + flag : undefined;
+    return value ? ["-" + flag] : [];
 }
 
 export function makeFlags(
     pairs: [string, string | boolean | undefined][],
     lastArgs?: (string | undefined)[]
-) {
-    return pairs.map(pair => makeFlag(pair[0], pair[1])).concat(...(lastArgs ?? []));
+): CmdlineArgs {
+    return pairs.flatMap(pair => makeFlag(pair[0], pair[1])).concat(...(lastArgs ?? []));
 }
 
 type FlagValue = string | boolean | PerforceFile | PerforceFile[] | string[] | undefined;
@@ -107,14 +107,11 @@ function lastArgAsStrings(
         return undefined;
     }
     if (typeof lastArg === "string") {
-        return ['"' + lastArg + '"'];
+        return [lastArg];
     }
     if (isFileSpec(lastArg)) {
         return [
-            '"' +
-                Utils.expansePath(lastArg.fsPath) +
-                (lastArg.suffix ? lastArg.suffix : "") +
-                '"'
+            Utils.expansePath(lastArg.fsPath) + (lastArg.suffix ? lastArg.suffix : "")
         ];
     }
     if (lastArgIsFormattedArray) {
@@ -154,20 +151,15 @@ export function flagMapper<P extends FlagDefinition<P>>(
     };
 }
 
-const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(isTruthy).join(" ");
+const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(isTruthy);
 
 function pathsToArgs(arr?: (string | FileSpec)[]) {
     return (
         arr?.map(path => {
             if (isFileSpec(path)) {
-                return (
-                    '"' +
-                    Utils.expansePath(path.fsPath) +
-                    (path.suffix ? path.suffix : "") +
-                    '"'
-                );
+                return Utils.expansePath(path.fsPath) + (path.suffix ? path.suffix : "");
             } else if (path) {
-                return '"' + path + '"';
+                return path;
             }
         }) ?? []
     );

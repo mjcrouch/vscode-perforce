@@ -155,7 +155,7 @@ export namespace PerforceService {
         resource: Uri,
         command: string,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
-        args?: string,
+        args?: string[],
         directoryOverride?: string | null,
         input?: string
     ): void {
@@ -183,7 +183,7 @@ export namespace PerforceService {
     export function executeAsPromise(
         resource: Uri,
         command: string,
-        args?: string,
+        args?: string[],
         directoryOverride?: string,
         input?: string
     ): Promise<string> {
@@ -211,7 +211,7 @@ export namespace PerforceService {
         resource: Uri,
         command: string,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
-        args?: string,
+        args?: string[],
         directoryOverride?: string | null,
         input?: string
     ): void {
@@ -230,10 +230,11 @@ export namespace PerforceService {
 
         if (args !== undefined) {
             if (config && config.stripLocalDir) {
-                args = args.replace(config.localDir, "");
+                args = args.map(arg => arg.replace(config.localDir, ""));
             }
 
-            cmdLine += " " + args;
+            const escapedArgs = args.map(arg => `'${arg.replace(/'/g, `'\\''`)}'`);
+            cmdLine += " " + escapedArgs.join(" ");
         }
 
         Display.channel.appendLine(cmdLine);
@@ -290,7 +291,7 @@ export namespace PerforceService {
 
     export function getConfigFilename(resource: Uri): Promise<string> {
         return new Promise((resolve, reject) => {
-            PerforceService.executeAsPromise(resource, "set", "-q")
+            PerforceService.executeAsPromise(resource, "set", ["-q"])
                 .then(stdout => {
                     let configIndex = stdout.indexOf("P4CONFIG=");
                     if (configIndex === -1) {

@@ -56,7 +56,7 @@ export namespace PerforceCommands {
     }
 
     export function add(fileUri: Uri, directoryOverride?: string) {
-        const args = '"' + Utils.expansePath(fileUri.fsPath) + '"';
+        const args = [Utils.expansePath(fileUri.fsPath)];
         PerforceService.execute(
             fileUri,
             "add",
@@ -93,7 +93,7 @@ export namespace PerforceCommands {
 
     export function edit(fileUri: Uri, directoryOverride?: string): Promise<boolean> {
         return new Promise(resolve => {
-            const args = '"' + Utils.expansePath(fileUri.fsPath) + '"';
+            const args = [Utils.expansePath(fileUri.fsPath)];
             PerforceService.execute(
                 fileUri,
                 "edit",
@@ -126,7 +126,7 @@ export namespace PerforceCommands {
     }
 
     export function p4delete(fileUri: Uri) {
-        const args = '"' + Utils.expansePath(fileUri.fsPath) + '"';
+        const args = [Utils.expansePath(fileUri.fsPath)];
         PerforceService.execute(
             fileUri,
             "delete",
@@ -156,7 +156,7 @@ export namespace PerforceCommands {
             ? Path.dirname(fileUri.fsPath)
             : undefined;
 
-        const args = '"' + Utils.expansePath(fileUri.fsPath) + '"';
+        const args = [Utils.expansePath(fileUri.fsPath)];
         PerforceService.execute(
             fileUri,
             "revert",
@@ -219,7 +219,7 @@ export namespace PerforceCommands {
 
         const doc = editor.document;
 
-        const args = '-s "' + Utils.expansePath(doc.uri.fsPath) + '"';
+        const args = ["-s", Utils.expansePath(doc.uri.fsPath)];
         PerforceService.execute(
             doc.uri,
             "filelog",
@@ -274,12 +274,12 @@ export namespace PerforceCommands {
         const cl = conf.get("annotate.changelist");
         const usr = conf.get("annotate.user");
         const swarmHost = conf.get("swarmHost");
-        let args = "-q";
+        const args = ["-q"];
         if (cl) {
-            args += "c";
+            args.push("-c");
         }
         if (usr) {
-            args += "u";
+            args.push("-u");
         }
 
         const decorationType = window.createTextEditorDecorationType({
@@ -423,7 +423,7 @@ export namespace PerforceCommands {
             }
 
             const resource = Uri.file(file);
-            const args = '"' + file + '"';
+            const args = [file];
             PerforceService.execute(
                 resource,
                 "where",

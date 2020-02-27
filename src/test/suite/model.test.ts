@@ -1540,7 +1540,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         file.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file.localFile.fsPath + '#4"'
+                        ["-q", file.localFile.fsPath + "#4"]
                     );
                 });
                 it("Can open multiple resources", async () => {
@@ -1568,7 +1568,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         file1.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file1.localFile.fsPath + '#4"'
+                        ["-q", file1.localFile.fsPath + "#4"]
                     );
                     expect(td.lastCall.args[0]).to.be.p4Uri(
                         perforceLocalUriMatcher(file2)
@@ -1622,7 +1622,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         sinon.match({ fsPath: workspaceUri.fsPath }),
                         "print",
                         sinon.match.any,
-                        '-q "' + file.resolveFromDepotPath + '#4"'
+                        ["-q", file.resolveFromDepotPath + "#4"]
                     );
                 });
                 it("Displays the depot version for a move / delete", async () => {
@@ -1674,7 +1674,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         file.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file.localFile.fsPath + '#7"'
+                        ["-q", file.localFile.fsPath + "#7"]
                     );
                 });
                 it("Diffs a shelved file against the depot file", async () => {
@@ -1695,13 +1695,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                         { fsPath: workspaceUri.fsPath },
                         "print",
                         sinon.match.any,
-                        '-q "' + file.depotPath + '@=1"'
+                        ["-q", file.depotPath + "@=1"]
                     );
                     expect(items.execute).to.be.calledWithMatch(
                         { fsPath: workspaceUri.fsPath },
                         "print",
                         sinon.match.any,
-                        '-q "' + file.depotPath + '#1"'
+                        ["-q", file.depotPath + "#1"]
                     );
                 });
                 it("Can diff a local file against the shelved file (from the shelved file)", async () => {
@@ -1722,7 +1722,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         { fsPath: workspaceUri.fsPath },
                         "print",
                         sinon.match.any,
-                        '-q "' + file.depotPath + '@=1"'
+                        ["-q", file.depotPath + "@=1"]
                     );
                 });
                 it("Can diff a local file against the shelved file (from the local file)", async () => {
@@ -1743,7 +1743,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         file.localFile,
                         "print",
                         sinon.match.any,
-                        '-q "' + file.localFile.fsPath + '@=1"'
+                        ["-q", file.localFile.fsPath + "@=1"]
                     );
                 });
                 it("Displays the depot version for a shelved deletion", async () => {

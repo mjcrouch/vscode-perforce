@@ -17,13 +17,13 @@ function basicExecuteStub(
     _resource: vscode.Uri,
     command: string,
     responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
-    args?: string,
+    args?: string[],
     _directoryOverride?: string | null,
     _input?: string
 ) {
     let out = command;
-    if (args) {
-        out += " " + args;
+    if (args && args.length > 0) {
+        out += " " + args.join(" ");
     }
     setImmediate(() => responseCallback(null, out, ""));
 }
@@ -163,7 +163,7 @@ describe("Perforce API", () => {
                 ws,
                 "change",
                 sinon.match.any,
-                "-i",
+                ["-i"],
                 null,
                 "Change:\tnew\n\n" +
                     "Description:\tmy change spec\n\there it is\n\n" +
@@ -192,7 +192,7 @@ describe("Perforce API", () => {
                 ws,
                 "change",
                 sinon.match.any,
-                "-i",
+                ["-i"],
                 null,
                 "Change:\t1234\n\n" +
                     "Description:\ta spec\n\n" +
@@ -219,7 +219,7 @@ describe("Perforce API", () => {
                 ws,
                 "change",
                 sinon.match.any,
-                "-i",
+                ["-i"],
                 null,
                 "Change:\t1234\n\n" +
                     "Files:\t//depot/testArea/myEdit.txt\t# edit\n\n" +
@@ -250,12 +250,15 @@ describe("Perforce API", () => {
                 outputPendingRecord: true
             });
 
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "fstat",
-                sinon.match.any,
-                '-e 99 -Or -Rs "a" "b" "c"'
-            );
+            expect(execute).to.have.been.calledWith(ws, "fstat", sinon.match.any, [
+                "-e",
+                "99",
+                "-Or",
+                "-Rs",
+                "a",
+                "b",
+                "c"
+            ]);
         });
         it("Returns fstat info in the same order as the input, ignoring stderr", async () => {
             execute.callsFake(
@@ -321,7 +324,6 @@ describe("Perforce API", () => {
         });
         it("Uses multiple fstat commands if necessary", async () => {
             const paths = Array.from({ length: 35 }, (x, i) => "//depot/f" + i);
-            const allOuputPaths = paths.map(path => '"' + path + '"');
 
             execute.onFirstCall().callsFake(
                 execWithStdOut(
@@ -344,8 +346,8 @@ describe("Perforce API", () => {
                 return { depotFile: path };
             });
 
-            const firstPortion = allOuputPaths.slice(0, 32).join(" ");
-            const secondPortion = allOuputPaths.slice(32).join(" ");
+            const firstPortion = paths.slice(0, 32);
+            const secondPortion = paths.slice(32);
 
             await expect(
                 p4.getFstatInfo(ws, { depotPaths: paths })
@@ -377,12 +379,10 @@ describe("Perforce API", () => {
                 "//depot/testArea/anotherfile",
                 "//depot/testArea/anotherfile-moved"
             ]);
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "opened",
-                sinon.match.any,
-                "-c 3"
-            );
+            expect(execute).to.have.been.calledWith(ws, "opened", sinon.match.any, [
+                "-c",
+                "3"
+            ]);
         });
         it("Does not throw on stderr", async () => {
             execute.callsFake(execWithStdErr("no open files"));
@@ -404,7 +404,7 @@ describe("Perforce API", () => {
                     chnum: "1",
                     paths: [{ fsPath: "c:\\my f#ile.txt" }]
                 })
-            ).to.eventually.equal('revert -a -c 1 "c:\\my f%23ile.txt"');
+            ).to.eventually.equal("revert -a -c 1 c:\\my f%23ile.txt");
         });
     });
     describe("shelve", () => {
@@ -416,7 +416,7 @@ describe("Perforce API", () => {
                     chnum: "99",
                     paths: ["myfile.txt"]
                 })
-            ).to.eventually.equal('shelve -f -d -c 99 "myfile.txt"');
+            ).to.eventually.equal("shelve -f -d -c 99 myfile.txt");
         });
     });
     describe("unshelve", () => {
@@ -428,7 +428,7 @@ describe("Perforce API", () => {
                     force: true,
                     paths: ["myfile.txt"]
                 })
-            ).to.eventually.equal('unshelve -f -s 99 -c 1 "myfile.txt"');
+            ).to.eventually.equal("unshelve -f -s 99 -c 1 myfile.txt");
         });
     });
     describe("fix job", () => {
@@ -439,7 +439,7 @@ describe("Perforce API", () => {
                     jobId: "job000001",
                     removeFix: true
                 })
-            ).to.eventually.equal('fix -c 123456 -d "job000001"');
+            ).to.eventually.equal("fix -c 123456 -d job000001");
         });
     });
     describe("reopen", () => {
@@ -449,7 +449,7 @@ describe("Perforce API", () => {
                     chnum: "default",
                     files: ["a.txt", "b.txt"]
                 })
-            ).to.eventually.equal('reopen -c default "a.txt" "b.txt"');
+            ).to.eventually.equal("reopen -c default a.txt b.txt");
         });
     });
     describe("sync", () => {
@@ -499,12 +499,12 @@ describe("Perforce API", () => {
                 }
             ] as ChangeInfo[]);
 
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "changes",
-                sinon.match.any,
-                "-c client -s pending"
-            );
+            expect(execute).to.have.been.calledWith(ws, "changes", sinon.match.any, [
+                "-c",
+                "client",
+                "-s",
+                "pending"
+            ]);
         });
     });
     describe("getShelvedFiles", () => {
@@ -558,12 +558,13 @@ describe("Perforce API", () => {
                 }
             ] as p4.ShelvedChangeInfo[]);
 
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "describe",
-                sinon.match.any,
-                "-S -s 123 456 789"
-            );
+            expect(execute).to.have.been.calledWith(ws, "describe", sinon.match.any, [
+                "-S",
+                "-s",
+                "123",
+                "456",
+                "789"
+            ]);
         });
     });
     describe("fixedJobs", () => {
@@ -601,12 +602,10 @@ describe("Perforce API", () => {
                 }
             ] as FixedJob[]);
 
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "describe",
-                sinon.match.any,
-                "-s 456"
-            );
+            expect(execute).to.have.been.calledWith(ws, "describe", sinon.match.any, [
+                "-s",
+                "456"
+            ]);
         });
     });
     describe("info", () => {
@@ -634,12 +633,9 @@ describe("Perforce API", () => {
     describe("have file", () => {
         it("Uses the correct arguments", async () => {
             await p4.haveFile(ws, { file: "//depot/testArea/myFile.txt" }); // TODO local path
-            expect(execute).to.have.been.calledWith(
-                ws,
-                "have",
-                sinon.match.any,
-                '"//depot/testArea/myFile.txt"'
-            );
+            expect(execute).to.have.been.calledWith(ws, "have", sinon.match.any, [
+                "//depot/testArea/myFile.txt"
+            ]);
         });
         it("Returns true if stdout has output", async () => {
             execute.callsFake(
@@ -685,7 +681,7 @@ describe("Perforce API", () => {
                 ws,
                 "login",
                 sinon.match.any,
-                "",
+                [],
                 null,
                 "hunter2"
             );

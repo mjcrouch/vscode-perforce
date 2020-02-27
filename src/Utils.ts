@@ -131,7 +131,7 @@ export namespace Utils {
     export interface CommandParams {
         file?: Uri | string;
         revision?: string;
-        prefixArgs?: string;
+        prefixArgs?: string[];
         gOpts?: string;
         input?: string;
         hideStdErr?: boolean; // just from the status bar - not from the log output
@@ -154,7 +154,7 @@ export namespace Utils {
                 hideStdErr,
                 stdErrIsOk
             } = params;
-            let args = prefixArgs ?? "";
+            const args = prefixArgs ?? [];
 
             if (gOpts !== undefined) {
                 command = gOpts + " " + command;
@@ -166,7 +166,7 @@ export namespace Utils {
                 let path = typeof file === "string" ? file : file.fsPath;
                 path = expansePath(path);
 
-                args += ' "' + path + revisionString + '"';
+                args.push(path + revisionString);
             }
 
             PerforceService.execute(
@@ -199,7 +199,7 @@ export namespace Utils {
         command: string,
         file: Uri,
         revision?: string,
-        prefixArgs?: string,
+        prefixArgs?: string[],
         gOpts?: string,
         input?: string
     ): Promise<string> {

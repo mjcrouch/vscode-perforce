@@ -45,7 +45,7 @@ function executeStub(
     _resource: vscode.Uri,
     command: string,
     responseCallback: PerforceResponseCallback,
-    _args?: string,
+    _args?: string[],
     _directoryOverride?: string | null,
     _input?: string
 ) {
