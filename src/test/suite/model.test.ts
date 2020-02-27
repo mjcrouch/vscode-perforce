@@ -201,14 +201,16 @@ describe("Model & ScmProvider modules (integration)", () => {
 
     let items: TestItems;
     let subscriptions: vscode.Disposable[] = [];
-
-    const doc = new PerforceContentProvider();
+    const outerSubs: vscode.Disposable[] = [];
 
     before(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
+        const doc = new PerforceContentProvider();
+        outerSubs.push(doc);
+        Display.initialize(outerSubs);
     });
     after(() => {
-        doc.dispose();
+        outerSubs.forEach(d => d.dispose());
     });
     describe("Refresh / Initialize", function() {
         let stubModel: StubPerforceModel;
