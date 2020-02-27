@@ -26,6 +26,7 @@ import {
     perforceLocalShelvedUriMatcher
 } from "../helpers/testUtils";
 import { ChangeSpec } from "../../api/CommonTypes";
+import { SubmitChangelistOptions } from "../../api/PerforceApi";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -34,6 +35,7 @@ chai.use(chaiAsPromised);
 interface TestItems {
     stubModel: StubPerforceModel;
     instance: PerforceSCMProvider;
+    workspaceConfig: WorkspaceConfigAccessor;
     execute: sinon.SinonSpy;
     showMessage: sinon.SinonSpy<[string], void>;
     showModalMessage: sinon.SinonSpy<[string], void>;
@@ -1018,6 +1020,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             items = {
                 stubModel,
                 instance,
+                workspaceConfig,
                 execute,
                 showMessage,
                 showModalMessage,
@@ -1870,28 +1873,148 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
         });
         describe("Submit default", () => {
-            /*it("Does not submit an empty changelist", async () => {
-                const showQuickPick = sinon.stub(vscode.window, "showQuickPick");
+            it("Does not submit an empty changelist", async () => {
                 const showInputBox = sinon
                     .stub(vscode.window, "showInputBox")
                     .resolves("my description");
+
                 await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
 
                 expect(items.showError).to.have.been.calledWith(
-                    "The default changelist is empty"
+                    "Error: The default changelist is empty"
                 );
 
-                expect(showQuickPick).not.to.have.been.called;
+                expect(showInputBox).not.to.have.been.called;
                 expect(items.stubModel.submitChangelist).not.to.have.been.called;
-            });*/
-            it("Requests a description and asks whether to save / submit the changelist");
-            it("Saves the changelist when the option is chosen");
-            it("Submits the default changelist when it has files");
-            it("Excludes files not in the workspace when configured to hide them");
+                expect(items.refresh).not.to.have.been.called;
+            });
+            it("Requests a description and asks whether to save / submit the changelist", async () => {
+                const showInputBox = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("my description");
+
+                const quickPick = sinon
+                    .stub(vscode.window, "showQuickPick")
+                    .resolves(undefined);
+
+                items.stubModel.changelists = [
+                    { chnum: "default", description: "n/a", files: [basicFiles.edit()] }
+                ];
+
+                await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
+                expect(showInputBox).to.have.been.called;
+
+                const itemArg = quickPick.lastCall.args[0] as vscode.QuickPickItem[];
+                expect(itemArg).to.deep.equal(["Submit", "Save Changelist", "Cancel"]);
+
+                expect(items.stubModel.submitChangelist).not.to.have.been.called;
+                expect(items.refresh).not.to.have.been.called;
+            });
+            it("Saves the changelist when the option is chosen", async () => {
+                const showInputBox = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("my description");
+
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve((items as vscode.QuickPickItem[])[1]);
+                });
+
+                items.stubModel.changelists = [
+                    { chnum: "default", description: "n/a", files: [basicFiles.edit()] }
+                ];
+
+                await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
+                expect(showInputBox).to.have.been.called;
+
+                expect(items.stubModel.inputChangeSpec).to.have.been.called;
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Submits the default changelist when it has files", async () => {
+                const showInputBox = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("my description");
+
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve((items as vscode.QuickPickItem[])[0]);
+                });
+
+                items.stubModel.changelists = [
+                    {
+                        chnum: "default",
+                        description: "n/a",
+                        files: [basicFiles.edit(), basicFiles.outOfWorkspaceAdd()]
+                    }
+                ];
+
+                await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
+                expect(showInputBox).to.have.been.called;
+
+                expect(items.stubModel.submitChangelist).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        description: "my description"
+                    } as SubmitChangelistOptions
+                );
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Excludes files not in the workspace when configured to hide them", async () => {
+                sinon
+                    .stub(items.workspaceConfig, "hideNonWorkspaceFiles")
+                    .get(() => true);
+
+                sinon.stub(vscode.window, "showInputBox").resolves("my description");
+
+                sinon.stub(vscode.window, "showQuickPick").callsFake(items => {
+                    return Promise.resolve((items as vscode.QuickPickItem[])[0]);
+                });
+
+                items.stubModel.changelists = [
+                    {
+                        chnum: "default",
+                        description: "n/a",
+                        files: [basicFiles.edit(), basicFiles.outOfWorkspaceEdit()]
+                    }
+                ];
+
+                await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
+
+                expect(items.stubModel.inputChangeSpec).to.have.been.calledWith(
+                    workspaceUri
+                );
+                const call = items.stubModel.inputChangeSpec.lastCall;
+                expect(call.args[1].spec).to.deep.include({
+                    files: [{ action: "edit", depotPath: basicFiles.edit().depotPath }]
+                });
+                expect(call.args[1].spec.files).to.have.length(1);
+
+                expect(items.stubModel.submitChangelist).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        chnum: "99"
+                    } as SubmitChangelistOptions
+                );
+
+                expect(items.refresh).to.have.been.called;
+            });
         });
         describe("Submit", () => {
-            it("Cannot submit the default changelist");
-            it("Submits the selected changelist");
+            it("Cannot submit the default changelist", async () => {
+                await expect(
+                    PerforceSCMProvider.Submit(items.instance.resources[0])
+                ).to.eventually.be.rejectedWith(
+                    "The default changelist is not valid for this operation"
+                );
+            });
+            it("Submits the selected changelist", async () => {
+                await PerforceSCMProvider.Submit(items.instance.resources[1]);
+
+                expect(items.stubModel.submitChangelist).to.have.been.calledWith(
+                    workspaceUri,
+                    {
+                        chnum: "1"
+                    }
+                );
+            });
         });
         describe("Describe", () => {
             it("Can describe the default changelist");

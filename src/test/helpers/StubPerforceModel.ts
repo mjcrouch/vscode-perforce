@@ -124,9 +124,14 @@ export class StubPerforceModel {
             .resolves({ chnum: "99", rawOutput: "Change 99 created" });
     }
 
-    resolveOpenFiles(): Promise<string[]> {
+    resolveOpenFiles(
+        _resource: vscode.Uri,
+        options: p4.OpenedFileOptions
+    ): Promise<string[]> {
         return Promise.resolve(
-            this.changelists.flatMap(cl => cl.files.map(file => file.depotPath))
+            this.changelists
+                .filter(cl => (options.chnum ? cl.chnum === options.chnum : true))
+                .flatMap(cl => cl.files.map(file => file.depotPath))
         );
     }
 
