@@ -5,6 +5,7 @@ import { Display } from "./Display";
 import { PerforceSCMProvider } from "./ScmProvider";
 
 import * as CP from "child_process";
+import * as spawn from "cross-spawn";
 import { CommandLimiter } from "./CommandLimiter";
 
 // eslint-disable-next-line @typescript-eslint/interface-name-prefix
@@ -87,8 +88,30 @@ export namespace PerforceService {
         return path;
     }
 
-    export function getPerforceCmdPath(resource: Uri): string {
+    function getPerforceCmdPath(): string {
         let p4Path = workspace.getConfiguration("perforce").get("command", "none");
+
+        if (p4Path === "none") {
+            const isWindows = process.platform.startsWith("win");
+            p4Path = isWindows ? "p4.exe" : "p4";
+        } else {
+            const toUNC = (path: string): string => {
+                let uncPath = path;
+
+                if (!uncPath.startsWith("\\\\")) {
+                    const replaceable = uncPath.split("\\");
+                    uncPath = replaceable.join("\\\\");
+                }
+
+                return uncPath;
+            };
+
+            p4Path = toUNC(p4Path);
+        }
+        return p4Path;
+    }
+
+    function getPerforceCmdParams(resource: Uri): string[] {
         const p4User = workspace
             .getConfiguration("perforce", resource)
             .get("user", "none");
@@ -103,50 +126,33 @@ export namespace PerforceService {
             .get("password", "none");
         const p4Dir = workspace.getConfiguration("perforce", resource).get("dir", "none");
 
-        const buildCmd = (value: string | number | undefined, arg: string): string => {
+        const ret: string[] = [];
+
+        const buildCmd = (value: string | number | undefined, arg: string): string[] => {
             if (!value || value === "none") {
-                return "";
+                return [];
             }
-            return ` ${arg} ${value}`;
+            return [arg, value.toString()];
         };
 
-        if (p4Path === "none") {
-            const isWindows = process.platform.startsWith("win");
-            p4Path = isWindows ? "p4.exe" : "p4";
-        } else {
-            const toUNC = (path: string): string => {
-                let uncPath = path;
-
-                if (!uncPath.startsWith("\\\\")) {
-                    const replaceable = uncPath.split("\\");
-                    uncPath = replaceable.join("\\\\");
-                }
-
-                uncPath = `"${uncPath}"`;
-                return uncPath;
-            };
-
-            p4Path = toUNC(p4Path);
-        }
-
-        p4Path += buildCmd(p4User, "-u");
-        p4Path += buildCmd(p4Client, "-c");
-        p4Path += buildCmd(p4Port, "-p");
-        p4Path += buildCmd(p4Pass, "-P");
-        p4Path += buildCmd(p4Dir, "-d");
+        ret.push(...buildCmd(p4User, "-u"));
+        ret.push(...buildCmd(p4Client, "-c"));
+        ret.push(...buildCmd(p4Port, "-p"));
+        ret.push(...buildCmd(p4Pass, "-P"));
+        ret.push(...buildCmd(p4Dir, "-d"));
 
         // later args override earlier args
         const wksFolder = workspace.getWorkspaceFolder(resource);
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
         if (config) {
-            p4Path += buildCmd(config.p4User, "-u");
-            p4Path += buildCmd(config.p4Client, "-c");
-            p4Path += buildCmd(config.p4Port, "-p");
-            p4Path += buildCmd(config.p4Pass, "-P");
-            p4Path += buildCmd(config.p4Dir, "-d");
+            ret.push(...buildCmd(config.p4User, "-u"));
+            ret.push(...buildCmd(config.p4Client, "-c"));
+            ret.push(...buildCmd(config.p4Port, "-p"));
+            ret.push(...buildCmd(config.p4Pass, "-P"));
+            ret.push(...buildCmd(config.p4Dir, "-d"));
         }
 
-        return p4Path;
+        return ret;
     }
 
     let id = 0;
@@ -218,28 +224,41 @@ export namespace PerforceService {
         const wksFolder = workspace.getWorkspaceFolder(resource);
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
         const wksPath = wksFolder ? wksFolder.uri.fsPath : "";
-        let cmdLine = getPerforceCmdPath(resource);
-        const maxBuffer = workspace
-            .getConfiguration("perforce")
-            .get("maxBuffer", 200 * 1024);
+        const cmd = getPerforceCmdPath();
+        const loggedCommand: string[] = [cmd];
 
+        const allArgs: string[] = getPerforceCmdParams(resource);
         if (directoryOverride !== null && directoryOverride !== undefined) {
-            cmdLine += " -d " + directoryOverride;
+            allArgs.push("-d", directoryOverride);
         }
-        cmdLine += " " + command;
+        allArgs.push(command);
+
+        loggedCommand.push(...allArgs);
 
         if (args !== undefined) {
             if (config && config.stripLocalDir) {
                 args = args.map(arg => arg.replace(config.localDir, ""));
             }
 
+            // not actually using the escaped values, because cross-spawn does its own escaping,
+            // but no sensible way of logging the unescaped array for a user
             const escapedArgs = args.map(arg => `'${arg.replace(/'/g, `'\\''`)}'`);
-            cmdLine += " " + escapedArgs.join(" ");
+            loggedCommand.push(...escapedArgs);
+
+            allArgs.push(...args);
         }
 
-        Display.channel.appendLine(cmdLine);
-        const cmdArgs = { cwd: config ? config.localDir : wksPath, maxBuffer: maxBuffer };
-        const child = CP.exec(cmdLine, cmdArgs, responseCallback);
+        Display.channel.appendLine(loggedCommand.join(" "));
+        const spawnArgs: CP.SpawnOptions = { cwd: config ? config.localDir : wksPath };
+        const child = spawn(cmd, allArgs, spawnArgs);
+
+        let called = false;
+        child.on("error", (err: Error) => {
+            if (!called) {
+                called = true;
+                responseCallback(err, "", "");
+            }
+        });
 
         if (input !== undefined) {
             if (!child.stdin) {
@@ -247,6 +266,36 @@ export namespace PerforceService {
             }
             child.stdin.end(input, "utf8");
         }
+
+        getResults(child).then((value: string[]) => {
+            if (!called) {
+                responseCallback(null, value[0] ?? "", value[1] ?? "");
+            }
+        });
+    }
+
+    async function getResults(child: CP.ChildProcess): Promise<string[]> {
+        return Promise.all([readStdOut(child), readStdErr(child)]);
+    }
+
+    async function readStdOut(child: CP.ChildProcess) {
+        let output: string = "";
+        if (child.stdout) {
+            for await (const data of child.stdout) {
+                output += data.toString();
+            }
+        }
+        return output;
+    }
+
+    async function readStdErr(child: CP.ChildProcess) {
+        let output: string = "";
+        if (child.stderr) {
+            for await (const data of child.stderr) {
+                output += data.toString();
+            }
+        }
+        return output;
     }
 
     export function handleCommonServiceResponse(
