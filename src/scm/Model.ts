@@ -368,7 +368,12 @@ export class Model implements Disposable {
         }
 
         try {
-            await p4.getOpenedFiles(this._workspaceUri, { chnum: "default" });
+            const files = await p4.getOpenedFiles(this._workspaceUri, {
+                chnum: "default"
+            });
+            if (files.length === 0) {
+                throw new Error("The default changelist is empty");
+            }
         } catch (err) {
             Display.showError(err.toString());
             return;

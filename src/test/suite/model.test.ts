@@ -25,6 +25,7 @@ import {
     perforceFromFileUriMatcher,
     perforceLocalShelvedUriMatcher
 } from "../helpers/testUtils";
+import { ChangeSpec } from "../../api/CommonTypes";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -1367,6 +1368,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(warn).to.have.been.calledOnce;
 
                 expect(items.stubModel.revert).not.to.have.been.called;
+                expect(items.refresh).to.have.been.calledOnce;
             });
             it("Shelves and reverts an open file", async () => {
                 const warn = sinon
@@ -1391,10 +1393,89 @@ describe("Model & ScmProvider modules (integration)", () => {
                     paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
                     unchanged: undefined
                 });
+                expect(items.refresh).to.have.been.called;
             });
-            it("Unshelves a shelved file and deletes the shelved file");
-            it("Does not delete the shelved file if the unshelve fails");
-            it("Can shelve or unshelve multiple files");
+            it("Unshelves a shelved file and deletes the shelved file", async () => {
+                const resource = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    toChnum: "1",
+                    shelvedChnum: "1",
+                    paths: [basicFiles.shelveEdit().depotPath]
+                });
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    delete: true,
+                    paths: [basicFiles.shelveEdit().depotPath]
+                });
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Does not delete the shelved file if the unshelve fails", async () => {
+                const resource = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit()
+                );
+
+                items.stubModel.unshelve.rejects("badness");
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    toChnum: "1",
+                    shelvedChnum: "1",
+                    paths: [basicFiles.shelveEdit().depotPath]
+                });
+
+                expect(items.stubModel.shelve).not.to.have.been.called;
+                expect(items.showImportantError).to.have.been.calledWith("badness");
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Can shelve or unshelve multiple files", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                const resource2 = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveDelete()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource1, resource2);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }]
+                });
+
+                expect(warn).to.have.been.calledOnce;
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    unchanged: undefined
+                });
+
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    toChnum: "1",
+                    shelvedChnum: "1",
+                    paths: [basicFiles.shelveDelete().depotPath]
+                });
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    delete: true,
+                    paths: [basicFiles.shelveDelete().depotPath]
+                });
+                expect(items.refresh).to.have.been.called;
+            });
         });
 
         describe("Opening", () => {
@@ -1772,11 +1853,37 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
             });
             describe("Edit Changelist", () => {
-                it("Uses the source control input box for entering the description");
+                it("Uses the source control input box for entering the description", async () => {
+                    items.stubModel.getChangeSpec.resolves({
+                        description: "My description\nwith newline",
+                        change: "1",
+                        files: [],
+                        rawFields: []
+                    } as ChangeSpec);
+
+                    await PerforceSCMProvider.EditChangelist(items.instance.resources[1]);
+
+                    expect(items.instance.sourceControl.inputBox.value).to.equals(
+                        "#1\nMy description\nwith newline"
+                    );
+                });
             });
         });
         describe("Submit default", () => {
-            it("Does not submit an empty changelist");
+            /*it("Does not submit an empty changelist", async () => {
+                const showQuickPick = sinon.stub(vscode.window, "showQuickPick");
+                const showInputBox = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves("my description");
+                await PerforceSCMProvider.SubmitDefault(items.instance.sourceControl);
+
+                expect(items.showError).to.have.been.calledWith(
+                    "The default changelist is empty"
+                );
+
+                expect(showQuickPick).not.to.have.been.called;
+                expect(items.stubModel.submitChangelist).not.to.have.been.called;
+            });*/
             it("Requests a description and asks whether to save / submit the changelist");
             it("Saves the changelist when the option is chosen");
             it("Submits the default changelist when it has files");
