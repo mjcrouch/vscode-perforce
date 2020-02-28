@@ -97,37 +97,6 @@ export namespace Utils {
         return allArgs;
     }
 
-    export function getSimpleOutput(resource: Uri, command: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            PerforceService.execute(resource, command, (err, stdout, stderr) => {
-                err && Display.showError(err.toString());
-                stderr && Display.showError(stderr.toString());
-                if (err) {
-                    reject(err);
-                } else if (stderr) {
-                    reject(stderr);
-                } else {
-                    resolve(stdout);
-                }
-            });
-        });
-    }
-
-    export function getOutputs(
-        resource: Uri,
-        command: string
-    ): Promise<[string, string]> {
-        return new Promise((resolve, reject) => {
-            PerforceService.execute(resource, command, (err, stdout, stderr) => {
-                err && Display.showError(err.toString());
-                if (err) {
-                    reject(err);
-                }
-                resolve([stdout, stderr]);
-            });
-        });
-    }
-
     export interface CommandParams {
         file?: Uri | string;
         revision?: string;
