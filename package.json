@@ -746,12 +746,11 @@
             }
         ]
     },
-    "dependencies": {
+    "dependencies": {},
+    "devDependencies": {
         "ini": "^1.3.4",
         "micromatch": "^4.0.2",
-        "parse-gitignore": "^0.4.0"
-    },
-    "devDependencies": {
+        "parse-gitignore": "^0.4.0",
         "@arrows/composition": "^1.2.2",
         "@types/chai": "^4.2.7",
         "@types/chai-as-promised": "^7.1.2",
