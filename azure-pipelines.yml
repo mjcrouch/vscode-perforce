@@ -50,7 +50,8 @@ steps:
   inputs:
     testResultsFormat: 'JUnit'
     testResultsFiles: '**/junit-integration.xml'
-    testRunTitle: 'All Tests'
+    testRunTitle: $(Agent.JobName) - All Tests
+  displayName: Publish test results
 
 - bash: |
     echo ">>> Install vsce"
