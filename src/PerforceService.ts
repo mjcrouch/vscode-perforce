@@ -225,7 +225,6 @@ export namespace PerforceService {
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
         const wksPath = wksFolder ? wksFolder.uri.fsPath : "";
         const cmd = getPerforceCmdPath();
-        const loggedCommand: string[] = [cmd];
 
         const allArgs: string[] = getPerforceCmdParams(resource);
         if (directoryOverride !== null && directoryOverride !== undefined) {
@@ -233,23 +232,26 @@ export namespace PerforceService {
         }
         allArgs.push(command);
 
-        loggedCommand.push(...allArgs);
-
         if (args !== undefined) {
             if (config && config.stripLocalDir) {
                 args = args.map(arg => arg.replace(config.localDir, ""));
             }
 
-            // not actually using the escaped values, because cross-spawn does its own escaping,
-            // but no sensible way of logging the unescaped array for a user
-            const escapedArgs = args.map(arg => `'${arg.replace(/'/g, `'\\''`)}'`);
-            loggedCommand.push(...escapedArgs);
-
             allArgs.push(...args);
         }
 
-        Display.channel.appendLine(loggedCommand.join(" "));
         const spawnArgs: CP.SpawnOptions = { cwd: config ? config.localDir : wksPath };
+        spawnPerforceCommand(cmd, allArgs, spawnArgs, responseCallback, input);
+    }
+
+    function spawnPerforceCommand(
+        cmd: string,
+        allArgs: string[],
+        spawnArgs: CP.SpawnOptions,
+        responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
+        input?: string
+    ) {
+        logExecutedCommand(cmd, allArgs);
         const child = spawn(cmd, allArgs, spawnArgs);
 
         let called = false;
@@ -272,6 +274,15 @@ export namespace PerforceService {
                 responseCallback(null, value[0] ?? "", value[1] ?? "");
             }
         });
+    }
+
+    function logExecutedCommand(cmd: string, args: string[]) {
+        // not necessarily using these escaped values, because cross-spawn does its own escaping,
+        // but no sensible way of logging the unescaped array for a user. The output command line
+        // should at least be copy-pastable and work
+        const escapedArgs = args.map(arg => `'${arg.replace(/'/g, `'\\''`)}'`);
+        const loggedCommand = [cmd].concat(escapedArgs);
+        Display.channel.appendLine(loggedCommand.join(" "));
     }
 
     async function getResults(child: CP.ChildProcess): Promise<string[]> {

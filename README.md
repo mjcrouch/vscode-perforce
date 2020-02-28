@@ -121,10 +121,6 @@ Explore and leave your comments on [GitHub](https://github.com/mjcrouch/vscode-p
 1. Search the [existing issue on GitHub](https://github.com/mjcrouch/vscode-perforce/issues?utf8=✓&q=is%3Aissue)
 1. If you can't find your problem, [create an issue](https://github.com/mjcrouch/vscode-perforce/issues/new), and please include the logs when possible
   
-#### **Q:** There is a lot of duplicated changelists showing up in the `Source Control` viewlet
-**A:** Please provide your Perforce Output logs in [issue #62](https://github.com/stef-levesque/vscode-perforce/issues/62)
-  
-  
 #### **Q:** I'm using this old thing called *Source Depot*...
 **A:** I don't think you exist, since Microsoft has migrated to git. Compatibility mode has been removed.
 If i'm wrong, and you do exist, the original slevesque version of this extension provides a compatibility mode setting, which may or may not work
