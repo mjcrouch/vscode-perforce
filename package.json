@@ -172,12 +172,6 @@
                     "default": 32,
                     "description": "Specify the maximum number of file should be processed in a single command line (doesn't include changelist operations). Default is 32"
                 },
-                "perforce.maxBuffer": {
-                    "type": "number",
-                    "minimum": 1024,
-                    "default": 1048576,
-                    "description": "Specify the largest amount of data allowed for commands, including file comparison. Default is 204800 (200KB)"
-                },
                 "perforce.realpath": {
                     "type": "boolean",
                     "default": false,
