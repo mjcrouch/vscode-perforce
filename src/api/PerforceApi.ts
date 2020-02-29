@@ -234,19 +234,35 @@ const openedFlags = flagMapper<OpenedFileOptions>([["c", "chnum"]]);
 const opened = makeSimpleCommand(
     "opened",
     openedFlags,
-    fixedParams({ stdErrIsOk: true }) // stderr when no files are opened
+    fixedParams({ stdErrIsOk: true, hideStdErr: true }) // stderr when no files are opened
 );
 
 export const getOpenedFiles = asyncOuputHandler(opened, parseOpenedOutput);
 
-export type SubmitChangelistOptions = { chnum?: string; description?: string };
+export type SubmitChangelistOptions = {
+    chnum?: string;
+    description?: string;
+};
 
 const submitFlags = flagMapper<SubmitChangelistOptions>([
     ["c", "chnum"],
     ["d", "description"]
 ]);
 
-export const submitChangelist = makeSimpleCommand("submit", submitFlags);
+const submitChangelistCommand = makeSimpleCommand("submit", submitFlags);
+
+function parseSubmitOutput(output: string) {
+    const matches = /Change (\d+) submitted/.exec(output);
+    return {
+        rawOutput: output,
+        chnum: matches?.[1]
+    };
+}
+
+export const submitChangelist = asyncOuputHandler(
+    submitChangelistCommand,
+    parseSubmitOutput
+);
 
 export interface RevertOptions {
     paths: PerforceFile[];
