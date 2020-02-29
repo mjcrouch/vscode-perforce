@@ -173,7 +173,7 @@ export namespace PerforceCommands {
         );
     }
 
-    async function submitSingle() {
+    export async function submitSingle() {
         const file = window.activeTextEditor?.document.uri;
         if (!file || file.scheme !== "file") {
             Display.showError("No open file to submit");
@@ -184,6 +184,7 @@ export namespace PerforceCommands {
             Display.showModalMessage(
                 "The active document has unsaved changes. Save the file first!"
             );
+            return;
         }
         const description = await window.showInputBox({
             prompt:

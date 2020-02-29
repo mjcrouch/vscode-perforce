@@ -414,6 +414,18 @@ describe("Perforce API", () => {
                 "my description"
             ]);
         });
+        it("Can submit a single specified file", async () => {
+            await p4.submitChangelist(ws, {
+                description: "my description",
+                file: { fsPath: "C:\\MyFile.txt" }
+            });
+
+            expect(execute).to.have.been.calledWith(ws, "submit", sinon.match.any, [
+                "-d",
+                "my description",
+                "C:\\MyFile.txt"
+            ]);
+        });
     });
     describe("revert", () => {
         it("uses the correct arguments", async () => {
