@@ -94,7 +94,19 @@ describe("Perforce Command Module (integration)", () => {
                 "workbench.action.revertAndCloseActiveEditor"
             );
         });
-        it("Does not submit files that have a different scheme");
+        it("Does not submit files that have a different scheme", async () => {
+            const showError = sinon.stub(Display, "showError");
+
+            const localFile = getLocalFile(workspaceUri, "testFolder", "a.txt");
+            await vscode.window.showTextDocument(
+                Utils.makePerforceDocUri(localFile, "print", "-q").with({
+                    fragment: "5"
+                })
+            );
+
+            await PerforceCommands.submitSingle();
+            expect(showError).to.have.been.calledWithMatch("No open file");
+        });
         it("Requests a description", async () => {
             const input = sinon.stub(vscode.window, "showInputBox").resolves(undefined);
 
