@@ -306,12 +306,12 @@
             {
                 "command": "perforce.submitSelectedFiles",
                 "title": "Submit selected files...",
-                "category": "perforce"
+                "category": "Perforce"
             },
             {
                 "command": "perforce.submitSingle",
                 "title": "Submit the currently open file...",
-                "category": "perforce"
+                "category": "Perforce"
             },
             {
                 "command": "perforce.openResource",
