@@ -309,6 +309,11 @@
                 "category": "perforce"
             },
             {
+                "command": "perforce.submitSingle",
+                "title": "Submit the currently open file...",
+                "category": "perforce"
+            },
+            {
                 "command": "perforce.openResource",
                 "title": "Open changes",
                 "category": "Perforce"

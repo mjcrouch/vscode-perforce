@@ -242,12 +242,16 @@ export const getOpenedFiles = asyncOuputHandler(opened, parseOpenedOutput);
 export type SubmitChangelistOptions = {
     chnum?: string;
     description?: string;
+    file?: PerforceFile;
 };
 
-const submitFlags = flagMapper<SubmitChangelistOptions>([
-    ["c", "chnum"],
-    ["d", "description"]
-]);
+const submitFlags = flagMapper<SubmitChangelistOptions>(
+    [
+        ["c", "chnum"],
+        ["d", "description"]
+    ],
+    "file"
+);
 
 const submitChangelistCommand = makeSimpleCommand("submit", submitFlags);
 
