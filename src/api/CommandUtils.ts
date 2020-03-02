@@ -126,16 +126,16 @@ function lastArgAsStrings(
  * For example, given an object `{chnum: "1", delete: true}`, the parameter `[["c", "chnum"], ["d", "delete"]]` would map this object to `["-c", "1", "-d"]`
  * @param lastArg The field on the object that contains the final argument(s), that do not require a command line switch. Typically a list of paths to append to the end of the command. (must not be a boolean field)
  * @param lastArgIsFormattedArray If the last argument is a string array, disable putting quotes around the strings
- * @param fixedPrefix A fixed string to always put first in the perforce command
+ * @param fixedPrefix A fixed set of args to always put first in the perforce command
  */
 export function flagMapper<P extends FlagDefinition<P>>(
     flagNames: [string, keyof P][],
     lastArg?: keyof P,
     lastArgIsFormattedArray?: boolean,
-    fixedPrefix?: string
+    fixedPrefix?: CmdlineArgs
 ) {
     return (options: P): CmdlineArgs => {
-        return [fixedPrefix].concat(
+        return (fixedPrefix ?? []).concat(
             makeFlags(
                 flagNames.map(fn => {
                     return [fn[0], options[fn[1]] as string | boolean | undefined];

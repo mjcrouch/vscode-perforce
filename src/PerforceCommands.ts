@@ -300,16 +300,7 @@ export namespace PerforceCommands {
 
         const doc = editor.document;
         const conf = workspace.getConfiguration("perforce");
-        const cl = conf.get("annotate.changelist");
-        const usr = conf.get("annotate.user");
         const swarmHost = conf.get("swarmHost");
-        const args = ["-q"];
-        if (cl) {
-            args.push("-c");
-        }
-        if (usr) {
-            args.push("-u");
-        }
 
         const decorationType = window.createTextEditorDecorationType({
             isWholeLine: true,
@@ -322,25 +313,30 @@ export namespace PerforceCommands {
         let colorIndex = 0;
         let lastNum = "";
 
-        const output: string = await Utils.runCommandForFile(
-            "annotate",
-            doc.uri,
-            undefined,
-            args
-        );
-        const annotations = output.split(/\r?\n/);
+        const annotationsPromise = p4.annotate(doc.uri, {
+            file: doc.uri,
+            outputChangelist: true
+        });
+
+        const logPromise = p4.getFileHistory(doc.uri, { file: doc.uri });
+
+        const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
 
         for (let i = 0, n = annotations.length; i < n; ++i) {
-            const matches = new RegExp(usr ? /^(\d+): (\S+ \S+)/ : /^(\d+): /).exec(
-                annotations[i]
-            );
-            if (matches) {
-                const num = matches[1];
+            const a = annotations[i];
+            if (a) {
+                const l = log.find(l => l.chnum === a.revisionOrChnum);
+                const summary = "#" + l?.chnum + ": " + l?.description?.slice(0, 30);
+                const num = a.revisionOrChnum;
                 const hoverMessage = swarmHost
                     ? new MarkdownString(
-                          `[${num + " " + matches[2]}](${swarmHost}/changes/${num})`
+                          `[${num +
+                              " " +
+                              (a.user ?? "") +
+                              " " +
+                              (a.date ?? "")}](${swarmHost}/changes/${num})`
                       )
-                    : matches[2];
+                    : (a.user ?? "") + " " + (a.date ?? "");
 
                 if (num !== lastNum) {
                     lastNum = num;
@@ -348,8 +344,9 @@ export namespace PerforceCommands {
                 }
 
                 const before: ThemableDecorationAttachmentRenderOptions = {
-                    contentText: (cl ? "" : "#") + num,
-                    color: decorateColors[colorIndex]
+                    contentText: summary,
+                    color: decorateColors[colorIndex],
+                    width: "25em"
                 };
                 const renderOptions: DecorationInstanceRenderOptions = { before };
 

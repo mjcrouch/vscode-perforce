@@ -96,7 +96,7 @@ export type ChangeSpecOptions = {
     existingChangelist?: string;
 };
 
-const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", true, "-o");
+const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", true, ["-o"]);
 
 const outputChange = makeSimpleCommand("change", changeFlags);
 
@@ -575,3 +575,140 @@ export async function isLoggedIn(resource: vscode.Uri): Promise<boolean> {
 }
 
 export const logout = makeSimpleCommand<NoOpts>("logout", () => []);
+
+export interface FilelogOptions {
+    file: PerforceFile;
+    followBranches?: boolean;
+}
+
+const filelogFlags = flagMapper<FilelogOptions>(
+    [["i", "followBranches"]],
+    "file",
+    false,
+    ["-l", "-t"]
+);
+
+const filelog = makeSimpleCommand("filelog", filelogFlags);
+
+function parseDate(dateString: string) {
+    // example: 2020/02/15 18:48:43
+    // or: 2020/02/15
+    const matches = /(\d{4})\/(\d{2})\/(\d{2})(?: (\d{2}):(\d{2}):(\d{2}))?/.exec(
+        dateString.trim()
+    );
+
+    if (matches) {
+        const [, year, month, day, hours, minutes, seconds] = matches;
+
+        const hasTime = hours && minutes && seconds;
+
+        return new Date(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            hasTime ? parseInt(hours) : undefined,
+            hasTime ? parseInt(minutes) : undefined,
+            hasTime ? parseInt(seconds) : undefined
+        );
+    }
+}
+
+function parseFilelogItem(item: string[]) {
+    const [header, ...desc] = item;
+    // example:
+    // ... #5 change 45 edit on 2020/02/15 18:48:43 by super@matto (text)
+    const matches = /^\.{3} #(\d+) change (\d+) (\w+) on (.*?) by (.*?)@(.*?) (.*?)$/.exec(
+        header
+    );
+    if (matches) {
+        const [, revision, chnum, operation, date, user, client] = matches;
+        const description = desc
+            .filter(l => l.startsWith("\t"))
+            .map(l => l.slice(1))
+            .join("\n");
+
+        return {
+            description,
+            revision,
+            chnum,
+            operation,
+            date: parseDate(date),
+            user,
+            client
+        };
+    }
+}
+
+function parseFilelogOutput(output: string) {
+    const lines = splitIntoLines(output);
+
+    const histories = sectionArrayBy(lines, line => line.startsWith("... #"));
+
+    return histories.map(parseFilelogItem).filter(isTruthy);
+}
+
+export async function getFileHistory(resource: vscode.Uri, options: FilelogOptions) {
+    const output = await filelog(resource, options);
+    return parseFilelogOutput(output);
+}
+
+export interface AnnotateOptions {
+    outputChangelist?: boolean;
+    outputUser?: boolean;
+    file: PerforceFile;
+}
+
+const annotateFlags = flagMapper<AnnotateOptions>(
+    [
+        ["c", "outputChangelist"],
+        ["u", "outputUser"]
+    ],
+    "file",
+    false,
+    ["-q"]
+);
+
+const annotateCommand = makeSimpleCommand("annotate", annotateFlags);
+
+type Annotation = {
+    line: string;
+    revisionOrChnum: string;
+    user?: string;
+    date?: string;
+};
+
+function parseAnnotateOutput(
+    output: string,
+    withUser?: boolean
+): (Annotation | undefined)[] {
+    const lines = splitIntoLines(output);
+    //examples with / without user:
+    // 1: super 2020/01/29 hello this is a file
+    // 1: hello this is a file
+
+    const regex = withUser ? /^(\d+): (\S+) (\S+) (.*?)$/ : /^(\d+): (.*?)$/;
+    const linePos = withUser ? 4 : 1;
+
+    return lines.map(line => {
+        const matches = regex.exec(line);
+
+        if (matches) {
+            const revisionOrChnum = matches[1];
+            const user = withUser ? matches[2] : undefined;
+            const date = withUser ? matches[3] : undefined;
+            return {
+                line: matches[linePos],
+                revisionOrChnum,
+                user,
+                date
+            };
+        } else {
+            return undefined;
+        }
+    });
+}
+
+export async function annotate(resource: vscode.Uri, options: AnnotateOptions) {
+    const output = await annotateCommand(resource, options);
+    return parseAnnotateOutput(output, options.outputUser);
+}
