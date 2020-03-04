@@ -21,7 +21,7 @@ import { Display } from "./Display";
 import { PerforceCommands } from "./PerforceCommands";
 import { PerforceSCMProvider } from "./ScmProvider";
 
-export default class FileSystemListener {
+export default class FileSystemActions {
     private static _eventRegistered: boolean = false;
     private static _lastCheckedFileUri?: Uri = undefined;
     private static _lastSavedFileUri?: Uri = undefined;
@@ -38,21 +38,21 @@ export default class FileSystemListener {
         const config = workspace.getConfiguration("perforce");
 
         if (config && PerforceCommands.checkFolderOpened()) {
-            if (!FileSystemListener._eventRegistered) {
+            if (!FileSystemActions._eventRegistered) {
                 if (config["editOnFileSave"]) {
                     workspace.onWillSaveTextDocument(e => {
                         e.waitUntil(
-                            FileSystemListener.onWillSaveFile(e.document, e.reason)
+                            FileSystemActions.onWillSaveFile(e.document, e.reason)
                         );
                     });
                 }
 
                 if (config["editOnFileModified"]) {
                     workspace.onDidChangeTextDocument(
-                        FileSystemListener.onFileModified.bind(this)
+                        FileSystemActions.onFileModified.bind(this)
                     );
                 }
-                FileSystemListener._eventRegistered = true;
+                FileSystemActions._eventRegistered = true;
             }
 
             if (config["addOnFileCreate"] || config["deleteOnFileDelete"]) {
@@ -113,14 +113,14 @@ export default class FileSystemListener {
         reason: TextDocumentSaveReason
     ): Promise<boolean> {
         if (
-            FileSystemListener._lastSavedFileUri?.fsPath === doc.uri.fsPath &&
+            FileSystemActions._lastSavedFileUri?.fsPath === doc.uri.fsPath &&
             reason !== TextDocumentSaveReason.Manual
         ) {
             // don't keep trying when auto-saving (e.g. if the file isn't intended for perforce)
             return Promise.resolve(true);
         } else {
-            FileSystemListener._lastSavedFileUri = doc.uri;
-            return FileSystemListener.tryEditFile(doc.uri);
+            FileSystemActions._lastSavedFileUri = doc.uri;
+            return FileSystemActions.tryEditFile(doc.uri);
         }
     }
 
@@ -133,8 +133,8 @@ export default class FileSystemListener {
 
         //If this doc has already been checked, just returned
         if (
-            FileSystemListener._lastCheckedFileUri &&
-            docUri.toString() === FileSystemListener._lastCheckedFileUri.toString()
+            FileSystemActions._lastCheckedFileUri &&
+            docUri.toString() === FileSystemActions._lastCheckedFileUri.toString()
         ) {
             return;
         }
@@ -149,8 +149,8 @@ export default class FileSystemListener {
             return;
         }
 
-        FileSystemListener._lastCheckedFileUri = docUri;
-        FileSystemListener.tryEditFile(docUri);
+        FileSystemActions._lastCheckedFileUri = docUri;
+        FileSystemActions.tryEditFile(docUri);
     }
 
     // Had to streamline this, since `onWillSaveTextDocument` allows to delay
