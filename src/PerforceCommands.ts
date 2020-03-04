@@ -1,17 +1,6 @@
 "use strict";
 
-import {
-    commands,
-    workspace,
-    window,
-    Uri,
-    ThemableDecorationAttachmentRenderOptions,
-    DecorationInstanceRenderOptions,
-    DecorationOptions,
-    Range,
-    QuickPickItem,
-    MarkdownString
-} from "vscode";
+import { commands, workspace, window, Uri, QuickPickItem } from "vscode";
 
 import * as Path from "path";
 
@@ -20,6 +9,7 @@ import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
 import { Utils } from "./Utils";
 import { PerforceSCMProvider } from "./ScmProvider";
+import * as AnnotationProvider from "./AnnotationProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -299,72 +289,10 @@ export namespace PerforceCommands {
         }
 
         const doc = editor.document;
+
         const conf = workspace.getConfiguration("perforce");
-        const swarmHost = conf.get("swarmHost");
-
-        const decorationType = window.createTextEditorDecorationType({
-            isWholeLine: true,
-            before: {
-                margin: "0 1.75em 0 0"
-            }
-        });
-        const decorateColors: string[] = ["rgb(153, 153, 153)", "rgb(103, 103, 103)"];
-        const decorations: DecorationOptions[] = [];
-        let colorIndex = 0;
-        let lastNum = "";
-
-        const annotationsPromise = p4.annotate(doc.uri, {
-            file: doc.uri,
-            outputChangelist: true
-        });
-
-        const logPromise = p4.getFileHistory(doc.uri, { file: doc.uri });
-
-        const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
-
-        for (let i = 0, n = annotations.length; i < n; ++i) {
-            const a = annotations[i];
-            if (a) {
-                const l = log.find(l => l.chnum === a.revisionOrChnum);
-                const summary = "#" + l?.chnum + ": " + l?.description?.slice(0, 30);
-                const num = a.revisionOrChnum;
-                const hoverMessage = swarmHost
-                    ? new MarkdownString(
-                          `[${num +
-                              " " +
-                              (a.user ?? "") +
-                              " " +
-                              (a.date ?? "")}](${swarmHost}/changes/${num})`
-                      )
-                    : (a.user ?? "") + " " + (a.date ?? "");
-
-                if (num !== lastNum) {
-                    lastNum = num;
-                    colorIndex = (colorIndex + 1) % decorateColors.length;
-                }
-
-                const before: ThemableDecorationAttachmentRenderOptions = {
-                    contentText: summary,
-                    color: decorateColors[colorIndex],
-                    width: "25em"
-                };
-                const renderOptions: DecorationInstanceRenderOptions = { before };
-
-                decorations.push({
-                    range: new Range(i, 0, i, 0),
-                    hoverMessage,
-                    renderOptions
-                });
-            }
-        }
-
-        const p4Uri = Utils.makePerforceDocUri(doc.uri, "print", "-q");
-
-        workspace.openTextDocument(p4Uri).then(d => {
-            window.showTextDocument(d).then(e => {
-                e.setDecorations(decorationType, decorations);
-            });
-        });
+        const swarmHost = conf.get<string>("swarmHost");
+        await AnnotationProvider.annotate(doc.uri, swarmHost);
     }
 
     export function opened() {

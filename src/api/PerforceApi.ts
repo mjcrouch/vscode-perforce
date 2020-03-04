@@ -613,7 +613,17 @@ function parseDate(dateString: string) {
     }
 }
 
-function parseFilelogItem(item: string[]) {
+export type FileLogItem = {
+    description: string;
+    revision: string;
+    chnum: string;
+    operation: string;
+    date?: Date;
+    user: string;
+    client: string;
+};
+
+function parseFilelogItem(item: string[]): FileLogItem | undefined {
     const [header, ...desc] = item;
     // example:
     // ... #5 change 45 edit on 2020/02/15 18:48:43 by super@matto (text)
@@ -670,7 +680,7 @@ const annotateFlags = flagMapper<AnnotateOptions>(
 
 const annotateCommand = makeSimpleCommand("annotate", annotateFlags);
 
-type Annotation = {
+export type Annotation = {
     line: string;
     revisionOrChnum: string;
     user?: string;

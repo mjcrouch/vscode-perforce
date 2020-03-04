@@ -5,7 +5,7 @@ import { Display } from "./Display";
 import { PerforceSCMProvider } from "./ScmProvider";
 
 import * as CP from "child_process";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { CommandLimiter } from "./CommandLimiter";
 
 // eslint-disable-next-line @typescript-eslint/interface-name-prefix
