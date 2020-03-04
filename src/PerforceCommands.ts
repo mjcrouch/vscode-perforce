@@ -28,7 +28,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.add", addOpenFile);
         commands.registerCommand("perforce.edit", editOpenFile);
         commands.registerCommand("perforce.delete", deleteOpenFile);
-        commands.registerCommand("perforce.revert", revert);
+        commands.registerCommand("perforce.revert", revertOpenFile);
         commands.registerCommand("perforce.submitSingle", submitSingle);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
@@ -122,7 +122,7 @@ export namespace PerforceCommands {
             return false;
         }
 
-        revert();
+        revertOpenFile();
         const fileUri = editor.document.uri;
         p4delete(fileUri);
     }
@@ -142,7 +142,7 @@ export namespace PerforceCommands {
         );
     }
 
-    export function revert() {
+    export function revertOpenFile() {
         const editor = window.activeTextEditor;
         if (!checkFileSelected()) {
             return false;
@@ -585,7 +585,7 @@ export namespace PerforceCommands {
                         editOpenFile();
                         break;
                     case "revert":
-                        revert();
+                        revertOpenFile();
                         break;
                     case "submit single file":
                         submitSingle();
