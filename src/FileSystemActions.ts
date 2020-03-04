@@ -4,18 +4,15 @@ import {
     window,
     workspace,
     Disposable,
-    FileSystemWatcher,
+    FileCreateEvent,
+    FileDeleteEvent,
     TextDocument,
     TextDocumentChangeEvent,
-    RelativePattern,
     Uri,
-    WorkspaceFolder,
     TextDocumentSaveReason
 } from "vscode";
 
 import * as micromatch from "micromatch";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const parseignore = require("parse-gitignore"); // (this module should be removed anyway)
 
 import { Display } from "./Display";
 import { PerforceCommands } from "./PerforceCommands";
@@ -27,11 +24,8 @@ export default class FileSystemActions {
     private static _lastSavedFileUri?: Uri = undefined;
 
     private _disposable: Disposable;
-    private _watcher?: FileSystemWatcher;
 
-    private _p4ignore: string[];
-
-    constructor(workspaceFolder?: WorkspaceFolder) {
+    constructor() {
         const subscriptions: Disposable[] = [];
         window.onDidChangeActiveTextEditor(Display.updateEditor, this, subscriptions);
 
@@ -52,54 +46,20 @@ export default class FileSystemActions {
                         FileSystemActions.onFileModified.bind(this)
                     );
                 }
-                FileSystemActions._eventRegistered = true;
-            }
-
-            if (config["addOnFileCreate"] || config["deleteOnFileDelete"]) {
-                const pattern = new RelativePattern(
-                    workspaceFolder ? workspaceFolder : "",
-                    "**/*"
-                );
-                this._watcher = workspace.createFileSystemWatcher(
-                    pattern,
-                    false,
-                    true,
-                    false
-                );
 
                 if (config["addOnFileCreate"]) {
-                    this._watcher.onDidCreate(
-                        this.onFileCreated.bind(this),
-                        this,
-                        subscriptions
-                    );
+                    workspace.onDidCreateFiles(FileSystemActions.onFilesAdded.bind(this));
                 }
 
                 if (config["deleteOnFileDelete"]) {
-                    this._watcher.onDidDelete(
-                        this.onFileDeleted.bind(this),
-                        this,
-                        subscriptions
+                    workspace.onDidDeleteFiles(
+                        FileSystemActions.onFilesDeleted.bind(this)
                     );
                 }
+
+                FileSystemActions._eventRegistered = true;
             }
         }
-
-        this._p4ignore = [];
-
-        let p4IgnoreFileName = process.env.P4IGNORE;
-        if (!p4IgnoreFileName) {
-            p4IgnoreFileName = ".p4ignore";
-        }
-        const pattern = new RelativePattern(
-            workspaceFolder ? workspaceFolder : "",
-            p4IgnoreFileName
-        );
-        workspace.findFiles(pattern, undefined, 1).then(result => {
-            if (result && result.length > 0) {
-                this._p4ignore = parseignore(result[0].fsPath);
-            }
-        });
 
         this._disposable = Disposable.from.apply(this, subscriptions);
     }
@@ -165,53 +125,30 @@ export default class FileSystemActions {
         ) {
             return Promise.resolve(true);
         } else {
-            return PerforceCommands.edit(uri);
-        }
-
-        // return new Promise((resolve) => {
-        //     //Check if this file is in client root first
-        //     FileSystemListener.fileInClientRoot(uri).then((inClientRoot) => {
-        //         if (inClientRoot) {
-        //             return FileSystemListener.fileIsOpened(uri);
-        //         }
-        //         resolve();
-        //     }).then((isOpened) => {
-        //         //If not opened, open file for edit
-        //         if (!isOpened) {
-        //             return PerforceCommands.edit(uri);
-        //         }
-        //         resolve();
-        //     }).then((openedForEdit) => {
-        //         resolve();
-        //     }).catch((reason) => {
-        //         if (reason) Display.showError(reason.toString());
-        //         //reject(reason);
-        //         resolve();
-        //     });
-        // });
-    }
-
-    private onFileDeleted(uri: Uri) {
-        const fileExcludes = Object.keys(workspace.getConfiguration("files").exclude);
-        const ignoredPatterns = this._p4ignore.concat(fileExcludes);
-
-        const shouldIgnore: boolean = micromatch.isMatch(uri.fsPath, ignoredPatterns, {
-            dot: true
-        });
-
-        // Only `p4 delete` files that are not marked as ignored either in:
-        // .p4ignore
-        // files.exclude setting
-        if (!shouldIgnore) {
-            PerforceCommands.p4delete(uri);
+            return PerforceCommands.p4edit(uri);
         }
     }
 
-    private onFileCreated(uri: Uri) {
-        //Only try to add files open in the editor
-        const editor = window.activeTextEditor;
-        if (editor && editor.document && editor.document.uri.fsPath === uri.fsPath) {
-            PerforceCommands.add(uri);
+    private static onFilesDeleted(filesDeleted: FileDeleteEvent) {
+        for (const uri of filesDeleted.files) {
+            const fileExcludes = Object.keys(workspace.getConfiguration("files").exclude);
+
+            const shouldIgnore: boolean = micromatch.isMatch(uri.fsPath, fileExcludes, {
+                dot: true
+            });
+            if (!shouldIgnore) {
+                // revert before delete in case it's optn for add/edit.  At
+                // come point maybe dialog to warn user but this does
+                // match logic in PerforceCommands
+                PerforceCommands.p4revert(uri);
+                PerforceCommands.p4delete(uri);
+            }
+        }
+    }
+
+    private static onFilesAdded(filesAdded: FileCreateEvent) {
+        for (const uri of filesAdded.files) {
+            PerforceCommands.p4add(uri);
         }
     }
 }

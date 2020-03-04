@@ -772,7 +772,7 @@
         "@types/node": "^12.12.25",
         "@types/sinon": "^7.5.1",
         "@types/sinon-chai": "^3.2.3",
-        "@types/vscode": "^1.40.0",
+        "@types/vscode": "^1.42.0",
         "@typescript-eslint/eslint-plugin": "^2.16.0",
         "@typescript-eslint/parser": "^2.16.0",
         "chai": "^4.2.0",
