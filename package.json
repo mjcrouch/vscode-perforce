@@ -788,7 +788,6 @@
         "micromatch": "^4.0.2",
         "mocha": "^7.1.0",
         "mocha-junit-reporter": "^1.23.3",
-        "parse-gitignore": "^0.4.0",
         "prettier": "1.19.1",
         "sinon": "^8.1.0",
         "sinon-chai": "^3.4.0",
