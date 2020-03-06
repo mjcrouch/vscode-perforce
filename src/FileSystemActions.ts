@@ -129,7 +129,7 @@ export default class FileSystemActions {
         }
     }
 
-    private static onFilesDeleted(filesDeleted: FileDeleteEvent) {
+    private static async onFilesDeleted(filesDeleted: FileDeleteEvent) {
         for (const uri of filesDeleted.files) {
             const fileExcludes = Object.keys(workspace.getConfiguration("files").exclude);
 
@@ -140,15 +140,17 @@ export default class FileSystemActions {
                 // revert before delete in case it's optn for add/edit.  At
                 // come point maybe dialog to warn user but this does
                 // match logic in PerforceCommands
-                PerforceCommands.p4revert(uri);
-                PerforceCommands.p4delete(uri);
+                await PerforceCommands.p4revert(uri);
+                await PerforceCommands.p4delete(uri);
             }
         }
+        PerforceSCMProvider.RefreshAll();
     }
 
     private static onFilesAdded(filesAdded: FileCreateEvent) {
         for (const uri of filesAdded.files) {
             PerforceCommands.p4add(uri);
         }
+        PerforceSCMProvider.RefreshAll();
     }
 }

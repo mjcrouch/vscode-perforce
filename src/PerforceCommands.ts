@@ -127,19 +127,15 @@ export namespace PerforceCommands {
         p4delete(fileUri);
     }
 
-    export function p4delete(fileUri: Uri) {
-        const args = [Utils.expansePath(fileUri.fsPath)];
-        PerforceService.execute(
-            fileUri,
-            "delete",
-            (err, stdout, stderr) => {
-                PerforceService.handleCommonServiceResponse(err, stdout, stderr);
-                if (!err) {
-                    Display.showMessage("file marked for delete");
-                }
-            },
-            args
-        );
+    export async function p4delete(fileUri: Uri) {
+        const deleteOpts: p4.DeleteOptions = { paths: [fileUri] };
+        try {
+            await p4.del(fileUri, deleteOpts);
+            Display.showMessage(fileUri.fsPath + " deleted.");
+        } catch (err) {
+            // no work - just catch exception.  Error will be
+            // reported by perforce command code
+        }
     }
 
     export function revertOpenFile() {
@@ -158,8 +154,13 @@ export namespace PerforceCommands {
 
     export async function p4revert(fileUri: Uri) {
         const revertOpts: p4.RevertOptions = { paths: [fileUri] };
-        await p4.revert(fileUri, revertOpts);
-        Display.showMessage(fileUri.fsPath + " reverted.");
+        try {
+            await p4.revert(fileUri, revertOpts);
+            Display.showMessage(fileUri.fsPath + " reverted.");
+        } catch (err) {
+            // no work - just catch exception.  Error will be
+            // reported by perforce command code
+        }
     }
 
     export async function submitSingle() {
