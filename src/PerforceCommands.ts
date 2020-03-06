@@ -132,6 +132,8 @@ export namespace PerforceCommands {
         try {
             await p4.del(fileUri, deleteOpts);
             Display.showMessage(fileUri.fsPath + " deleted.");
+            Display.updateEditor();
+            PerforceSCMProvider.RefreshAll();
         } catch (err) {
             // no work - just catch exception.  Error will be
             // reported by perforce command code
@@ -157,6 +159,8 @@ export namespace PerforceCommands {
         try {
             await p4.revert(fileUri, revertOpts);
             Display.showMessage(fileUri.fsPath + " reverted.");
+            Display.updateEditor();
+            PerforceSCMProvider.RefreshAll();
         } catch (err) {
             // no work - just catch exception.  Error will be
             // reported by perforce command code

@@ -144,13 +144,11 @@ export default class FileSystemActions {
                 await PerforceCommands.p4delete(uri);
             }
         }
-        PerforceSCMProvider.RefreshAll();
     }
 
     private static onFilesAdded(filesAdded: FileCreateEvent) {
         for (const uri of filesAdded.files) {
             PerforceCommands.p4add(uri);
         }
-        PerforceSCMProvider.RefreshAll();
     }
 }
