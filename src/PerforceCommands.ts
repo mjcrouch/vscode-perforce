@@ -153,27 +153,13 @@ export namespace PerforceCommands {
         }
 
         const fileUri = editor.document.uri;
-        if (checkFolderOpened()) {
-            p4revert(fileUri);
-        } else {
-            p4revert(fileUri, Path.dirname(fileUri.fsPath));
-        }
+        p4revert(fileUri);
     }
 
-    export function p4revert(fileUri: Uri, directoryOverride?: string) {
-        const args = [Utils.expansePath(fileUri.fsPath)];
-        PerforceService.execute(
-            fileUri,
-            "revert",
-            (err, stdout, stderr) => {
-                PerforceService.handleCommonServiceResponse(err, stdout, stderr);
-                if (!err && !stderr) {
-                    Display.showMessage("file reverted");
-                }
-            },
-            args,
-            directoryOverride
-        );
+    export async function p4revert(fileUri: Uri) {
+        const revertOpts: p4.RevertOptions = { paths: [fileUri] };
+        await p4.revert(fileUri, revertOpts);
+        Display.showMessage(fileUri.fsPath + " reverted.");
     }
 
     export async function submitSingle() {
