@@ -49,6 +49,10 @@ function makeUserAndDateSummary(change: p4.FileLogItem) {
         minute: "numeric"
     };
     return (
+        change.file +
+        "#" +
+        change.revision +
+        "\n\n" +
         "**Change `#" +
         change.chnum +
         "`** by **`" +
@@ -63,16 +67,25 @@ function makeSwarmHostURL(change: p4.FileLogItem, swarmHost: string) {
     return swarmHost + "/changes/" + change.chnum;
 }
 
-function makeDiffURI(_change: p4.FileLogItem) {
+function makeDiffURI(_change: p4.FileLogItem, _prevChange: p4.FileLogItem) {
     // TODO - the command to diff arbitrary revisions
     return "command:perforce.diff";
 }
 
 function makeHoverMessage(
     change: p4.FileLogItem,
+    prevChange?: p4.FileLogItem,
     swarmHost?: string
 ): vscode.MarkdownString {
-    const diffLink = "\\[[Show Diff](" + makeDiffURI(change) + ")\\]";
+    const diffLink = prevChange
+        ? "\\[[Show Diff vs " +
+          prevChange.file +
+          "#" +
+          prevChange.revision +
+          "](" +
+          makeDiffURI(change, prevChange) +
+          ")\\]"
+        : "";
     const swarmLink = swarmHost
         ? "\\[[Open in Swarm](" + makeSwarmHostURL(change, swarmHost) + ")\\]"
         : undefined;
@@ -111,7 +124,12 @@ function getDecorations(
                 return;
             }
 
-            const change = log.find(l => l.chnum === annotation.revisionOrChnum);
+            const changeIndex = log.findIndex(
+                l => l.chnum === annotation.revisionOrChnum
+            );
+            const change = changeIndex >= 0 ? log[changeIndex] : undefined;
+            const prevChange = log[changeIndex + 1];
+
             const summary = usePrevious
                 ? "\xa0"
                 : change
@@ -119,7 +137,9 @@ function getDecorations(
                 : "Unknown!";
 
             const num = annotation.revisionOrChnum;
-            const hoverMessage = change ? makeHoverMessage(change, swarmHost) : num;
+            const hoverMessage = change
+                ? makeHoverMessage(change, prevChange, swarmHost)
+                : num;
 
             if (num !== lastNum) {
                 lastNum = num;
@@ -147,10 +167,11 @@ export async function annotate(uri: vscode.Uri, swarmHost?: string) {
 
     const annotationsPromise = p4.annotate(uri, {
         file: uri,
-        outputChangelist: true
+        outputChangelist: true,
+        followBranches: true
     });
 
-    const logPromise = p4.getFileHistory(uri, { file: uri });
+    const logPromise = p4.getFileHistory(uri, { file: uri, followBranches: true });
 
     const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
 

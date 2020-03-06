@@ -614,6 +614,7 @@ function parseDate(dateString: string) {
 }
 
 export type FileLogItem = {
+    file: string;
     description: string;
     revision: string;
     chnum: string;
@@ -623,7 +624,7 @@ export type FileLogItem = {
     client: string;
 };
 
-function parseFilelogItem(item: string[]): FileLogItem | undefined {
+function parseFilelogItem(item: string[], file: string): FileLogItem | undefined {
     const [header, ...desc] = item;
     // example:
     // ... #5 change 45 edit on 2020/02/15 18:48:43 by super@matto (text)
@@ -638,6 +639,7 @@ function parseFilelogItem(item: string[]): FileLogItem | undefined {
             .join("\n");
 
         return {
+            file,
             description,
             revision,
             chnum,
@@ -649,12 +651,24 @@ function parseFilelogItem(item: string[]): FileLogItem | undefined {
     }
 }
 
+function parseFileLogFile(lines: string[]) {
+    const histories = sectionArrayBy(lines.slice(1), line => line.startsWith("... #"));
+
+    const file = lines[0];
+
+    return histories.map(h => parseFilelogItem(h, file)).filter(isTruthy);
+}
+
+function parseFileLogFiles(lines: string[]) {
+    const files = sectionArrayBy(lines, line => line.startsWith("//"));
+
+    return files.flatMap(parseFileLogFile);
+}
+
 function parseFilelogOutput(output: string) {
     const lines = splitIntoLines(output);
 
-    const histories = sectionArrayBy(lines, line => line.startsWith("... #"));
-
-    return histories.map(parseFilelogItem).filter(isTruthy);
+    return parseFileLogFiles(lines);
 }
 
 export async function getFileHistory(resource: vscode.Uri, options: FilelogOptions) {
@@ -665,13 +679,15 @@ export async function getFileHistory(resource: vscode.Uri, options: FilelogOptio
 export interface AnnotateOptions {
     outputChangelist?: boolean;
     outputUser?: boolean;
+    followBranches?: boolean;
     file: PerforceFile;
 }
 
 const annotateFlags = flagMapper<AnnotateOptions>(
     [
         ["c", "outputChangelist"],
-        ["u", "outputUser"]
+        ["u", "outputUser"],
+        ["i", "followBranches"]
     ],
     "file",
     false,
