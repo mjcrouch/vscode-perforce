@@ -420,6 +420,17 @@ export class Model implements Disposable {
     public async Submit(input: ResourceGroup): Promise<void> {
         this.assertIsNotDefault(input);
 
+        if (this._workspaceConfig.promptBeforeSubmit) {
+            if (
+                !(await this.requestConfirmation(
+                    "Are you sure you want to submit changelist " + input.chnum + "?",
+                    "Submit changelist"
+                ))
+            ) {
+                return;
+            }
+        }
+
         await p4.submitChangelist(this._workspaceUri, { chnum: input.chnum });
         Display.showMessage("Changelist Submitted");
         this.Refresh();
@@ -765,6 +776,11 @@ export class Model implements Disposable {
         } catch (err) {
             Display.showImportantError(err.toString());
         }
+    }
+
+    private async requestConfirmation(message: string, yes: string) {
+        const result = await window.showWarningMessage(message, { modal: true }, yes);
+        return result === yes;
     }
 
     private async requestChangelistDescription() {
