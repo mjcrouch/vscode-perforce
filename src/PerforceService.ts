@@ -218,7 +218,7 @@ export namespace PerforceService {
     ): void {
         const wksFolder = workspace.getWorkspaceFolder(resource);
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
-        const wksPath = wksFolder ? wksFolder.uri.fsPath : "";
+        const wksPath = wksFolder?.uri.fsPath;
         const cmd = getPerforceCmdPath();
 
         const allArgs: string[] = getPerforceCmdParams(resource);
@@ -232,11 +232,7 @@ export namespace PerforceService {
             allArgs.push(...args);
         }
 
-        const cwd = config
-            ? config.localDir
-            : wksPath
-            ? wksPath
-            : Path.dirname(resource.fsPath);
+        const cwd = config?.localDir ?? wksPath ?? Path.dirname(resource.fsPath);
         const env = { ...process.env, PWD: cwd };
         const spawnArgs: CP.SpawnOptions = { cwd, env };
         spawnPerforceCommand(cmd, allArgs, spawnArgs, responseCallback, input);
