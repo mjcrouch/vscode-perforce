@@ -254,6 +254,11 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.diffFiles",
+                "title": "Diff two specific files / revisions",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.annotate",
                 "title": "Annotate - Print file lines and their revisions in the gutter",
                 "category": "Perforce"
@@ -518,6 +523,10 @@
                 {
                     "command": "perforce.deleteShelvedFile",
                     "when": "0"
+                },
+                {
+                    "command": "perforce.diffFiles",
+                    "when": "0"
                 }
             ],
             "scm/title": [
@@ -709,23 +718,23 @@
         },
         "colors": [
             {
-				"id": "perforce.gutterBackgroundColor",
-				"description": "Specifies the background color of the gutter blame annotations",
-				"defaults": {
-					"dark": "#FFFFFF13",
-					"light": "#0000000C",
-					"highContrast": "#FFFFFF13"
-				}
-			},
-			{
-				"id": "perforce.gutterForegroundColor",
-				"description": "Specifies the foreground color of the gutter blame annotations",
-				"defaults": {
-					"dark": "#BEBEBE",
-					"light": "#747474",
-					"highContrast": "#BEBEBE"
-				}
-			}
+                "id": "perforce.gutterBackgroundColor",
+                "description": "Specifies the background color of the gutter blame annotations",
+                "defaults": {
+                    "dark": "#FFFFFF13",
+                    "light": "#0000000C",
+                    "highContrast": "#FFFFFF13"
+                }
+            },
+            {
+                "id": "perforce.gutterForegroundColor",
+                "description": "Specifies the foreground color of the gutter blame annotations",
+                "defaults": {
+                    "dark": "#BEBEBE",
+                    "light": "#747474",
+                    "highContrast": "#BEBEBE"
+                }
+            }
         ],
         "keybindings": [
             {

@@ -21,24 +21,33 @@ function getUnprefixedName(file: string, prefixLength: number) {
     return prefixLength <= 0 ? Path.basename(file) : file.slice(prefixLength);
 }
 
-export async function diffExact(leftFileSpec: string, rightFileSpec: string) {
-    const prefixLength = findLengthOfCommonPrefix(leftFileSpec, rightFileSpec);
-    const leftTitle = getUnprefixedName(leftFileSpec, prefixLength);
-    const rightTitle = getUnprefixedName(rightFileSpec, prefixLength);
-    const fullTitle = leftTitle + " ⟷ " + rightTitle;
+function getPathsWithoutCommonPrefix(a: string, b: string): [string, string] {
+    const prefixLen = findLengthOfCommonPrefix(a, b);
+    return [getUnprefixedName(a, prefixLen), getUnprefixedName(b, prefixLen)];
+}
 
-    const leftUri = Utils.makePerforceDocUri(
-        Uri.parse(leftFileSpec, true),
-        "print",
-        "-q"
-    );
-    const rightUri = Utils.makePerforceDocUri(
-        Uri.parse(rightFileSpec, true),
-        "print",
-        "-q"
+export function diffTitleForDepotPaths(
+    leftPath: string,
+    leftRevision: string,
+    rightPath: string,
+    rightRevision: string
+) {
+    const [leftTitle, rightTitle] = getPathsWithoutCommonPrefix(leftPath, rightPath);
+    return leftTitle + "#" + leftRevision + " ⟷ " + rightTitle + "#" + rightRevision;
+}
+
+export async function diffFiles(leftFile: Uri, rightFile: Uri) {
+    const leftPath = Utils.getDepotPathFromDepotUri(leftFile);
+    const rightPath = Utils.getDepotPathFromDepotUri(rightFile);
+
+    const fullTitle = diffTitleForDepotPaths(
+        leftPath,
+        leftFile.fragment,
+        rightPath,
+        rightFile.fragment
     );
 
-    await commands.executeCommand<void>("vscode.diff", leftUri, rightUri, fullTitle);
+    await commands.executeCommand<void>("vscode.diff", leftFile, rightFile, fullTitle);
 }
 
 export async function diffDefault(

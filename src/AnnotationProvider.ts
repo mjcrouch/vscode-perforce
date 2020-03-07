@@ -5,6 +5,7 @@ import TimeAgo from "javascript-time-ago";
 import * as en from "javascript-time-ago/locale/en";
 import { isTruthy } from "./api/CommandUtils";
 import { Utils } from "./Utils";
+import * as DiffProvider from "./DiffProvider";
 
 TimeAgo.addLocale(en);
 
@@ -67,30 +68,62 @@ function makeSwarmHostURL(change: p4.FileLogItem, swarmHost: string) {
     return swarmHost + "/changes/" + change.chnum;
 }
 
-function makeDiffURI(_change: p4.FileLogItem, _prevChange: p4.FileLogItem) {
-    // TODO - the command to diff arbitrary revisions
-    return "command:perforce.diff";
+function makeCommandURI(command: string, ...args: any[]) {
+    const encoded = encodeURIComponent(JSON.stringify(args));
+    return "command:" + command + "?" + encoded;
+}
+
+function makeDiffURI(prevChange: p4.FileLogItem, change: p4.FileLogItem) {
+    const args = [makePerforceURI(prevChange), makePerforceURI(change)];
+    return (
+        makeCommandURI("perforce.diffFiles", ...args) +
+        ' "' +
+        DiffProvider.diffTitleForDepotPaths(
+            prevChange.file,
+            prevChange.revision,
+            change.file,
+            change.revision
+        ) +
+        '"'
+    );
+}
+
+function makePerforceURI(change: p4.FileLogItem) {
+    const baseUri = vscode.Uri.parse("perforce:" + change.file).with({
+        fragment: change.revision
+    });
+    return Utils.makePerforceDocUri(baseUri, "print", "-q", { depot: true });
+}
+
+function makeAnnotateURI(change: p4.FileLogItem) {
+    const args = makePerforceURI(change).toString();
+    return makeCommandURI("perforce.annotate", args);
 }
 
 function makeHoverMessage(
     change: p4.FileLogItem,
+    latestChange: p4.FileLogItem,
     prevChange?: p4.FileLogItem,
     swarmHost?: string
 ): vscode.MarkdownString {
     const diffLink = prevChange
-        ? "\\[[Show Diff vs " +
-          prevChange.file +
-          "#" +
-          prevChange.revision +
-          "](" +
-          makeDiffURI(change, prevChange) +
-          ")\\]"
+        ? "\\[[Diff Previous](" + makeDiffURI(prevChange, change) + ")\\]"
         : "";
+    const diffLatestLink =
+        change !== latestChange
+            ? "\\[[Diff Latest](" + makeDiffURI(change, latestChange) + ")\\]"
+            : "";
+    const annotateLink =
+        change !== latestChange
+            ? "\\[[Annotate](" + makeAnnotateURI(change) + ")\\]"
+            : "";
     const swarmLink = swarmHost
         ? "\\[[Open in Swarm](" + makeSwarmHostURL(change, swarmHost) + ")\\]"
         : undefined;
 
-    const links = [swarmLink, diffLink].filter(isTruthy).join(" ");
+    const links = [swarmLink, diffLink, diffLatestLink, annotateLink]
+        .filter(isTruthy)
+        .join(" ");
 
     const md = new vscode.MarkdownString(
         makeUserAndDateSummary(change) +
@@ -113,6 +146,8 @@ function getDecorations(
     const backgroundColor = new vscode.ThemeColor("perforce.gutterBackgroundColor");
     const foregroundColor = new vscode.ThemeColor("perforce.gutterForegroundColor");
     let lastNum = "";
+
+    const latestChange = log[0];
 
     return annotations
         .map((a, i) => {
@@ -138,7 +173,7 @@ function getDecorations(
 
             const num = annotation.revisionOrChnum;
             const hoverMessage = change
-                ? makeHoverMessage(change, prevChange, swarmHost)
+                ? makeHoverMessage(change, latestChange, prevChange, swarmHost)
                 : num;
 
             if (num !== lastNum) {

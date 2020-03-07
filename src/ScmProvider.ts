@@ -15,8 +15,6 @@ import { Status } from "./scm/Status";
 import { mapEvent, Utils } from "./Utils";
 import { FileType } from "./scm/FileTypes";
 import { IPerforceConfig, matchConfig } from "./PerforceService";
-import * as Path from "path";
-import * as fs from "fs";
 import { WorkspaceConfigAccessor } from "./ConfigService";
 import * as DiffProvider from "./DiffProvider";
 

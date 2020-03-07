@@ -10,6 +10,7 @@ import { Display } from "./Display";
 import { Utils } from "./Utils";
 import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./AnnotationProvider";
+import * as DiffProvider from "./DiffProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -26,6 +27,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);
         commands.registerCommand("perforce.login", login);
+        commands.registerCommand("perforce.diffFiles", diffFiles);
         commands.registerCommand("perforce.menuFunctions", menuFunctions);
     }
 
@@ -278,21 +280,34 @@ export namespace PerforceCommands {
         );
     }
 
-    export async function annotate() {
+    async function diffFiles(leftFile: string, rightFile: string) {
+        await DiffProvider.diffFiles(Uri.parse(leftFile), Uri.parse(rightFile));
+    }
+
+    function getOpenDocUri(): Uri | undefined {
         const editor = window.activeTextEditor;
         if (!checkFileSelected()) {
-            return false;
+            return;
         }
 
         if (!editor || !editor.document) {
-            return false;
+            return;
         }
 
         const doc = editor.document;
+        return doc.uri;
+    }
+
+    export async function annotate(file?: string) {
+        const uri = file ? Uri.parse(file) : getOpenDocUri();
+
+        if (!uri) {
+            return false;
+        }
 
         const conf = workspace.getConfiguration("perforce");
         const swarmHost = conf.get<string>("swarmHost");
-        await AnnotationProvider.annotate(doc.uri, swarmHost);
+        await AnnotationProvider.annotate(uri, swarmHost);
     }
 
     export function opened() {

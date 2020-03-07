@@ -1,5 +1,5 @@
 import { Utils } from "../Utils";
-import { FileSpec, isFileSpec, PerforceFile } from "./CommonTypes";
+import { FileSpec, isFileSpec, PerforceFile, isUri } from "./CommonTypes";
 import * as vscode from "vscode";
 
 /**
@@ -110,9 +110,7 @@ function lastArgAsStrings(
         return [lastArg];
     }
     if (isFileSpec(lastArg)) {
-        return [
-            Utils.expansePath(lastArg.fsPath) + (lastArg.suffix ? lastArg.suffix : "")
-        ];
+        return [fileSpecToArg(lastArg)];
     }
     if (lastArgIsFormattedArray) {
         return lastArg as string[];
@@ -153,11 +151,24 @@ export function flagMapper<P extends FlagDefinition<P>>(
 
 const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(isTruthy);
 
+function fragmentAsSuffix(fragment?: string): string {
+    return fragment ? (fragment.startsWith("@") ? fragment : "#" + fragment) : "";
+}
+
+function fileSpecToArg(fileSpec: FileSpec) {
+    if (isUri(fileSpec) && Utils.decodeUriQuery(fileSpec.query).depot) {
+        return (
+            Utils.getDepotPathFromDepotUri(fileSpec) + fragmentAsSuffix(fileSpec.fragment)
+        );
+    }
+    return Utils.expansePath(fileSpec.fsPath) + fragmentAsSuffix(fileSpec.fragment);
+}
+
 function pathsToArgs(arr?: (string | FileSpec)[]) {
     return (
         arr?.map(path => {
             if (isFileSpec(path)) {
-                return Utils.expansePath(path.fsPath) + (path.suffix ? path.suffix : "");
+                return fileSpecToArg(path);
             } else if (path) {
                 return path;
             }

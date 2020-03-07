@@ -64,7 +64,10 @@ export namespace Utils {
     ) {
         return uri.with({
             scheme: "perforce",
-            query: makePerforceUriQuery(command, p4Args ?? "", otherArgs)
+            query: makePerforceUriQuery(command, p4Args ?? "", {
+                ...Utils.decodeUriQuery(uri.query), // use existing params
+                ...otherArgs
+            })
         });
     }
 
