@@ -207,7 +207,7 @@
                 },
                 "perforce.promptBeforeSubmit": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Whether to prompt for confirmation, before submitting a saved changelist"
                 }
             }
