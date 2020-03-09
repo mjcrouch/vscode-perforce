@@ -52,7 +52,7 @@ steps:
     testResultsFiles: '**/junit-unit.xml'
     testRunTitle: $(Agent.JobName) - Unit Tests
   displayName: Publish unit test results
-  condition: succeededOrFailed('Compile and Run Tests')
+  condition: succeededOrFailed()
 
 - task: PublishTestResults@2
   inputs:
@@ -60,7 +60,7 @@ steps:
     testResultsFiles: '**/junit-integration.xml'
     testRunTitle: $(Agent.JobName) - All Tests
   displayName: Publish integration test results
-  condition: succeededOrFailed('Compile and Run Tests')
+  condition: succeededOrFailed()
 
 - bash: |
     echo ">>> Install vsce"
