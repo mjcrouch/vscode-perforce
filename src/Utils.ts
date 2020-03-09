@@ -82,6 +82,7 @@ export namespace Utils {
                 ...Object.keys(otherArgs)
                     .filter(key => otherArgs[key] !== false)
                     .map(key => encodeParam(key, otherArgs[key]))
+                    .filter(param => !!param)
             );
         }
         return allArgs.join("&");
