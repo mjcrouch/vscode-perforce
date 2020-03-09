@@ -172,18 +172,13 @@ export default class FileSystemActions {
         return false;
     }
 
-    private static async revertAndDelete(uri: Uri) {
-        await PerforceCommands.p4revert(uri);
-        await PerforceCommands.p4delete(uri);
-    }
-
     private static async deleteFileOrDirectory(uri: Uri) {
         const isDirectory = await FileSystemActions.isDirectory(uri);
 
         const fullUri = isDirectory ? uri.with({ path: uri.path + "/..." }) : uri;
 
         // DO NOT AWAIT the revert, because we are holding up the deletion
-        FileSystemActions.revertAndDelete(fullUri);
+        PerforceCommands.p4revertAndDelete(fullUri);
     }
 
     private static shouldExclude(uri: Uri): boolean {

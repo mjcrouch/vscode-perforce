@@ -89,15 +89,13 @@ describe("File System Actions", () => {
     let eventProvider: ReturnType<typeof makeStubEvents>;
     let workspaceConfig: WorkspaceConfigAccessor;
     let actions: FileSystemActions | undefined;
-    let del: sinon.SinonStub<any>;
-    let revert: sinon.SinonStub<any>;
+    let revertAndDelete: sinon.SinonStub<any>;
     let add: sinon.SinonStub<any>;
     const assignActions = () => {
         actions = new FileSystemActions(eventProvider, workspaceConfig);
     };
     beforeEach(() => {
-        del = sinon.stub(PerforceCommands, "p4delete").resolves();
-        revert = sinon.stub(PerforceCommands, "p4revert").resolves();
+        revertAndDelete = sinon.stub(PerforceCommands, "p4revertAndDelete").resolves();
         add = sinon.stub(PerforceCommands, "p4add").resolves();
         eventProvider = makeStubEvents();
         workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
@@ -142,10 +140,8 @@ describe("File System Actions", () => {
 
             await fireDeleteEvent(file, file2);
 
-            expect(revert).to.have.been.calledWith(file);
-            expect(del).to.have.been.calledWith(file);
-            expect(revert).to.have.been.calledWith(file2);
-            expect(del).to.have.been.calledWith(file2);
+            expect(revertAndDelete).to.have.been.calledWith(file);
+            expect(revertAndDelete).to.have.been.calledWith(file2);
         });
         it("Reverts folders using a wildcard", async () => {
             stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
@@ -157,8 +153,7 @@ describe("File System Actions", () => {
 
             const folderMatch = folder.with({ path: folder.path + "/..." });
 
-            expect(revert).to.have.been.calledWithMatch(folderMatch);
-            expect(del).to.have.been.calledWith(folderMatch);
+            expect(revertAndDelete).to.have.been.calledWithMatch(folderMatch);
         });
         it("Ignores fstat errors", async () => {
             stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
@@ -168,8 +163,7 @@ describe("File System Actions", () => {
 
             await fireDeleteEvent(unknown);
 
-            expect(revert).to.have.been.calledWithMatch(unknown);
-            expect(del).to.have.been.calledWith(unknown);
+            expect(revertAndDelete).to.have.been.calledWithMatch(unknown);
         });
         it("Does not try to delete excluded files", async () => {
             stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
@@ -180,8 +174,7 @@ describe("File System Actions", () => {
 
             await fireDeleteEvent(excluded);
 
-            expect(revert).not.to.have.been.called;
-            expect(del).not.to.have.been.called;
+            expect(revertAndDelete).not.to.have.been.called;
         });
     });
     describe("Add on file create", () => {
