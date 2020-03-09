@@ -2,7 +2,7 @@
     "name": "perforce",
     "displayName": "Perforce for VS Code",
     "description": "(2020 Fork) Perforce integration with VS Code's SCM features",
-    "version": "3.6.2",
+    "version": "3.7.0",
     "publisher": "mjcrouch",
     "license": "MIT",
     "categories": [
@@ -199,6 +199,16 @@
                 "perforce.swarmHost": {
                     "type": "string",
                     "description": "Specifies the host of the Swarm server for annotation links"
+                },
+                "perforce.hideSubmitIcon": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Don't show the submit icon next to the changelist description."
+                },
+                "perforce.promptBeforeSubmit": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to prompt for confirmation, before submitting a saved changelist"
                 }
             }
         },
@@ -574,12 +584,12 @@
             "scm/resourceGroup/context": [
                 {
                     "command": "perforce.submitDefault",
-                    "when": "scmProvider == perforce && scmResourceGroup == default",
+                    "when": "scmProvider == perforce && scmResourceGroup == default && config.perforce.hideSubmitIcon == false",
                     "group": "inline@1"
                 },
                 {
                     "command": "perforce.submitChangelist",
-                    "when": "scmProvider == perforce && scmResourceGroup != default",
+                    "when": "scmProvider == perforce && scmResourceGroup != default && config.perforce.hideSubmitIcon == false",
                     "group": "inline@1"
                 },
                 {
@@ -791,26 +801,26 @@
     "dependencies": {},
     "devDependencies": {
         "@arrows/composition": "^1.2.2",
-        "@types/chai": "^4.2.7",
+        "@types/chai": "^4.2.10",
         "@types/chai-as-promised": "^7.1.2",
         "@types/cross-spawn": "^6.0.1",
         "@types/glob": "^7.1.1",
         "@types/ini": "^1.3.30",
         "@types/javascript-time-ago": "^2.0.1",
         "@types/micromatch": "^4.0.1",
-        "@types/mocha": "^7.0.1",
-        "@types/node": "^12.12.25",
-        "@types/sinon": "^7.5.1",
+        "@types/mocha": "^7.0.2",
+        "@types/node": "^12.12.29",
+        "@types/sinon": "^7.5.2",
         "@types/sinon-chai": "^3.2.3",
         "@types/vscode": "^1.42.0",
-        "@typescript-eslint/eslint-plugin": "^2.16.0",
-        "@typescript-eslint/parser": "^2.16.0",
+        "@typescript-eslint/eslint-plugin": "^2.22.0",
+        "@typescript-eslint/parser": "^2.22.0",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
         "cross-spawn": "^7.0.1",
         "cypress-multi-reporters": "^1.2.4",
         "eslint": "^6.8.0",
-        "eslint-config-prettier": "^6.9.0",
+        "eslint-config-prettier": "^6.10.0",
         "eslint-loader": "^3.0.3",
         "eslint-plugin-prettier": "^3.1.2",
         "glob": "^7.1.6",
@@ -820,14 +830,14 @@
         "mocha": "^7.1.0",
         "mocha-junit-reporter": "^1.23.3",
         "prettier": "1.19.1",
-        "sinon": "^8.1.0",
-        "sinon-chai": "^3.4.0",
+        "sinon": "^9.0.0",
+        "sinon-chai": "^3.5.0",
         "ts-loader": "^6.2.1",
-        "tsc-watch": "^4.1.0",
-        "typescript": "^3.7.5",
+        "tsc-watch": "^4.2.3",
+        "typescript": "^3.8.3",
         "vscode-test": "^1.3.0",
-        "webpack": "^4.41.5",
-        "webpack-cli": "^3.3.10"
+        "webpack": "^4.42.0",
+        "webpack-cli": "^3.3.11"
     },
     "scripts": {
         "vscode:prepublish": "webpack --mode production",

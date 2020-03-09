@@ -33,8 +33,28 @@ export class ConfigAccessor {
         return this.getConfigItem<string>("countBadge") ?? "all-but-shelved";
     }
 
+    public get promptBeforeSubmit(): boolean {
+        return this.getConfigItem("promptBeforeSubmit") ?? false;
+    }
+
     public get refreshDebounceTime(): number {
         return 1000;
+    }
+
+    public get editOnFileSave(): boolean {
+        return this.getConfigItem("editOnFileSave") ?? false;
+    }
+
+    public get editOnFileModified(): boolean {
+        return this.getConfigItem("editOnFileModified") ?? false;
+    }
+
+    public get addOnFileCreate(): boolean {
+        return this.getConfigItem("addOnFileCreate") ?? false;
+    }
+
+    public get deleteOnFileDelete(): boolean {
+        return this.getConfigItem("deleteOnFileDelete") ?? false;
     }
 }
 

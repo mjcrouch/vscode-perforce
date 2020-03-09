@@ -41,15 +41,10 @@ export namespace PerforceCommands {
             return false;
         }
 
-        const fileUri = editor.document.uri;
-        if (checkFolderOpened()) {
-            p4add(fileUri);
-        } else {
-            p4add(fileUri, Path.dirname(fileUri.fsPath));
-        }
+        p4add(editor.document.uri);
     }
 
-    export function p4add(fileUri: Uri, directoryOverride?: string) {
+    export function p4add(fileUri: Uri) {
         const args = [Utils.expansePath(fileUri.fsPath)];
         PerforceService.execute(
             fileUri,
@@ -60,8 +55,7 @@ export namespace PerforceCommands {
                     Display.showMessage("file opened for add");
                 }
             },
-            args,
-            directoryOverride
+            args
         );
     }
 
@@ -75,17 +69,10 @@ export namespace PerforceCommands {
             return false;
         }
 
-        const fileUri = editor.document.uri;
-
-        //If folder not opened, run p4 in files folder.
-        if (checkFolderOpened()) {
-            p4edit(fileUri);
-        } else {
-            p4edit(fileUri, Path.dirname(fileUri.fsPath));
-        }
+        p4edit(editor.document.uri);
     }
 
-    export function p4edit(fileUri: Uri, directoryOverride?: string): Promise<boolean> {
+    export function p4edit(fileUri: Uri): Promise<boolean> {
         return new Promise(resolve => {
             const args = [Utils.expansePath(fileUri.fsPath)];
             PerforceService.execute(
@@ -98,13 +85,12 @@ export namespace PerforceCommands {
                     }
                     resolve(!err);
                 },
-                args,
-                directoryOverride
+                args
             );
         });
     }
 
-    function deleteOpenFile() {
+    export async function deleteOpenFile() {
         const editor = window.activeTextEditor;
         if (!checkFileSelected()) {
             return false;
@@ -114,9 +100,9 @@ export namespace PerforceCommands {
             return false;
         }
 
-        revertOpenFile();
+        await revertOpenFile();
         const fileUri = editor.document.uri;
-        p4delete(fileUri);
+        await p4delete(fileUri);
     }
 
     export async function p4delete(fileUri: Uri) {
@@ -132,7 +118,7 @@ export namespace PerforceCommands {
         }
     }
 
-    export function revertOpenFile() {
+    export async function revertOpenFile() {
         const editor = window.activeTextEditor;
         if (!checkFileSelected()) {
             return false;
@@ -143,7 +129,7 @@ export namespace PerforceCommands {
         }
 
         const fileUri = editor.document.uri;
-        p4revert(fileUri);
+        await p4revert(fileUri);
     }
 
     export async function p4revert(fileUri: Uri) {
@@ -157,6 +143,11 @@ export namespace PerforceCommands {
             // no work - just catch exception.  Error will be
             // reported by perforce command code
         }
+    }
+
+    export async function p4revertAndDelete(uri: Uri) {
+        await PerforceCommands.p4revert(uri);
+        await PerforceCommands.p4delete(uri);
     }
 
     export async function submitSingle() {
