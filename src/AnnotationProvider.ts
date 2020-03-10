@@ -36,9 +36,28 @@ type AnnotationTag = {
     value: (change: p4.FileLogItem, latestChange: p4.FileLogItem) => string;
 };
 
+function makeTruncatableString(str: string) {
+    return "%T{" + str + "}T%";
+}
+
+function truncateTruncatableString(formatted: string, fitWidth: number) {
+    const re = /^(.*?)%T\{(.*)\}T%(.*?)$/;
+    const match = re.exec(formatted);
+
+    if (match) {
+        const desc = match[2];
+        const left = match[1];
+        const right = match[3];
+        const remaining = fitWidth - left.length - right.length;
+        return left + truncateOrPad(desc, remaining) + right;
+    }
+    return formatted;
+}
+
 const tags: AnnotationTag[] = [
     { tag: "chnum", value: change => change.chnum },
     { tag: "user", value: change => change.user },
+    { tag: "shortUser", value: change => truncate(change.user, 8) },
     { tag: "client", value: change => change.client },
     {
         tag: "rev",
@@ -47,7 +66,7 @@ const tags: AnnotationTag[] = [
     },
     {
         tag: "desc",
-        value: change => "%T{" + replaceWhitespace(change.description) + "}T%"
+        value: change => makeTruncatableString(replaceWhitespace(change.description))
     },
     {
         tag: "timeAgo",
@@ -66,17 +85,7 @@ function formatAnnotations(
         format
     );
 
-    const re = /^(.*?)%T\{(.*)\}T%(.*?)$/;
-    const match = re.exec(formatted);
-
-    if (match) {
-        const desc = match[2];
-        const left = match[1];
-        const right = match[3];
-        const remaining = fitWidth - left.length - right.length - 2;
-        return left + truncateOrPad(desc, remaining) + right;
-    }
-    return formatted;
+    return truncateTruncatableString(formatted, fitWidth);
 }
 
 function doubleUpNewlines(str: string) {
@@ -96,7 +105,7 @@ function makeSummaryText(
         change,
         latestChange,
         fitWidth,
-        "#${rev} ${desc} ${timeAgo}"
+        "#${rev} ${shortUser} ${desc} ${timeAgo}"
     );
 }
 
@@ -243,7 +252,7 @@ function getDecorations(
             const before: vscode.ThemableDecorationAttachmentRenderOptions = {
                 contentText: "\xa0" + summary,
                 color: foregroundColor,
-                width: columnWidth + "ch",
+                width: columnWidth + 2 + "ch",
                 backgroundColor
             };
             const renderOptions: vscode.DecorationInstanceRenderOptions = { before };
