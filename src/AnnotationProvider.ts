@@ -239,6 +239,39 @@ function makeHoverMessage(
     return md;
 }
 
+function makeDecoration(
+    lineNumber: number,
+    revisionsAgo: number,
+    totalRevisions: number,
+    summaryText: string,
+    hoverMessage: vscode.MarkdownString,
+    foregroundColor: vscode.ThemeColor,
+    backgroundColor: vscode.ThemeColor,
+    columnWidth: number
+) {
+    const alphaStep = 1 / Math.min(Math.max(1, totalRevisions), 10);
+    const alpha = Math.max(1 - alphaStep * revisionsAgo, 0);
+    const color = `rgba(246, 106, 10, ${alpha})`;
+
+    // this is weird, but it works
+    const before: vscode.ThemableDecorationRenderOptions &
+        vscode.ThemableDecorationAttachmentRenderOptions = {
+        contentText: nbsp + summaryText,
+        color: foregroundColor,
+        width: columnWidth + 2 + "ch",
+        backgroundColor,
+        border: "solid " + color,
+        borderWidth: `0px 2px 0px 0px`
+    };
+    const renderOptions: vscode.DecorationInstanceRenderOptions = { before };
+
+    return {
+        range: new vscode.Range(lineNumber, 0, lineNumber, 0),
+        hoverMessage,
+        renderOptions
+    };
+}
+
 function getDecorations(
     swarmHost: string | undefined,
     annotations: (p4.Annotation | undefined)[],
@@ -247,7 +280,6 @@ function getDecorations(
     //const decorateColors: string[] = ["rgb(153, 153, 153)", "rgb(103, 103, 103)"];
     const backgroundColor = new vscode.ThemeColor("perforce.gutterBackgroundColor");
     const foregroundColor = new vscode.ThemeColor("perforce.gutterForegroundColor");
-    let lastNum = "";
 
     const latestChange = log[0];
 
@@ -273,7 +305,18 @@ function getDecorations(
             const changeIndex = log.findIndex(
                 l => l.chnum === annotation.revisionOrChnum
             );
-            const change = changeIndex >= 0 ? log[changeIndex] : undefined;
+            if (changeIndex < 0) {
+                Display.showImportantError(
+                    "Error during annotation - could not read change information for " +
+                        annotation.revisionOrChnum
+                );
+                throw new Error(
+                    "Could not find change info for " + annotation.revisionOrChnum
+                );
+            }
+            const revisionsAgo = changeIndex;
+
+            const change = log[changeIndex];
             const prevChange = log[changeIndex + 1];
 
             const summary = usePrevious
@@ -282,28 +325,23 @@ function getDecorations(
                 ? makeSummaryText(change, latestChange, columnOptions)
                 : "Unknown!";
 
-            const num = annotation.revisionOrChnum;
-            const hoverMessage = change
-                ? makeHoverMessage(change, latestChange, prevChange, swarmHost)
-                : num;
+            const hoverMessage = makeHoverMessage(
+                change,
+                latestChange,
+                prevChange,
+                swarmHost
+            );
 
-            if (num !== lastNum) {
-                lastNum = num;
-            }
-
-            const before: vscode.ThemableDecorationAttachmentRenderOptions = {
-                contentText: nbsp + summary,
-                color: foregroundColor,
-                width: columnWidth + 2 + "ch",
-                backgroundColor
-            };
-            const renderOptions: vscode.DecorationInstanceRenderOptions = { before };
-
-            return {
-                range: new vscode.Range(i, 0, i, 0),
+            return makeDecoration(
+                i,
+                revisionsAgo,
+                log.length,
+                summary,
                 hoverMessage,
-                renderOptions
-            };
+                foregroundColor,
+                backgroundColor,
+                columnWidth
+            );
         })
         .filter(isTruthy);
 }
@@ -311,13 +349,17 @@ function getDecorations(
 export async function annotate(uri: vscode.Uri, swarmHost?: string) {
     // TODO don't annotate an already annotated file!
 
+    const followBranches = vscode.workspace
+        .getConfiguration("perforce")
+        .get("annotate.followBranches", false);
+
     const annotationsPromise = p4.annotate(uri, {
         file: uri,
         outputChangelist: true,
-        followBranches: true
+        followBranches
     });
 
-    const logPromise = p4.getFileHistory(uri, { file: uri, followBranches: true });
+    const logPromise = p4.getFileHistory(uri, { file: uri, followBranches });
 
     const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
 

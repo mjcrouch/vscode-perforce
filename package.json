@@ -97,9 +97,8 @@
                     "type": "array",
                     "default": [
                         "{#}revision|3",
-                        "...chnum|6",
-                        "user|8",
-                        "description|25",
+                        "user|7",
+                        "description|22",
                         "->timeAgo|14"
                     ],
                     "description": "EXPERIMENTAL - SUBJECT TO CHANGE: The format for displaying summary text for perforce annotations. Each line represents a column, followed by its default length. The following flags may appear IN ORDER: ->: align right, {text}: prefix text, ...: truncate from the beginning",
