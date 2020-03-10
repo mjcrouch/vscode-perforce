@@ -6,97 +6,192 @@ import * as en from "javascript-time-ago/locale/en";
 import { isTruthy } from "./api/CommandUtils";
 import { Utils } from "./Utils";
 import * as DiffProvider from "./DiffProvider";
+import { Display } from "./Display";
 
 TimeAgo.addLocale(en);
 
+const nbsp = "\xa0";
+
 const timeAgo = new TimeAgo("en-US");
 
-type ColumnOptions = {
-    revision?: number;
-    chnum?: number;
-    user?: number;
-    client?: number;
-    description?: number;
-    timeAgo?: number;
+type ColumnOption = {
+    name: ValidColumn;
+    length: number;
+    padLeft: boolean;
+    truncateRight: boolean;
+    prefix?: string;
 };
+
+type ValidColumn = "revision" | "chnum" | "user" | "client" | "description" | "timeAgo";
+
+//example:
+// truncate chnum to 4, keeping the rightmost chars, prefix with `change #`, align right
+// ->{change #}...chnum|4
+const columnRegex = /^(->)?(?:\{(.*?)\})?(\.{3})?(revision|chnum|user|client|description|timeAgo)\|(\d+)$/;
+//const columnRegex = /(->)?(?:\{(.*?)\})?(\.{3})?(\w+)(?:\|(\d+))?/;
+
+function parseColumn(item: string): ColumnOption | undefined {
+    const match = columnRegex.exec(item);
+    if (match) {
+        const [, padLeft, prefix, truncateRight, name, lenStr] = match;
+        return {
+            name: name as ValidColumn,
+            length: parseInt(lenStr),
+            padLeft: !!padLeft,
+            truncateRight: !!truncateRight,
+            prefix
+        };
+    } else {
+        Display.showImportantError(
+            item + " is not a valid column format. Skipping this column"
+        );
+    }
+}
 
 type ColumnBehavior = {
-    padLeft?: boolean;
-    truncateRight?: boolean;
-    prefix?: string;
     value: (change: p4.FileLogItem, latestChange: p4.FileLogItem) => string;
-    grabWhitespace?: boolean;
 };
 
-type ColumnBehaviors = Record<keyof ColumnOptions, ColumnBehavior>;
+type ColumnBehaviors = Record<ValidColumn, ColumnBehavior>;
 
 const behaviors: ColumnBehaviors = {
     revision: {
         value: (change, latestChange) =>
-            change.file === latestChange.file ? change.revision : "ᛦ" + change.revision,
-        prefix: "#"
+            change.file === latestChange.file ? change.revision : "ᛦ" + change.revision
     },
     chnum: {
-        value: change => change.chnum,
-        truncateRight: true
+        value: change => change.chnum
     },
     user: { value: change => change.user },
     client: { value: change => change.client },
     description: {
-        value: change => replaceWhitespace(change.description),
-        grabWhitespace: true
+        value: change => replaceWhitespace(change.description)
     },
     timeAgo: {
-        padLeft: true,
         value: change => (change.date ? timeAgo.format(change.date) : "Unknown")
     }
 };
 
-function calculateTotalWidth(behaviors: ColumnBehaviors, options: ColumnOptions) {
-    const totalWidth = Object.entries(options).reduce((all, cur) => {
-        const b = behaviors[cur[0] as keyof ColumnBehaviors];
-        const len = cur[1];
+function calculateTotalWidth(options: ColumnOption[]) {
+    const totalWidth = options.reduce((all, cur) => {
         // + 1 to include the space
-        return all + (len && len > 0 ? (b.prefix?.length ?? 0) + len + 1 : 0);
+        const prefixLen = cur.prefix?.length ?? 0;
+        const len = cur.length ? cur.length + prefixLen + 1 : 0;
+        return all + len;
     }, -1); // start on -1 to account for the extra space
     return Math.max(0, totalWidth);
 }
 
-function truncate(str: string, maxLength: number, truncateRight?: boolean): string {
+function truncate(
+    str: string,
+    prefix: string,
+    maxLength: number,
+    truncateRight?: boolean
+): string {
     if (str.length > maxLength) {
         return truncateRight
-            ? "…" + str.slice(-maxLength)
-            : str.slice(0, maxLength - 1) + "…";
+            ? prefix + "…" + str.slice(-(maxLength - 1))
+            : prefix + str.slice(0, maxLength - 1) + "…";
     }
     return str;
 }
 
 function truncateOrPad(
     str: string,
+    prefix: string,
     maxLength: number,
     padLeft?: boolean,
     truncateRight?: boolean
 ): string {
-    const truncated = truncate(str, maxLength, truncateRight);
-    const padSpaces = "\xa0".repeat(Math.max(0, maxLength - truncated.length));
+    const truncated = truncate(str, prefix, maxLength, truncateRight);
+    const padSpaces = nbsp.repeat(Math.max(0, maxLength - truncated.length));
     return padLeft ? padSpaces + truncated : truncated + padSpaces;
 }
 
-function makeTruncatableString(str: string, len: number) {
-    return "%T" + len + "{" + str + "}T%";
+function makeTruncatableString(
+    str: string,
+    len: number,
+    prefix: string,
+    padLeft: boolean,
+    truncateRight: boolean
+) {
+    return (
+        "%T{" +
+        prefix +
+        "}" +
+        (padLeft ? "L" : "") +
+        (truncateRight ? "R" : "") +
+        len +
+        "{" +
+        str +
+        "}T%"
+    );
 }
 
-function truncateTruncatableString(formatted: string) {
-    const re = /^(.*?)%T(\d+)\{(.*)\}T%([\s\xA0]*)+(.*?)$/;
-    const match = re.exec(formatted);
+function truncateTruncatableStrings(formatted: string) {
+    let prev = formatted;
+    let next = truncateLastTruncatableString(formatted);
+    while (next !== prev) {
+        prev = next;
+        next = truncateLastTruncatableString(prev);
+    }
+    return next;
+}
 
+function truncateLastTruncatableString(formatted: string) {
+    //const re = /(.*?)%T(\d+)\{(.*)\}T%([\s\xA0]*)+(.*?)$/;
+    //const re = /(.*?)%T\{(.*?)\}(\d+)\{(.*?)\}T%[\s\xA0]*/g;
+    const re = /^%T\{(.*?)\}(L)?(R)?(\d+)\{(.*?)\}T%([\s\xA0]*)(.*?)$/g;
+
+    const lastStr = formatted.lastIndexOf("%T{");
+
+    if (lastStr <= 0) {
+        return formatted;
+    }
+
+    const left = formatted.slice(0, lastStr);
+    const matchable = formatted.slice(lastStr);
+
+    const match = re.exec(matchable);
+    if (match) {
+        const [
+            ,
+            prefix,
+            padLeft,
+            truncateRight,
+            lenStr,
+            value,
+            whitespace,
+            right
+        ] = match;
+        const valueLen = parseInt(lenStr);
+        const wsLen = whitespace.length;
+        return (
+            left +
+            truncateOrPad(
+                value,
+                prefix,
+                valueLen + wsLen - 1,
+                !!padLeft,
+                !!truncateRight
+            ) +
+            nbsp +
+            right
+        );
+    }
+
+    return formatted;
+
+    //const match = re.exec(formatted)
+    return formatted;
+    /*
     if (match) {
         const [, left, lenStr, desc, whitespace, right] = match;
         const descLen = parseInt(lenStr);
         const wsLen = whitespace.length;
-        return left + truncateOrPad(desc, descLen + wsLen - 1) + "\xa0" + right;
+        return left + truncateOrPad(desc, descLen + wsLen - 1) + nbsp + right;
     }
-    return formatted;
+    return formatted;*/
 }
 
 function doubleUpNewlines(str: string) {
@@ -104,46 +199,39 @@ function doubleUpNewlines(str: string) {
 }
 
 function replaceWhitespace(str: string) {
-    return str.replace(/\s/g, "\xa0");
+    return str.replace(/\s/g, nbsp);
 }
 
-const columnOrder: (keyof ColumnOptions)[] = [
-    "revision",
-    "chnum",
-    "user",
-    "client",
-    "description",
-    "timeAgo"
-];
-
 function formatColumn(
-    column: keyof ColumnOptions,
+    column: ColumnOption,
     change: p4.FileLogItem,
-    latestChange: p4.FileLogItem,
-    columnOptions: ColumnOptions
+    latestChange: p4.FileLogItem
 ) {
-    const len = columnOptions[column];
+    const len = column.length;
     if (!len || len <= 0) {
         return undefined;
     }
-    const b = behaviors[column];
-    const val = b.value(change, latestChange);
-    const truncated = b.grabWhitespace
-        ? makeTruncatableString(val, len)
-        : truncateOrPad(val, len, b.padLeft, b.truncateRight);
-    return (b.prefix ?? "") + truncated;
+    const val = behaviors[column.name].value(change, latestChange);
+    const truncated = makeTruncatableString(
+        val,
+        len,
+        column.prefix ?? "",
+        column.padLeft,
+        column.truncateRight
+    );
+    return (column.prefix ?? "") + truncated;
 }
 
 function makeSummaryText(
     change: p4.FileLogItem,
     latestChange: p4.FileLogItem,
-    columnOptions: ColumnOptions
+    columnOptions: ColumnOption[]
 ) {
-    const formatted = columnOrder
-        .map(col => formatColumn(col, change, latestChange, columnOptions))
+    const formatted = columnOptions
+        .map(col => formatColumn(col, change, latestChange))
         .filter(isTruthy)
         .join(" ");
-    return truncateTruncatableString(formatted);
+    return truncateTruncatableStrings(formatted);
 }
 
 function makeUserAndDateSummary(change: p4.FileLogItem) {
@@ -255,10 +343,13 @@ function getDecorations(
 
     const latestChange = log[0];
 
-    const columnOptions: ColumnOptions = vscode.workspace
+    const columnOptions: ColumnOption[] = vscode.workspace
         .getConfiguration("perforce")
-        .get("annotate.gutterColumns", { revision: 3, description: 25, timeAgo: 14 });
-    const columnWidth = calculateTotalWidth(behaviors, columnOptions);
+        .get<string[]>("annotate.gutterColumns", ["{#}revision|3"])
+        .map(parseColumn)
+        .filter(isTruthy);
+
+    const columnWidth = calculateTotalWidth(columnOptions);
 
     return annotations
         .map((a, i) => {
@@ -277,7 +368,7 @@ function getDecorations(
             const prevChange = log[changeIndex + 1];
 
             const summary = usePrevious
-                ? "\xa0"
+                ? nbsp
                 : change
                 ? makeSummaryText(change, latestChange, columnOptions)
                 : "Unknown!";
@@ -292,7 +383,7 @@ function getDecorations(
             }
 
             const before: vscode.ThemableDecorationAttachmentRenderOptions = {
-                contentText: "\xa0" + summary,
+                contentText: nbsp + summary,
                 color: foregroundColor,
                 width: columnWidth + 2 + "ch",
                 backgroundColor

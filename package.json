@@ -93,53 +93,13 @@
                     "default": true,
                     "description": "Whether to follow branch actions when annotating a file"
                 },
-                "perforce.annotate.gutterColumns2": {
-                    "type": "array",
-                    "default": ["revision|3", "...chnum|6", "user|8", "description|25", "->timeAgo|14"],
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "perforce.annotate.gutterColumns": {
-                    "type": "object",
-                    "description": "EXPERIMENTAL - subject to change. Customise annotation summary messages. An object with keys for each column. The value is the width of the column; 0 hides the column. Use intelliSense to see the available properties",
-                    "default": {
-                        "revision": 3,
-                        "user": 8,
-                        "description": 25,
-                        "timeAgo": 14
-                    },
-                    "properties": {
-                        "revision": {
-                            "type": "number",
-                            "description": "The revision number of the file",
-                            "default": 0
-                        },
-                        "chnum": {
-                            "type": "number",
-                            "description": "The changelist number",
-                            "default": 0
-                        },
-                        "user": {
-                            "type": "number",
-                            "description": "The user who submitted the changelist",
-                            "default": 0
-                        },
-                        "client": {
-                            "type": "number",
-                            "description": "The perforce client used to submit the changelist",
-                            "default": 0
-                        },
-                        "description": {
-                            "type": "number",
-                            "description": "The description of the changelist",
-                            "default": 0
-                        },
-                        "timeAgo": {
-                            "type": "number",
-                            "description": "How long ago the change was made",
-                            "default": 0
-                        }
+                    "type": "array",
+                    "default": ["{#}revision|3", "...chnum|6", "user|8", "description|25", "->timeAgo|14"],
+                    "description": "EXPERIMENTAL - SUBJECT TO CHANGE: The format for displaying summary text for perforce annotations. Each line represents a column, followed by its default length. The following flags may appear IN ORDER: ->: align right, {text}: prefix text, ...: truncate from the beginning",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^(->)?(\\{.*?\\})?(\\.{3})?(revision|chnum|user|client|description|timeAgo)\\|\\d+$"
                     }
                 },
                 "perforce.client": {
