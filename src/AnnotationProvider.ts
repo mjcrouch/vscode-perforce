@@ -108,6 +108,14 @@ function truncateOrPad(
     return padLeft ? padSpaces + truncated : truncated + padSpaces;
 }
 
+/**
+ * Wraps a string up in notation that indicates how it should be truncated
+ * @param str The string to wrap
+ * @param len The length to which the string will be truncated
+ * @param prefix The prefix value to place on the beginning of the string (never truncated)
+ * @param padLeft Whether the padding should be on the left
+ * @param truncateRight Whether the truncation should keep the right hand side of the string
+ */
 function makeTruncatableString(
     str: string,
     len: number,
@@ -139,10 +147,10 @@ function truncateTruncatableStrings(formatted: string) {
 }
 
 function truncateLastTruncatableString(formatted: string) {
-    //const re = /(.*?)%T(\d+)\{(.*)\}T%([\s\xA0]*)+(.*?)$/;
-    //const re = /(.*?)%T\{(.*?)\}(\d+)\{(.*?)\}T%[\s\xA0]*/g;
+    // matches the format produced by makeTruncatableString
     const re = /^%T\{(.*?)\}(L)?(R)?(\d+)\{(.*?)\}T%([\s\xA0]*)(.*?)$/g;
 
+    // match from right to left, so that we can grab whitespace from the next item if it is right aligned
     const lastStr = formatted.lastIndexOf("%T{");
 
     if (lastStr <= 0) {
@@ -294,6 +302,10 @@ function makeAnnotateURI(change: p4.FileLogItem) {
     return makeCommandURI("perforce.annotate", args);
 }
 
+function makeMarkdownLink(text: string, link: string) {
+    return "\\[[" + text + "](" + link + ")\\]";
+}
+
 function makeHoverMessage(
     change: p4.FileLogItem,
     latestChange: p4.FileLogItem,
@@ -301,18 +313,18 @@ function makeHoverMessage(
     swarmHost?: string
 ): vscode.MarkdownString {
     const diffLink = prevChange
-        ? "\\[[Diff Previous](" + makeDiffURI(prevChange, change) + ")\\]"
-        : "";
+        ? makeMarkdownLink("Diff Previous", makeDiffURI(prevChange, change))
+        : undefined;
     const diffLatestLink =
         change !== latestChange
-            ? "\\[[Diff Latest](" + makeDiffURI(change, latestChange) + ")\\]"
-            : "";
+            ? makeMarkdownLink("Diff Latest", makeDiffURI(change, latestChange))
+            : undefined;
     const annotateLink =
         change !== latestChange
-            ? "\\[[Annotate](" + makeAnnotateURI(change) + ")\\]"
-            : "";
+            ? makeMarkdownLink("Annotate", makeAnnotateURI(change))
+            : undefined;
     const swarmLink = swarmHost
-        ? "\\[[Open in Swarm](" + makeSwarmHostURL(change, swarmHost) + ")\\]"
+        ? makeMarkdownLink("Open in Swarm", makeSwarmHostURL(change, swarmHost))
         : undefined;
 
     const links = [swarmLink, diffLink, diffLatestLink, annotateLink]
