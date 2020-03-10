@@ -28,7 +28,6 @@ type ValidColumn = "revision" | "chnum" | "user" | "client" | "description" | "t
 // truncate chnum to 4, keeping the rightmost chars, prefix with `change #`, align right
 // ->{change #}...chnum|4
 const columnRegex = /^(->)?(?:\{(.*?)\})?(\.{3})?(revision|chnum|user|client|description|timeAgo)\|(\d+)$/;
-//const columnRegex = /(->)?(?:\{(.*?)\})?(\.{3})?(\w+)(?:\|(\d+))?/;
 
 function parseColumn(item: string): ColumnOption | undefined {
     const match = columnRegex.exec(item);
@@ -73,12 +72,12 @@ const behaviors: ColumnBehaviors = {
 };
 
 function calculateTotalWidth(options: ColumnOption[]) {
-    const totalWidth = options.reduce((all, cur) => {
-        // + 1 to include the space
-        const prefixLen = cur.prefix?.length ?? 0;
-        const len = cur.length ? cur.length + prefixLen + 1 : 0;
-        return all + len;
-    }, -1); // start on -1 to account for the extra space
+    const totalWidth = options.reduce(
+        (all, cur) =>
+            // + 1 to include the space
+            all + cur.length + (cur.prefix?.length ?? 0) + 1,
+        -1
+    ); // start on -1 to account for the extra space
     return Math.max(0, totalWidth);
 }
 
@@ -93,7 +92,7 @@ function truncate(
             ? prefix + "…" + str.slice(-(maxLength - 1))
             : prefix + str.slice(0, maxLength - 1) + "…";
     }
-    return str;
+    return prefix + str;
 }
 
 function truncateOrPad(
@@ -108,100 +107,6 @@ function truncateOrPad(
     return padLeft ? padSpaces + truncated : truncated + padSpaces;
 }
 
-/**
- * Wraps a string up in notation that indicates how it should be truncated
- * @param str The string to wrap
- * @param len The length to which the string will be truncated
- * @param prefix The prefix value to place on the beginning of the string (never truncated)
- * @param padLeft Whether the padding should be on the left
- * @param truncateRight Whether the truncation should keep the right hand side of the string
- */
-function makeTruncatableString(
-    str: string,
-    len: number,
-    prefix: string,
-    padLeft: boolean,
-    truncateRight: boolean
-) {
-    return (
-        "%T{" +
-        prefix +
-        "}" +
-        (padLeft ? "L" : "") +
-        (truncateRight ? "R" : "") +
-        len +
-        "{" +
-        str +
-        "}T%"
-    );
-}
-
-function truncateTruncatableStrings(formatted: string) {
-    let prev = formatted;
-    let next = truncateLastTruncatableString(formatted);
-    while (next !== prev) {
-        prev = next;
-        next = truncateLastTruncatableString(prev);
-    }
-    return next;
-}
-
-function truncateLastTruncatableString(formatted: string) {
-    // matches the format produced by makeTruncatableString
-    const re = /^%T\{(.*?)\}(L)?(R)?(\d+)\{(.*?)\}T%([\s\xA0]*)(.*?)$/g;
-
-    // match from right to left, so that we can grab whitespace from the next item if it is right aligned
-    const lastStr = formatted.lastIndexOf("%T{");
-
-    if (lastStr <= 0) {
-        return formatted;
-    }
-
-    const left = formatted.slice(0, lastStr);
-    const matchable = formatted.slice(lastStr);
-
-    const match = re.exec(matchable);
-    if (match) {
-        const [
-            ,
-            prefix,
-            padLeft,
-            truncateRight,
-            lenStr,
-            value,
-            whitespace,
-            right
-        ] = match;
-        const valueLen = parseInt(lenStr);
-        const wsLen = whitespace.length;
-        return (
-            left +
-            truncateOrPad(
-                value,
-                prefix,
-                valueLen + wsLen - 1,
-                !!padLeft,
-                !!truncateRight
-            ) +
-            nbsp +
-            right
-        );
-    }
-
-    return formatted;
-
-    //const match = re.exec(formatted)
-    return formatted;
-    /*
-    if (match) {
-        const [, left, lenStr, desc, whitespace, right] = match;
-        const descLen = parseInt(lenStr);
-        const wsLen = whitespace.length;
-        return left + truncateOrPad(desc, descLen + wsLen - 1) + nbsp + right;
-    }
-    return formatted;*/
-}
-
 function doubleUpNewlines(str: string) {
     return str.replace(/\n+/g, "\n\n");
 }
@@ -210,36 +115,27 @@ function replaceWhitespace(str: string) {
     return str.replace(/\s/g, nbsp);
 }
 
-function formatColumn(
-    column: ColumnOption,
-    change: p4.FileLogItem,
-    latestChange: p4.FileLogItem
-) {
-    const len = column.length;
-    if (!len || len <= 0) {
-        return undefined;
-    }
-    const val = behaviors[column.name].value(change, latestChange);
-    const truncated = makeTruncatableString(
-        val,
-        len,
-        column.prefix ?? "",
-        column.padLeft,
-        column.truncateRight
-    );
-    return (column.prefix ?? "") + truncated;
-}
-
 function makeSummaryText(
     change: p4.FileLogItem,
     latestChange: p4.FileLogItem,
     columnOptions: ColumnOption[]
 ) {
-    const formatted = columnOptions
-        .map(col => formatColumn(col, change, latestChange))
-        .filter(isTruthy)
-        .join(" ");
-    return truncateTruncatableStrings(formatted);
+    const formatted = columnOptions.reduceRight<string>((all, col) => {
+        const fullValue = replaceWhitespace(
+            behaviors[col.name].value(change, latestChange)
+        );
+        const availableWhitespace = /^([\s\xa0]*)/.exec(all);
+        const wsLen = availableWhitespace?.[1] ? availableWhitespace[1].length : 0;
+        const truncated = truncateOrPad(
+            fullValue,
+            col.prefix ?? "",
+            col.length + wsLen,
+            col.padLeft,
+            col.truncateRight
+        );
+        return truncated + nbsp + all.slice(wsLen);
+    }, "");
+    return formatted;
 }
 
 function makeUserAndDateSummary(change: p4.FileLogItem) {
@@ -359,7 +255,8 @@ function getDecorations(
         .getConfiguration("perforce")
         .get<string[]>("annotate.gutterColumns", ["{#}revision|3"])
         .map(parseColumn)
-        .filter(isTruthy);
+        .filter(isTruthy)
+        .filter(col => col.length && col.length >= 0);
 
     const columnWidth = calculateTotalWidth(columnOptions);
 

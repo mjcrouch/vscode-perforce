@@ -628,7 +628,7 @@ function parseFilelogItem(item: string[], file: string): FileLogItem | undefined
     const [header, ...desc] = item;
     // example:
     // ... #5 change 45 edit on 2020/02/15 18:48:43 by super@matto (text)
-    const matches = /^\.{3} #(\d+) change (\d+) (\w+) on (.*?) by (.*?)@(.*?) (.*?)$/.exec(
+    const matches = /^\.{3} #(\d+) change (\d+) (\S+) on (.*?) by (.*?)@(.*?) (.*?)$/.exec(
         header
     );
     if (matches) {
