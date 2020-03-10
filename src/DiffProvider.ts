@@ -21,7 +21,7 @@ function getUnprefixedName(file: string, prefixLength: number) {
     return prefixLength <= 0 ? Path.basename(file) : file.slice(prefixLength);
 }
 
-function getPathsWithoutCommonPrefix(a: string, b: string): [string, string] {
+export function getPathsWithoutCommonPrefix(a: string, b: string): [string, string] {
     const prefixLen = findLengthOfCommonPrefix(a, b);
     return [getUnprefixedName(a, prefixLen), getUnprefixedName(b, prefixLen)];
 }

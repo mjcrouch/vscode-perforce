@@ -11,13 +11,72 @@ TimeAgo.addLocale(en);
 
 const timeAgo = new TimeAgo("en-US");
 
-const columnWidth = 45;
+const columnWidth = 47;
 
 function truncate(str: string, maxLength: number): string {
     if (str.length > maxLength) {
-        return str.slice(0, maxLength) + "…";
+        return str.slice(0, maxLength - 1) + "…";
     }
     return str;
+}
+
+function truncateOrPad(str: string, maxLength: number): string {
+    const truncated = truncate(str, maxLength);
+    const padSpaces = "\xa0".repeat(Math.max(0, maxLength - truncated.length));
+    return truncated + padSpaces;
+}
+
+function replaceAnnotationTag(format: string, tag: string, value: string) {
+    const re = new RegExp("\\$\\{" + tag + "\\}", "g");
+    return format.replace(re, value);
+}
+
+type AnnotationTag = {
+    tag: string;
+    value: (change: p4.FileLogItem, latestChange: p4.FileLogItem) => string;
+};
+
+const tags: AnnotationTag[] = [
+    { tag: "chnum", value: change => change.chnum },
+    { tag: "user", value: change => change.user },
+    { tag: "client", value: change => change.client },
+    {
+        tag: "rev",
+        value: (change, latestChange) =>
+            change.file === latestChange.file ? change.revision : "ᛦ" + change.revision
+    },
+    {
+        tag: "desc",
+        value: change => "%T{" + replaceWhitespace(change.description) + "}T%"
+    },
+    {
+        tag: "timeAgo",
+        value: change => (change.date ? timeAgo.format(change.date) : "Unknown")
+    }
+];
+
+function formatAnnotations(
+    change: p4.FileLogItem,
+    latestChange: p4.FileLogItem,
+    fitWidth: number,
+    format: string
+) {
+    const formatted = tags.reduce<string>(
+        (all, tag) => replaceAnnotationTag(all, tag.tag, tag.value(change, latestChange)),
+        format
+    );
+
+    const re = /^(.*?)%T\{(.*)\}T%(.*?)$/;
+    const match = re.exec(formatted);
+
+    if (match) {
+        const desc = match[2];
+        const left = match[1];
+        const right = match[3];
+        const remaining = fitWidth - left.length - right.length - 2;
+        return left + truncateOrPad(desc, remaining) + right;
+    }
+    return formatted;
 }
 
 function doubleUpNewlines(str: string) {
@@ -28,16 +87,17 @@ function replaceWhitespace(str: string) {
     return str.replace(/\s/g, "\xa0");
 }
 
-function makeSummaryText(change: p4.FileLogItem, fitWidth: number) {
-    const timeStr = change.date ? timeAgo.format(change.date) : "Unknown";
-    //const chnumStr = "#" + change.chnum + ": ";
-    const descWidth = fitWidth - timeStr.length - 2;
-
-    const desc = truncate(replaceWhitespace(change?.description ?? "Unknown"), descWidth);
-    // non-breaking space
-    const padSpaces = "\xa0".repeat(descWidth + 2 - desc.length);
-
-    return desc + padSpaces + timeStr;
+function makeSummaryText(
+    change: p4.FileLogItem,
+    latestChange: p4.FileLogItem,
+    fitWidth: number
+) {
+    return formatAnnotations(
+        change,
+        latestChange,
+        fitWidth,
+        "#${rev} ${desc} ${timeAgo}"
+    );
 }
 
 function makeUserAndDateSummary(change: p4.FileLogItem) {
@@ -168,7 +228,7 @@ function getDecorations(
             const summary = usePrevious
                 ? "\xa0"
                 : change
-                ? makeSummaryText(change, columnWidth)
+                ? makeSummaryText(change, latestChange, columnWidth)
                 : "Unknown!";
 
             const num = annotation.revisionOrChnum;
@@ -183,7 +243,7 @@ function getDecorations(
             const before: vscode.ThemableDecorationAttachmentRenderOptions = {
                 contentText: "\xa0" + summary,
                 color: foregroundColor,
-                width: columnWidth + 2 + "ch",
+                width: columnWidth + "ch",
                 backgroundColor
             };
             const renderOptions: vscode.DecorationInstanceRenderOptions = { before };

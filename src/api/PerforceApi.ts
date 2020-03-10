@@ -22,9 +22,9 @@ import {
 } from "./CommonTypes";
 
 //const prepareOutput = (value: string) => value.trim();
-const removeLeadingNewline = (value: string) => value.replace(/^\r?\n/, "");
-const splitIntoLines = (value: string) => value.split(/\r?\n/);
-const splitIntoSections = (str: string) => str.split(/\r?\n\r?\n/);
+const removeLeadingNewline = (value: string) => value.replace(/^\r*?\n/, "");
+const splitIntoLines = (value: string) => value.split(/\r*?\n/);
+const splitIntoSections = (str: string) => str.split(/\r*?\n\r*?\n/);
 const removeIndent = (lines: string[]) => lines.map(line => line.replace(/^\t/, ""));
 
 //#region Changelists
