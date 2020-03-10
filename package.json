@@ -88,20 +88,59 @@
                     "default": false,
                     "description": "Automatically delete a file from depot when deleted"
                 },
-                "perforce.annotate.changelist": {
+                "perforce.annotate.followBranches": {
                     "type": "boolean",
-                    "default": false,
-                    "description": "Output changelist numbers rather than revision numbers for each line"
+                    "default": true,
+                    "description": "Whether to follow branch actions when annotating a file"
                 },
-                "perforce.annotate.user": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Output the user who modified the line in the file and the date it was modified"
+                "perforce.annotate.gutterColumns2": {
+                    "type": "array",
+                    "default": ["revision|3", "...chnum|6", "user|8", "description|25", "->timeAgo|14"],
+                    "items": {
+                        "type": "string"
+                    }
                 },
-                "perforce.annotate.enable": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Show annotation for every file"
+                "perforce.annotate.gutterColumns": {
+                    "type": "object",
+                    "description": "EXPERIMENTAL - subject to change. Customise annotation summary messages. An object with keys for each column. The value is the width of the column; 0 hides the column. Use intelliSense to see the available properties",
+                    "default": {
+                        "revision": 3,
+                        "user": 8,
+                        "description": 25,
+                        "timeAgo": 14
+                    },
+                    "properties": {
+                        "revision": {
+                            "type": "number",
+                            "description": "The revision number of the file",
+                            "default": 0
+                        },
+                        "chnum": {
+                            "type": "number",
+                            "description": "The changelist number",
+                            "default": 0
+                        },
+                        "user": {
+                            "type": "number",
+                            "description": "The user who submitted the changelist",
+                            "default": 0
+                        },
+                        "client": {
+                            "type": "number",
+                            "description": "The perforce client used to submit the changelist",
+                            "default": 0
+                        },
+                        "description": {
+                            "type": "number",
+                            "description": "The description of the changelist",
+                            "default": 0
+                        },
+                        "timeAgo": {
+                            "type": "number",
+                            "description": "How long ago the change was made",
+                            "default": 0
+                        }
+                    }
                 },
                 "perforce.client": {
                     "type": "string",

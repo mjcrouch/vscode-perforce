@@ -11,81 +11,92 @@ TimeAgo.addLocale(en);
 
 const timeAgo = new TimeAgo("en-US");
 
-const columnWidth = 47;
+type ColumnOptions = {
+    revision?: number;
+    chnum?: number;
+    user?: number;
+    client?: number;
+    description?: number;
+    timeAgo?: number;
+};
 
-function truncate(str: string, maxLength: number): string {
+type ColumnBehavior = {
+    padLeft?: boolean;
+    truncateRight?: boolean;
+    prefix?: string;
+    value: (change: p4.FileLogItem, latestChange: p4.FileLogItem) => string;
+    grabWhitespace?: boolean;
+};
+
+type ColumnBehaviors = Record<keyof ColumnOptions, ColumnBehavior>;
+
+const behaviors: ColumnBehaviors = {
+    revision: {
+        value: (change, latestChange) =>
+            change.file === latestChange.file ? change.revision : "ᛦ" + change.revision,
+        prefix: "#"
+    },
+    chnum: {
+        value: change => change.chnum,
+        truncateRight: true
+    },
+    user: { value: change => change.user },
+    client: { value: change => change.client },
+    description: {
+        value: change => replaceWhitespace(change.description),
+        grabWhitespace: true
+    },
+    timeAgo: {
+        padLeft: true,
+        value: change => (change.date ? timeAgo.format(change.date) : "Unknown")
+    }
+};
+
+function calculateTotalWidth(behaviors: ColumnBehaviors, options: ColumnOptions) {
+    const totalWidth = Object.entries(options).reduce((all, cur) => {
+        const b = behaviors[cur[0] as keyof ColumnBehaviors];
+        const len = cur[1];
+        // + 1 to include the space
+        return all + (len && len > 0 ? (b.prefix?.length ?? 0) + len + 1 : 0);
+    }, -1); // start on -1 to account for the extra space
+    return Math.max(0, totalWidth);
+}
+
+function truncate(str: string, maxLength: number, truncateRight?: boolean): string {
     if (str.length > maxLength) {
-        return str.slice(0, maxLength - 1) + "…";
+        return truncateRight
+            ? "…" + str.slice(-maxLength)
+            : str.slice(0, maxLength - 1) + "…";
     }
     return str;
 }
 
-function truncateOrPad(str: string, maxLength: number): string {
-    const truncated = truncate(str, maxLength);
+function truncateOrPad(
+    str: string,
+    maxLength: number,
+    padLeft?: boolean,
+    truncateRight?: boolean
+): string {
+    const truncated = truncate(str, maxLength, truncateRight);
     const padSpaces = "\xa0".repeat(Math.max(0, maxLength - truncated.length));
-    return truncated + padSpaces;
+    return padLeft ? padSpaces + truncated : truncated + padSpaces;
 }
 
-function replaceAnnotationTag(format: string, tag: string, value: string) {
-    const re = new RegExp("\\$\\{" + tag + "\\}", "g");
-    return format.replace(re, value);
+function makeTruncatableString(str: string, len: number) {
+    return "%T" + len + "{" + str + "}T%";
 }
 
-type AnnotationTag = {
-    tag: string;
-    value: (change: p4.FileLogItem, latestChange: p4.FileLogItem) => string;
-};
-
-function makeTruncatableString(str: string) {
-    return "%T{" + str + "}T%";
-}
-
-function truncateTruncatableString(formatted: string, fitWidth: number) {
-    const re = /^(.*?)%T\{(.*)\}T%(.*?)$/;
+function truncateTruncatableString(formatted: string) {
+    const re = /^(.*?)%T(\d+)\{(.*)\}T%([\s\xA0]*)+(.*?)$/;
     const match = re.exec(formatted);
 
     if (match) {
-        const desc = match[2];
-        const left = match[1];
-        const right = match[3];
-        const remaining = fitWidth - left.length - right.length;
-        return left + truncateOrPad(desc, remaining) + right;
+        const [, left, lenStr, desc, whitespace, right] = match;
+        const descLen = parseInt(lenStr);
+        const wsLen = whitespace.length;
+        return left + truncateOrPad(desc, descLen + wsLen - 1) + "\xa0" + right;
     }
     return formatted;
-}
-
-const tags: AnnotationTag[] = [
-    { tag: "chnum", value: change => change.chnum },
-    { tag: "user", value: change => change.user },
-    { tag: "shortUser", value: change => truncate(change.user, 8) },
-    { tag: "client", value: change => change.client },
-    {
-        tag: "rev",
-        value: (change, latestChange) =>
-            change.file === latestChange.file ? change.revision : "ᛦ" + change.revision
-    },
-    {
-        tag: "desc",
-        value: change => makeTruncatableString(replaceWhitespace(change.description))
-    },
-    {
-        tag: "timeAgo",
-        value: change => (change.date ? timeAgo.format(change.date) : "Unknown")
-    }
-];
-
-function formatAnnotations(
-    change: p4.FileLogItem,
-    latestChange: p4.FileLogItem,
-    fitWidth: number,
-    format: string
-) {
-    const formatted = tags.reduce<string>(
-        (all, tag) => replaceAnnotationTag(all, tag.tag, tag.value(change, latestChange)),
-        format
-    );
-
-    return truncateTruncatableString(formatted, fitWidth);
 }
 
 function doubleUpNewlines(str: string) {
@@ -96,17 +107,43 @@ function replaceWhitespace(str: string) {
     return str.replace(/\s/g, "\xa0");
 }
 
+const columnOrder: (keyof ColumnOptions)[] = [
+    "revision",
+    "chnum",
+    "user",
+    "client",
+    "description",
+    "timeAgo"
+];
+
+function formatColumn(
+    column: keyof ColumnOptions,
+    change: p4.FileLogItem,
+    latestChange: p4.FileLogItem,
+    columnOptions: ColumnOptions
+) {
+    const len = columnOptions[column];
+    if (!len || len <= 0) {
+        return undefined;
+    }
+    const b = behaviors[column];
+    const val = b.value(change, latestChange);
+    const truncated = b.grabWhitespace
+        ? makeTruncatableString(val, len)
+        : truncateOrPad(val, len, b.padLeft, b.truncateRight);
+    return (b.prefix ?? "") + truncated;
+}
+
 function makeSummaryText(
     change: p4.FileLogItem,
     latestChange: p4.FileLogItem,
-    fitWidth: number
+    columnOptions: ColumnOptions
 ) {
-    return formatAnnotations(
-        change,
-        latestChange,
-        fitWidth,
-        "#${rev} ${shortUser} ${desc} ${timeAgo}"
-    );
+    const formatted = columnOrder
+        .map(col => formatColumn(col, change, latestChange, columnOptions))
+        .filter(isTruthy)
+        .join(" ");
+    return truncateTruncatableString(formatted);
 }
 
 function makeUserAndDateSummary(change: p4.FileLogItem) {
@@ -218,6 +255,11 @@ function getDecorations(
 
     const latestChange = log[0];
 
+    const columnOptions: ColumnOptions = vscode.workspace
+        .getConfiguration("perforce")
+        .get("annotate.gutterColumns", { revision: 3, description: 25, timeAgo: 14 });
+    const columnWidth = calculateTotalWidth(behaviors, columnOptions);
+
     return annotations
         .map((a, i) => {
             const usePrevious =
@@ -237,7 +279,7 @@ function getDecorations(
             const summary = usePrevious
                 ? "\xa0"
                 : change
-                ? makeSummaryText(change, latestChange, columnWidth)
+                ? makeSummaryText(change, latestChange, columnOptions)
                 : "Unknown!";
 
             const num = annotation.revisionOrChnum;
