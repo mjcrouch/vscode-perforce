@@ -171,8 +171,15 @@ function makeCommandURI(command: string, ...args: any[]) {
     return "command:" + command + "?" + encoded;
 }
 
-function makeDiffURI(prevChange: p4.FileLogItem, change: p4.FileLogItem) {
-    const args = [makePerforceURI(prevChange), makePerforceURI(change)];
+function makeDiffURI(
+    workspace: vscode.Uri,
+    prevChange: p4.FileLogItem,
+    change: p4.FileLogItem
+) {
+    const args = [
+        makePerforceURI(workspace, prevChange),
+        makePerforceURI(workspace, change)
+    ];
     return (
         makeCommandURI("perforce.diffFiles", ...args) +
         ' "' +
@@ -186,15 +193,18 @@ function makeDiffURI(prevChange: p4.FileLogItem, change: p4.FileLogItem) {
     );
 }
 
-function makePerforceURI(change: p4.FileLogItem) {
+function makePerforceURI(underlying: vscode.Uri, change: p4.FileLogItem) {
     const baseUri = vscode.Uri.parse("perforce:" + change.file).with({
         fragment: change.revision
     });
-    return Utils.makePerforceDocUri(baseUri, "print", "-q", { depot: true });
+    return Utils.makePerforceDocUri(baseUri, "print", "-q", {
+        depot: true,
+        workspace: underlying.fsPath
+    });
 }
 
-function makeAnnotateURI(change: p4.FileLogItem) {
-    const args = makePerforceURI(change).toString();
+function makeAnnotateURI(underlying: vscode.Uri, change: p4.FileLogItem) {
+    const args = makePerforceURI(underlying, change).toString();
     return makeCommandURI("perforce.annotate", args);
 }
 
@@ -202,22 +212,31 @@ function makeMarkdownLink(text: string, link: string) {
     return "\\[[" + text + "](" + link + ")\\]";
 }
 
+function getUnderlyingUri(uri: vscode.Uri) {
+    const decoded = Utils.decodeUriQuery(uri.query);
+    return decoded.workspace ? vscode.Uri.file(decoded.workspace as string) : uri;
+}
+
 function makeHoverMessage(
+    underlying: vscode.Uri,
     change: p4.FileLogItem,
     latestChange: p4.FileLogItem,
     prevChange?: p4.FileLogItem,
     swarmHost?: string
 ): vscode.MarkdownString {
     const diffLink = prevChange
-        ? makeMarkdownLink("Diff Previous", makeDiffURI(prevChange, change))
+        ? makeMarkdownLink("Diff Previous", makeDiffURI(underlying, prevChange, change))
         : undefined;
     const diffLatestLink =
         change !== latestChange
-            ? makeMarkdownLink("Diff Latest", makeDiffURI(change, latestChange))
+            ? makeMarkdownLink(
+                  "Diff Latest",
+                  makeDiffURI(underlying, change, latestChange)
+              )
             : undefined;
     const annotateLink =
         change !== latestChange
-            ? makeMarkdownLink("Annotate", makeAnnotateURI(change))
+            ? makeMarkdownLink("Annotate", makeAnnotateURI(underlying, change))
             : undefined;
     const swarmLink = swarmHost
         ? makeMarkdownLink("Open in Swarm", makeSwarmHostURL(change, swarmHost))
@@ -273,6 +292,7 @@ function makeDecoration(
 }
 
 function getDecorations(
+    underlying: vscode.Uri,
     swarmHost: string | undefined,
     annotations: (p4.Annotation | undefined)[],
     log: p4.FileLogItem[]
@@ -326,6 +346,7 @@ function getDecorations(
                 : "Unknown!";
 
             const hoverMessage = makeHoverMessage(
+                underlying,
                 change,
                 latestChange,
                 prevChange,
@@ -353,17 +374,18 @@ export async function annotate(uri: vscode.Uri, swarmHost?: string) {
         .getConfiguration("perforce")
         .get("annotate.followBranches", false);
 
-    const annotationsPromise = p4.annotate(uri, {
+    const underlying = getUnderlyingUri(uri);
+    const annotationsPromise = p4.annotate(underlying, {
         file: uri,
         outputChangelist: true,
         followBranches
     });
 
-    const logPromise = p4.getFileHistory(uri, { file: uri, followBranches });
+    const logPromise = p4.getFileHistory(underlying, { file: uri, followBranches });
 
     const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
 
-    const decorations = getDecorations(swarmHost, annotations, log);
+    const decorations = getDecorations(underlying, swarmHost, annotations, log);
     printAndDecorate(uri, decorations);
 }
 
