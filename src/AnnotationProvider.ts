@@ -22,14 +22,196 @@ type ColumnOption = {
     prefix?: string;
 };
 
+/*
+type AnnotationThemeColors = {
+    gutterBackground: vscode.ThemeColor;
+    gutterForeground: vscode.ThemeColor;
+    lineHighlightBg: vscode.ThemeColor;
+    lineHighlightRuler: vscode.ThemeColor;
+};
+
+// TODO is it necessary to make new ones every time or should it just be a const
+// (does a theme color change when the theme changes?)
+function getCurrentThemeColors(): AnnotationThemeColors {
+    return {
+        gutterBackground: new vscode.ThemeColor("perforce.gutterBackgroundColor"),
+        gutterForeground: new vscode.ThemeColor("perforce.gutterForegroundColor"),
+        lineHighlightBg: new vscode.ThemeColor("perforce.lineHighlightBackgroundColor"),
+        lineHighlightRuler: new vscode.ThemeColor(
+            "perforce.lineHighlightOverviewRulerColor"
+        )
+    };
+}
+*/
+
+type DecoratedChange = {
+    chnum: string;
+    decoration: vscode.DecorationOptions;
+};
+
+const normalDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    before: {
+        margin: "0 1.75em 0 0"
+    }
+});
+
+const highlightedDecoration = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: new vscode.ThemeColor("perforce.lineHighlightBackgroundColor"),
+    overviewRulerColor: new vscode.ThemeColor("perforce.lineHighlightOverviewRulerColor"),
+    overviewRulerLane: vscode.OverviewRulerLane.Left,
+    before: {
+        margin: "0 1.75em 0 0"
+    }
+});
+
+class AnnotationProvider {
+    //private static _providersByDocument: Map<vscode.TextDocument, AnnotationProvider>;
+    private _subscriptions: vscode.Disposable[];
+    private _editor: vscode.TextEditor | undefined;
+    private _p4Uri: vscode.Uri;
+    private _decorationsByChnum: DecoratedChange[];
+
+    private constructor(
+        private _doc: vscode.Uri,
+        private _annotations: (p4.Annotation | undefined)[],
+        private _decorations: vscode.DecorationOptions[]
+    ) {
+        this._p4Uri = Utils.makePerforceDocUri(_doc, "print", "-q");
+        this._subscriptions = [];
+        this._decorationsByChnum = this.mapToChnums();
+
+        vscode.window.onDidChangeActiveTextEditor(
+            this.onEditorChanged.bind(this),
+            this._subscriptions
+        );
+
+        vscode.window.onDidChangeTextEditorSelection(
+            this.onSelectionChanged.bind(this),
+            this._subscriptions
+        );
+
+        vscode.workspace.onDidCloseTextDocument(
+            this.checkStillOpen.bind(this),
+            this._subscriptions
+        );
+
+        this.loadEditor();
+    }
+
+    private mapToChnums(): DecoratedChange[] {
+        return this._annotations
+            .map((ann, i) => {
+                return ann?.revisionOrChnum
+                    ? {
+                          chnum: ann.revisionOrChnum,
+                          decoration: this._decorations[i]
+                      }
+                    : undefined;
+            })
+            .filter(isTruthy);
+    }
+
+    private async loadEditor() {
+        this._editor = await vscode.window.showTextDocument(this._p4Uri);
+        this.applyDecorations();
+    }
+
+    private applyDecorations() {
+        if (!this._editor) {
+            return;
+        }
+        const line = this._editor.selection.start.line;
+        const ann = this._annotations[line];
+        const chnum = ann?.revisionOrChnum;
+        const normal = chnum
+            ? this._decorationsByChnum
+                  .filter(dec => dec.chnum !== chnum)
+                  .map(dec => dec.decoration)
+            : [];
+        const highlighted = this._decorationsByChnum
+            .filter(dec => dec.chnum === chnum)
+            .map(dec => dec.decoration);
+
+        this._editor.setDecorations(normalDecoration, normal);
+        this._editor.setDecorations(highlightedDecoration, highlighted);
+    }
+
+    private clearDecorations() {
+        this._editor?.setDecorations(normalDecoration, []);
+        this._editor?.setDecorations(highlightedDecoration, []);
+    }
+
+    private onSelectionChanged(event: vscode.TextEditorSelectionChangeEvent) {
+        if (this._editor && event.textEditor === this._editor) {
+            this.applyDecorations();
+        }
+    }
+
+    private onEditorChanged() {
+        this.checkStillOpen();
+        if (!vscode.window.activeTextEditor?.document) {
+            return;
+        }
+        if (vscode.window.activeTextEditor?.document === this._editor?.document) {
+            // TODO - this bit is weird - the same document is opened in a new editor.
+            // Does this mean we could have multiple annotation providers lying around? need to investigate
+            this._editor = vscode.window.activeTextEditor;
+            this.applyDecorations();
+        } else {
+            console.log("not this one");
+        }
+    }
+
+    private checkStillOpen() {
+        if (
+            this._editor &&
+            !vscode.workspace.textDocuments.includes(this._editor.document)
+        ) {
+            Display.channel.appendLine("Document closed: " + this._editor.document.uri);
+        }
+    }
+
+    dispose() {
+        this.clearDecorations();
+        this._subscriptions.forEach(d => d.dispose());
+    }
+
+    static async annotate(uri: vscode.Uri, swarmHost?: string) {
+        /*
+        if (!this._providersByDocument) {
+            this._providersByDocument = new Map();
+        }
+        if (this._providersByDocument) {}
+            */
+        const followBranches = vscode.workspace
+            .getConfiguration("perforce")
+            .get("annotate.followBranches", false);
+
+        const underlying = getUnderlyingUri(uri);
+        const annotationsPromise = p4.annotate(underlying, {
+            file: uri,
+            outputChangelist: true,
+            followBranches
+        });
+
+        const logPromise = p4.getFileHistory(underlying, { file: uri, followBranches });
+
+        const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
+        const decorations = getDecorations(underlying, swarmHost, annotations, log);
+
+        return new AnnotationProvider(uri, annotations, decorations);
+    }
+}
+
 type ValidColumn = "revision" | "chnum" | "user" | "client" | "description" | "timeAgo";
 
-//example:
-// truncate chnum to 4, keeping the rightmost chars, prefix with `change #`, align right
-// ->{change #}...chnum|4
-const columnRegex = /^(->)?(?:\{(.*?)\})?(\.{3})?(revision|chnum|user|client|description|timeAgo)\|(\d+)$/;
-
 function parseColumn(item: string): ColumnOption | undefined {
+    //example:
+    // truncate chnum to 4, keeping the rightmost chars, prefix with `change #`, align right
+    // ->{change #}...chnum|4
+    const columnRegex = /^(->)?(?:\{(.*?)\})?(\.{3})?(revision|chnum|user|client|description|timeAgo)\|(\d+)$/;
     const match = columnRegex.exec(item);
     if (match) {
         const [, padLeft, prefix, truncateRight, name, lenStr] = match;
@@ -207,7 +389,14 @@ function makePerforceURI(underlying: vscode.Uri, change: p4.FileLogItem) {
 
 function makeAnnotateURI(underlying: vscode.Uri, change: p4.FileLogItem) {
     const args = makePerforceURI(underlying, change).toString();
-    return makeCommandURI("perforce.annotate", args);
+    return (
+        makeCommandURI("perforce.annotate", args) +
+        ' "Show annotations for ' +
+        change.file +
+        "#" +
+        change.revision +
+        '"'
+    );
 }
 
 function makeMarkdownLink(text: string, link: string) {
@@ -371,38 +560,5 @@ function getDecorations(
 
 export async function annotate(uri: vscode.Uri, swarmHost?: string) {
     // TODO don't annotate an already annotated file!
-
-    const followBranches = vscode.workspace
-        .getConfiguration("perforce")
-        .get("annotate.followBranches", false);
-
-    const underlying = getUnderlyingUri(uri);
-    const annotationsPromise = p4.annotate(underlying, {
-        file: uri,
-        outputChangelist: true,
-        followBranches
-    });
-
-    const logPromise = p4.getFileHistory(underlying, { file: uri, followBranches });
-
-    const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
-
-    const decorations = getDecorations(underlying, swarmHost, annotations, log);
-    printAndDecorate(uri, decorations);
-}
-
-async function printAndDecorate(
-    uri: vscode.Uri,
-    decorations: vscode.DecorationOptions[]
-) {
-    const decorationType = vscode.window.createTextEditorDecorationType({
-        isWholeLine: true,
-        before: {
-            margin: "0 1.75em 0 0"
-        }
-    });
-
-    const p4Uri = Utils.makePerforceDocUri(uri, "print", "-q");
-    const editor = await vscode.window.showTextDocument(p4Uri);
-    editor.setDecorations(decorationType, decorations);
+    return AnnotationProvider.annotate(uri, swarmHost);
 }

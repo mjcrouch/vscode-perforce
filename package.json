@@ -766,6 +766,24 @@
                     "light": "#747474",
                     "highContrast": "#BEBEBE"
                 }
+            },
+            {
+                "id": "perforce.lineHighlightBackgroundColor",
+                "description": "Specifies the background color of the associated line highlights in annotations",
+                "defaults": {
+                    "dark": "#00BCF233",
+                    "light": "#00BCF233",
+                    "highContrast": "#00BCF233"
+                }
+            },
+            {
+                "id": "perforce.lineHighlightOverviewRulerColor",
+                "description": "Specifies the overview ruler color of the associated line highlights in annotations",
+                "defaults": {
+                    "dark": "#00BCF299",
+                    "light": "#00BCF299",
+                    "highContrast": "#00BCF299"
+                }
             }
         ],
         "keybindings": [
