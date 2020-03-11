@@ -103,7 +103,9 @@ function truncateOrPad(
     truncateRight?: boolean
 ): string {
     const truncated = truncate(str, prefix, maxLength, truncateRight);
-    const padSpaces = nbsp.repeat(Math.max(0, maxLength - truncated.length));
+    const padSpaces = nbsp.repeat(
+        Math.max(0, maxLength - (truncated.length - prefix.length))
+    );
     return padLeft ? padSpaces + truncated : truncated + padSpaces;
 }
 
