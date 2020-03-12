@@ -123,8 +123,8 @@ class AnnotationProvider {
             return;
         }
         if (vscode.window.activeTextEditor?.document === this._editor?.document) {
-            // TODO - this bit is weird - the same document is opened in a new editor.
-            // Does this mean we could have multiple annotation providers lying around? need to investigate
+            // this bit is weird - the same document may be opened in a new editor.
+            // but the static map should ensure we only have one annotation provider per file
             this._editor = vscode.window.activeTextEditor;
             this.applyBaseDecorations();
             this.applyHighlightDecorations();
