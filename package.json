@@ -101,7 +101,7 @@
                         "description|22",
                         "->timeAgo|14"
                     ],
-                    "description": "EXPERIMENTAL - SUBJECT TO CHANGE: The format for displaying summary text for perforce annotations. Each line represents a column, followed by its default length. The following flags may appear IN ORDER: ->: align right, {text}: prefix text, ...: truncate from the beginning",
+                    "description": "EXPERIMENTAL - SUBJECT TO CHANGE\nThe format for displaying summary text for perforce annotations. Each line represents a column, followed by its default length. The following flags may appear before the column name, IN THIS ORDER:\n-> : align right,\n{text} : prefix text,\n... : truncate from the beginning, instead of the end\n\nThe following columns are supported:\nrevision, chnum, user, client, description, timeAgo",
                     "items": {
                         "type": "string",
                         "pattern": "^(->)?(\\{.*?\\})?(\\.{3})?(revision|chnum|user|client|description|timeAgo)\\|\\d+$"

@@ -46,7 +46,7 @@ If you install this extension, please uninstall or disable `slevesque.perforce` 
 |&nbsp; 
 |`perforce.activationMode`          |`string`   |Controls when to activate the extension (`always`,`autodetect`,`off`)
 |`perforce.countBadge`              |`string`   |Controls the badge counter for Perforce (`all`,`off`)
-|`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actiona when annotating a file
+|`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actions when annotating a file
 |`perforce.annotate.gutterColumns`  |`string`   |**Experimental** Format for annotation summary messages
 |`perforce.changelistOrder`         |`string`   |Specifies the direction of the chnagelist sorting (`descending`,`ascending`)
 |`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer

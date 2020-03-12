@@ -75,7 +75,7 @@ export function makeAllLinks(
     const diffLatestLink =
         change !== latestChange
             ? makeMarkdownLink(
-                  "Diff Latest",
+                  "Diff vs this Revision",
                   makeDiffURI(underlying, change, latestChange)
               )
             : undefined;
