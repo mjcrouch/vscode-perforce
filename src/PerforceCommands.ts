@@ -9,7 +9,7 @@ import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
 import { Utils } from "./Utils";
 import { PerforceSCMProvider } from "./ScmProvider";
-import * as AnnotationProvider from "./AnnotationProvider";
+import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 
 // TODO resolve
