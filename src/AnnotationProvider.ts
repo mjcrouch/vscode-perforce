@@ -115,26 +115,29 @@ class AnnotationProvider {
 
     private async loadEditor() {
         this._editor = await vscode.window.showTextDocument(this._p4Uri);
-        this.applyDecorations();
+        this.applyBaseDecorations();
+        // don't apply highlights until a line is selected
     }
 
-    private applyDecorations() {
+    private applyBaseDecorations() {
+        if (!this._editor) {
+            return;
+        }
+        this._editor.setDecorations(normalDecoration, this._decorations);
+    }
+
+    private applyHighlightDecorations() {
         if (!this._editor) {
             return;
         }
         const line = this._editor.selection.start.line;
         const ann = this._annotations[line];
         const chnum = ann?.revisionOrChnum;
-        const normal = chnum
-            ? this._decorationsByChnum
-                  .filter(dec => dec.chnum !== chnum)
-                  .map(dec => dec.decoration)
-            : [];
+
         const highlighted = this._decorationsByChnum
             .filter(dec => dec.chnum === chnum)
-            .map(dec => dec.decoration);
+            .map(dec => dec.decoration.range);
 
-        this._editor.setDecorations(normalDecoration, normal);
         this._editor.setDecorations(highlightedDecoration, highlighted);
     }
 
@@ -145,7 +148,7 @@ class AnnotationProvider {
 
     private onSelectionChanged(event: vscode.TextEditorSelectionChangeEvent) {
         if (this._editor && event.textEditor === this._editor) {
-            this.applyDecorations();
+            this.applyHighlightDecorations();
         }
     }
 
@@ -158,7 +161,8 @@ class AnnotationProvider {
             // TODO - this bit is weird - the same document is opened in a new editor.
             // Does this mean we could have multiple annotation providers lying around? need to investigate
             this._editor = vscode.window.activeTextEditor;
-            this.applyDecorations();
+            this.applyBaseDecorations();
+            this.applyHighlightDecorations();
         } else {
             console.log("not this one");
         }
@@ -453,6 +457,7 @@ function makeDecoration(
     lineNumber: number,
     revisionsAgo: number,
     totalRevisions: number,
+    isTop: boolean,
     summaryText: string,
     hoverMessage: vscode.MarkdownString,
     foregroundColor: vscode.ThemeColor,
@@ -463,6 +468,8 @@ function makeDecoration(
     const alpha = Math.max(1 - alphaStep * revisionsAgo, 0);
     const color = `rgba(246, 106, 10, ${alpha})`;
 
+    const overline = isTop ? "overline solid rgba(0, 0, 0, 0.2)" : undefined;
+
     // this is weird, but it works
     const before: vscode.ThemableDecorationRenderOptions &
         vscode.ThemableDecorationAttachmentRenderOptions = {
@@ -471,7 +478,8 @@ function makeDecoration(
         width: columnWidth + 2 + "ch",
         backgroundColor,
         border: "solid " + color,
-        borderWidth: `0px 2px 0px 0px`
+        textDecoration: overline,
+        borderWidth: "0px 2px 0px 0px"
     };
     const renderOptions: vscode.DecorationInstanceRenderOptions = { before };
 
@@ -548,6 +556,7 @@ function getDecorations(
                 i,
                 revisionsAgo,
                 log.length,
+                !usePrevious,
                 summary,
                 hoverMessage,
                 foregroundColor,
