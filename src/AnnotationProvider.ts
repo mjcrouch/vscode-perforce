@@ -82,19 +82,21 @@ class AnnotationProvider {
         this._subscriptions = [];
         this._decorationsByChnum = this.mapToChnums();
 
-        vscode.window.onDidChangeActiveTextEditor(
-            this.onEditorChanged.bind(this),
-            this._subscriptions
+        this._subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(this.onEditorChanged.bind(this))
         );
 
-        vscode.window.onDidChangeTextEditorSelection(
-            this.onSelectionChanged.bind(this),
-            this._subscriptions
+        this._subscriptions.push(
+            vscode.window.onDidChangeTextEditorSelection(
+                this.onSelectionChanged.bind(this)
+            )
         );
 
-        vscode.workspace.onDidCloseTextDocument(
-            this.checkStillOpen.bind(this),
-            this._subscriptions
+        this._subscriptions.push(
+            vscode.workspace.onDidCloseTextDocument(
+                this.checkStillOpen.bind(this),
+                this._subscriptions
+            )
         );
 
         this.loadEditor();
@@ -174,6 +176,7 @@ class AnnotationProvider {
             !vscode.workspace.textDocuments.includes(this._editor.document)
         ) {
             Display.channel.appendLine("Document closed: " + this._editor.document.uri);
+            this.dispose();
         }
     }
 
