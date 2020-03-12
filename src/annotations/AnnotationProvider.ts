@@ -29,6 +29,8 @@ const highlightedDecoration = vscode.window.createTextEditorDecorationType({
 });
 
 class AnnotationProvider {
+    private static _annotationsByUri: Map<vscode.Uri, AnnotationProvider>;
+
     private _subscriptions: vscode.Disposable[];
     private _editor: vscode.TextEditor | undefined;
     private _p4Uri: vscode.Uri;
@@ -141,10 +143,25 @@ class AnnotationProvider {
 
     dispose() {
         this.clearDecorations();
+        // TODO bit ugly for the class to know about the static map
+        if (AnnotationProvider._annotationsByUri.get(this._doc) === this) {
+            AnnotationProvider._annotationsByUri.delete(this._doc);
+        }
+        this._decorationsByChnum = [];
         this._subscriptions.forEach(d => d.dispose());
     }
 
     static async annotate(uri: vscode.Uri, swarmHost?: string) {
+        if (!this._annotationsByUri) {
+            this._annotationsByUri = new Map();
+        }
+        const existing = this._annotationsByUri.get(uri);
+        if (existing) {
+            // TODO - this gets rid of the existing one and gets the new perforce details instead
+            // is this actually useful, or should we just return the existing one?
+            existing.dispose();
+        }
+
         const followBranches = vscode.workspace
             .getConfiguration("perforce")
             .get("annotate.followBranches", false);
@@ -161,7 +178,10 @@ class AnnotationProvider {
         const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
         const decorations = getDecorations(underlying, swarmHost, annotations, log);
 
-        return new AnnotationProvider(uri, annotations, decorations);
+        const provider = new AnnotationProvider(uri, annotations, decorations);
+        this._annotationsByUri.set(uri, provider);
+
+        return provider;
     }
 }
 
