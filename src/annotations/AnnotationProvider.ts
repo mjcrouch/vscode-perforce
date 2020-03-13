@@ -29,10 +29,8 @@ const highlightedDecoration = vscode.window.createTextEditorDecorationType({
 });
 
 export class AnnotationProvider {
-    private static _annotationsByUri: Map<vscode.Uri, AnnotationProvider>;
-    private static _onWillLoadEditor: vscode.EventEmitter<
-        vscode.Uri
-    > = new vscode.EventEmitter();
+    private static _annotationsByUri = new Map<vscode.Uri, AnnotationProvider>();
+    private static _onWillLoadEditor = new vscode.EventEmitter<vscode.Uri>();
     public static get onWillLoadEditor() {
         return this._onWillLoadEditor.event;
     }
@@ -159,9 +157,6 @@ export class AnnotationProvider {
     }
 
     static async annotate(uri: vscode.Uri, swarmHost?: string) {
-        if (!this._annotationsByUri) {
-            this._annotationsByUri = new Map();
-        }
         const existing = this._annotationsByUri.get(uri);
         if (existing) {
             // TODO - this gets rid of the existing one and gets the new perforce details instead
