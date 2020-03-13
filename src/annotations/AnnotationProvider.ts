@@ -28,8 +28,14 @@ const highlightedDecoration = vscode.window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Left
 });
 
-class AnnotationProvider {
+export class AnnotationProvider {
     private static _annotationsByUri: Map<vscode.Uri, AnnotationProvider>;
+    private static _onWillLoadEditor: vscode.EventEmitter<
+        vscode.Uri
+    > = new vscode.EventEmitter();
+    public static get onWillLoadEditor() {
+        return this._onWillLoadEditor.event;
+    }
 
     private _subscriptions: vscode.Disposable[];
     private _editor: vscode.TextEditor | undefined;
@@ -79,6 +85,7 @@ class AnnotationProvider {
     }
 
     private async loadEditor() {
+        AnnotationProvider._onWillLoadEditor.fire(this._p4Uri);
         this._editor = await vscode.window.showTextDocument(this._p4Uri);
         this.applyBaseDecorations();
         // don't apply highlights until a line is selected
