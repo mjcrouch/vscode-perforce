@@ -284,7 +284,7 @@ const openedFlags = flagMapper<OpenedFileOptions>([["c", "chnum"]], "files");
 const opened = makeSimpleCommand("opened", openedFlags);
 
 /**
- * Gets opened files, and if files are specified in the options, the files that are not opened or are out of worksapce from that list
+ * Gets opened files, ignoring error messages about unopened or out of workspace files
  * @param resource the resource to determine where / how to run the command
  * @param options options for the command
  */
@@ -301,6 +301,11 @@ export type OpenedFileDetails = {
     unopen: UnopenedFile[];
 };
 
+/**
+ * Gets opened files, and if files are specified in the options, the files that are not opened or are out of workspace from that list
+ * @param resource the resource to determine where / how to run the command
+ * @param options options for the command
+ */
 export async function getOpenedFileDetails(
     resource: vscode.Uri,
     options: OpenedFileOptions
