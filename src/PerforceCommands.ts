@@ -1,6 +1,14 @@
 "use strict";
 
-import { commands, workspace, window, Uri, QuickPickItem, Disposable } from "vscode";
+import {
+    commands,
+    workspace,
+    window,
+    Uri,
+    QuickPickItem,
+    Disposable,
+    ProgressLocation
+} from "vscode";
 
 import * as Path from "path";
 
@@ -88,7 +96,13 @@ export namespace PerforceCommands {
             await commands.executeCommand("workbench.action.files.save");
         } else {
             try {
-                await p4edit(activeFile.uri);
+                await window.withProgress(
+                    {
+                        location: ProgressLocation.Notification,
+                        title: "Perforce: Opening file for edit"
+                    },
+                    () => p4edit(activeFile.uri)
+                );
             } catch (err) {
                 // ensure save always happens even if something goes wrong
                 Display.showError(err);
