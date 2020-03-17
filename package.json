@@ -278,6 +278,18 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.diffPrevious",
+                "title": "Diff against the previous revision",
+                "icon": "$(arrow-left)",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.diffNext",
+                "title": "Diff against the next revision",
+                "icon": "$(arrow-right)",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.annotate",
                 "title": "Annotate - Print file lines and their revisions in the gutter",
                 "category": "Perforce"
@@ -750,6 +762,16 @@
                     "command": "perforce.deleteShelvedFile",
                     "when": "scmProvider == perforce",
                     "group": "2_shelve@2"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "perforce.diffPrevious",
+                    "group": "navigation@-10"
+                },
+                {
+                    "command": "perforce.diffNext",
+                    "group": "navigation@-9"
                 }
             ]
         },

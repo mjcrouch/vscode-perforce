@@ -31,6 +31,8 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.submitSingle", submitSingle);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
+        commands.registerCommand("perforce.diffPrevious", diffPrevious);
+        commands.registerCommand("perforce.diffNext", diffNext);
         commands.registerCommand("perforce.annotate", annotate);
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);
@@ -244,12 +246,13 @@ export namespace PerforceCommands {
             const depotUri = Utils.makePerforceDocUri(doc.uri, "print", "-q").with({
                 fragment: revStr
             });
+            const rightUri = doc.uri.with({ fragment: "working" });
 
             const fn = Path.basename(doc.uri.fsPath);
             await commands.executeCommand(
                 "vscode.diff",
                 depotUri,
-                doc.uri,
+                rightUri,
                 fn + "#" + revStr + " vs " + fn + " (workspace)"
             );
         }
@@ -309,6 +312,14 @@ export namespace PerforceCommands {
             },
             args
         );
+    }
+
+    function diffPrevious(...args: any[]) {
+        console.log(args);
+    }
+
+    function diffNext(...args: any[]) {
+        console.log(args);
     }
 
     async function diffFiles(leftFile: string, rightFile: string) {
