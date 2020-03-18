@@ -5,7 +5,6 @@ import {
     flagMapper,
     makeSimpleCommand,
     asyncOuputHandler,
-    fixedParams,
     splitIntoChunks,
     mergeAll,
     extractSection,
@@ -20,6 +19,7 @@ import {
     RawField,
     ChangeSpec
 } from "./CommonTypes";
+import { Utils } from "../Utils";
 
 //const prepareOutput = (value: string) => value.trim();
 const removeLeadingNewline = (value: string) => value.replace(/^\r*?\n/, "");
@@ -197,11 +197,7 @@ const fstatFlags = flagMapper<FstatOptions>(
     "depotPaths"
 );
 
-const fstatBasic = makeSimpleCommand(
-    "fstat",
-    fstatFlags,
-    fixedParams({ stdErrIsOk: true })
-);
+const fstatBasic = makeSimpleCommand("fstat", fstatFlags).ignoringStdErr;
 
 export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) {
     const chunks = splitIntoChunks(options.depotPaths);
@@ -292,10 +288,7 @@ const opened = makeSimpleCommand("opened", openedFlags);
  * @param options options for the command
  */
 export async function getOpenedFiles(resource: vscode.Uri, options: OpenedFileOptions) {
-    const output = await opened(resource, options, {
-        stdErrIsOk: true,
-        hideStdErr: true
-    });
+    const output = await opened.ignoringAndHidingStdErr(resource, options);
     return parseOpenedOutput(output);
 }
 
@@ -618,14 +611,26 @@ export interface HaveFileOptions {
 
 const haveFileFlags = flagMapper<HaveFileOptions>([], "file");
 
-const haveFileCmd = makeSimpleCommand(
-    "have",
-    haveFileFlags,
-    fixedParams({ stdErrIsOk: true, hideStdErr: true })
-);
+function parseHaveOutput(output: string): vscode.Uri | undefined {
+    const matches = /^(.+)#(\d+) - .+/.exec(output);
+
+    if (matches) {
+        return Utils.makePerforceDocUri(vscode.Uri.parse(matches[1]), "print", "-q", {
+            depot: true
+        }).with({
+            fragment: matches[2]
+        });
+    }
+}
+
+// TODO tidy this up
+
+const haveFileCmd = makeSimpleCommand("have", haveFileFlags);
+
+export const have = asyncOuputHandler(haveFileCmd, parseHaveOutput);
 
 // if stdout has any value, we have the file (stderr indicates we don't)
-export const haveFile = asyncOuputHandler(haveFileCmd, isTruthy);
+export const haveFile = asyncOuputHandler(haveFileCmd.ignoringAndHidingStdErr, isTruthy);
 
 export type NoOpts = {};
 

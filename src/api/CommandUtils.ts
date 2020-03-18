@@ -178,13 +178,23 @@ export function pathsToArgs(arr?: (string | FileSpec)[]) {
     );
 }
 
-export const fixedParams = (ps: CommandParams) => () => ps;
-
 type CommandParams = {
     input?: string;
     hideStdErr?: boolean;
     stdErrIsOk?: boolean;
 };
+
+export function runPerforceCommandIgnoringStdErr(
+    resource: vscode.Uri,
+    command: string,
+    args: string[],
+    hideStdErr?: boolean
+): Promise<string> {
+    return runPerforceCommand(resource, command, args, {
+        stdErrIsOk: true,
+        hideStdErr: hideStdErr
+    });
+}
 
 /**
  * Runs a perforce command, returning just the stdout.
@@ -195,36 +205,36 @@ type CommandParams = {
  * @param args the arguments to provide to the perforce command
  * @param params adjust the behaviour of the command
  */
-export function runPerforceCommand(
+export async function runPerforceCommand(
     resource: vscode.Uri,
     command: string,
     args: string[],
     params: CommandParams
 ): Promise<string> {
     const { input, hideStdErr, stdErrIsOk } = params;
-    return new Promise((resolve, reject) =>
-        PerforceService.execute(
+
+    try {
+        const [stdout, stderr] = await runPerforceCommandRaw(
             resource,
             command,
-            (err, stdout, stderr) => {
-                err && Display.showError(err.toString());
-                if (stderr) {
-                    hideStdErr
-                        ? Display.channel.appendLine(stderr.toString())
-                        : Display.showError(stderr.toString());
-                }
-                if (err) {
-                    reject(err);
-                } else if (stderr && !stdErrIsOk) {
-                    reject(stderr);
-                } else {
-                    resolve(stdout);
-                }
-            },
             args,
             input
-        )
-    );
+        );
+        if (stderr) {
+            if (hideStdErr) {
+                Display.channel.appendLine(stderr.toString());
+            } else {
+                Display.showError(stderr.toString());
+            }
+            if (!stdErrIsOk) {
+                throw stderr;
+            }
+        }
+        return stdout;
+    } catch (err) {
+        Display.showError(err.toString());
+        throw err;
+    }
 }
 
 /**
@@ -237,7 +247,8 @@ export function runPerforceCommand(
 function runPerforceCommandRaw(
     resource: vscode.Uri,
     command: string,
-    args: string[]
+    args: string[],
+    input?: string
 ): Promise<[string, string]> {
     return new Promise((resolve, reject) =>
         PerforceService.execute(
@@ -250,7 +261,8 @@ function runPerforceCommandRaw(
                     resolve([stdout, stderr]);
                 }
             },
-            args
+            args,
+            input
         )
     );
 }
@@ -284,13 +296,9 @@ export function mergeAll<T>(...args: T[]): T {
 export function makeSimpleCommand<T>(
     command: string,
     fn: (opts: T) => CmdlineArgs,
-    otherParams?: (opts: T) => Exclude<CommandParams, { prefixArgs: string }>
+    otherParams?: (opts: T) => CommandParams
 ) {
-    const func = (
-        resource: vscode.Uri,
-        options: T,
-        overrideParams?: Exclude<CommandParams, { prefixArgs: string }>
-    ) =>
+    const func = (resource: vscode.Uri, options: T, overrideParams?: CommandParams) =>
         runPerforceCommand(
             resource,
             command,
@@ -300,6 +308,17 @@ export function makeSimpleCommand<T>(
 
     func.raw = (resource: vscode.Uri, options: T) =>
         runPerforceCommandRaw(resource, command, joinDefinedArgs(fn(options)));
+
+    func.ignoringStdErr = (resource: vscode.Uri, options: T) =>
+        runPerforceCommandIgnoringStdErr(resource, command, joinDefinedArgs(fn(options)));
+
+    func.ignoringAndHidingStdErr = (resource: vscode.Uri, options: T) =>
+        runPerforceCommandIgnoringStdErr(
+            resource,
+            command,
+            joinDefinedArgs(fn(options)),
+            true
+        );
 
     return func;
 }

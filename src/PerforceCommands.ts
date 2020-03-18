@@ -246,7 +246,7 @@ export namespace PerforceCommands {
             const depotUri = Utils.makePerforceDocUri(doc.uri, "print", "-q").with({
                 fragment: revStr
             });
-            const rightUri = doc.uri.with({ fragment: "working" });
+            const rightUri = doc.uri;
 
             const fn = Path.basename(doc.uri.fsPath);
             await commands.executeCommand(
@@ -314,12 +314,63 @@ export namespace PerforceCommands {
         );
     }
 
-    function diffPrevious(...args: any[]) {
-        console.log(args);
+    function getPreviousUri(fromUri: Uri) {
+        if (!fromUri.fragment) {
+            return undefined;
+        }
+        const rightRev = parseInt(fromUri.fragment);
+        if (isNaN(rightRev)) {
+            return undefined;
+        }
+        if (rightRev <= 1) {
+            return undefined;
+        }
+        return fromUri.with({ fragment: (rightRev - 1).toString() });
     }
 
-    function diffNext(...args: any[]) {
-        console.log(args);
+    async function diffPrevious(fromDoc: Uri) {
+        const rev = parseInt(fromDoc.fragment);
+        if (isNaN(rev)) {
+            let rightUri = await p4.have(fromDoc, { file: fromDoc });
+            if (!rightUri) {
+                Display.showImportantError("No previous revision available");
+                return;
+            }
+            // TODO BLEH
+            rightUri = Utils.makePerforceDocUri(rightUri, "print", "-q", {
+                workspace: fromDoc.fsPath
+            });
+            const leftUri = getPreviousUri(rightUri);
+            if (!leftUri) {
+                Display.showImportantError("No previous revision available");
+                return;
+            }
+            await DiffProvider.diffFiles(leftUri, rightUri);
+        } else {
+            const rightUri = getPreviousUri(fromDoc);
+            if (!rightUri) {
+                Display.showImportantError("No previous revision available");
+                return;
+            }
+            const leftUri = getPreviousUri(rightUri);
+            if (!leftUri) {
+                Display.showImportantError("No previous revision available");
+                return;
+            }
+            await DiffProvider.diffFiles(leftUri, rightUri);
+        }
+    }
+
+    async function diffNext(fromDoc: Uri) {
+        console.log(fromDoc);
+        const rev = parseInt(fromDoc.fragment);
+        if (isNaN(rev)) {
+            Display.showImportantError("No more revisions available");
+            return;
+        }
+        const leftUri = fromDoc;
+        const rightUri = fromDoc.with({ fragment: (rev + 1).toString() });
+        await DiffProvider.diffFiles(leftUri, rightUri);
     }
 
     async function diffFiles(leftFile: string, rightFile: string) {
