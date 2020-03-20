@@ -103,7 +103,7 @@ type FlagDefinition<T> = {
 
 function lastArgAsStrings(
     lastArg: FlagValue,
-    lastArgIsFormattedArray?: boolean
+    options?: FlagMapperOptions
 ): (string | undefined)[] | undefined {
     if (typeof lastArg === "boolean") {
         return undefined;
@@ -112,13 +112,18 @@ function lastArgAsStrings(
         return [lastArg];
     }
     if (isFileSpec(lastArg)) {
-        return [fileSpecToArg(lastArg)];
+        return [fileSpecToArg(lastArg, options?.ignoreRevisionFragments)];
     }
-    if (lastArgIsFormattedArray) {
+    if (options?.lastArgIsFormattedArray) {
         return lastArg as string[];
     }
-    return pathsToArgs(lastArg);
+    return pathsToArgs(lastArg, options);
 }
+
+type FlagMapperOptions = {
+    lastArgIsFormattedArray?: boolean;
+    ignoreRevisionFragments?: boolean;
+};
 
 /**
  * Create a function that maps an object of type P into an array of command arguments
@@ -131,20 +136,17 @@ function lastArgAsStrings(
 export function flagMapper<P extends FlagDefinition<P>>(
     flagNames: [string, keyof P][],
     lastArg?: keyof P,
-    lastArgIsFormattedArray?: boolean,
-    fixedPrefix?: CmdlineArgs
+    fixedPrefix?: CmdlineArgs,
+    options?: FlagMapperOptions
 ) {
-    return (options: P): CmdlineArgs => {
+    return (params: P): CmdlineArgs => {
         return (fixedPrefix ?? []).concat(
             makeFlags(
                 flagNames.map(fn => {
-                    return [fn[0], options[fn[1]] as string | boolean | undefined];
+                    return [fn[0], params[fn[1]] as string | boolean | undefined];
                 }),
                 lastArg
-                    ? lastArgAsStrings(
-                          options[lastArg] as FlagValue,
-                          lastArgIsFormattedArray
-                      )
+                    ? lastArgAsStrings(params[lastArg] as FlagValue, options)
                     : undefined
             )
         );
@@ -153,24 +155,34 @@ export function flagMapper<P extends FlagDefinition<P>>(
 
 const joinDefinedArgs = (args: CmdlineArgs) => args?.filter(isTruthy);
 
-export function fragmentAsSuffix(fragment?: string): string {
+export function fragmentAsSuffix(
+    fragment?: string,
+    ignoreRevisionFragments?: boolean
+): string {
+    if (ignoreRevisionFragments) {
+        return "";
+    }
     return fragment ? (fragment.startsWith("@") ? fragment : "#" + fragment) : "";
 }
 
-function fileSpecToArg(fileSpec: FileSpec) {
+function fileSpecToArg(fileSpec: FileSpec, ignoreRevisionFragments?: boolean) {
     if (isUri(fileSpec) && Utils.decodeUriQuery(fileSpec.query).depot) {
         return (
-            Utils.getDepotPathFromDepotUri(fileSpec) + fragmentAsSuffix(fileSpec.fragment)
+            Utils.getDepotPathFromDepotUri(fileSpec) +
+            fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
         );
     }
-    return Utils.expansePath(fileSpec.fsPath) + fragmentAsSuffix(fileSpec.fragment);
+    return (
+        Utils.expansePath(fileSpec.fsPath) +
+        fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
+    );
 }
 
-export function pathsToArgs(arr?: (string | FileSpec)[]) {
+export function pathsToArgs(arr?: (string | FileSpec)[], options?: FlagMapperOptions) {
     return (
         arr?.map(path => {
             if (isFileSpec(path)) {
-                return fileSpecToArg(path);
+                return fileSpecToArg(path, options?.ignoreRevisionFragments);
             } else if (path) {
                 return path;
             }

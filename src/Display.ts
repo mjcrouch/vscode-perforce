@@ -102,6 +102,10 @@ export namespace Display {
                     active = inRoot
                         ? ActiveEditorStatus.NOT_OPEN
                         : ActiveEditorStatus.NOT_IN_WORKSPACE;
+                } else {
+                    _statusBarItem.text = "P4: $(circle-slash)";
+                    _statusBarItem.tooltip = "unknown";
+                    active = ActiveEditorStatus.NOT_IN_WORKSPACE;
                 }
             } catch (err) {
                 // file not under client root

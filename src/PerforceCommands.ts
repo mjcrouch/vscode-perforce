@@ -362,7 +362,6 @@ export namespace PerforceCommands {
     }
 
     async function diffNext(fromDoc: Uri) {
-        console.log(fromDoc);
         const rev = parseInt(fromDoc.fragment);
         if (isNaN(rev)) {
             Display.showImportantError("No more revisions available");

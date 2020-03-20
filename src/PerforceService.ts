@@ -209,6 +209,16 @@ export namespace PerforceService {
         });
     }
 
+    function getWorkingDirFromPerforceUri(resource: Uri) {
+        if (resource.scheme === "perforce") {
+            // if the open file is in perforce, we hopefully have the workspace path
+            const decoded = Utils.decodeUriQuery(resource.query).workspace;
+            if (decoded && typeof decoded === "string") {
+                return Uri.file(decoded);
+            }
+        }
+    }
+
     function execCommand(
         resource: Uri,
         command: string,
@@ -216,12 +226,13 @@ export namespace PerforceService {
         args?: string[],
         input?: string
     ): void {
-        const wksFolder = workspace.getWorkspaceFolder(resource);
+        const actualResource = getWorkingDirFromPerforceUri(resource) ?? resource;
+        const wksFolder = workspace.getWorkspaceFolder(actualResource);
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
         const wksPath = wksFolder?.uri.fsPath;
         const cmd = getPerforceCmdPath();
 
-        const allArgs: string[] = getPerforceCmdParams(resource);
+        const allArgs: string[] = getPerforceCmdParams(actualResource);
         allArgs.push(command);
 
         if (args !== undefined) {
@@ -232,7 +243,7 @@ export namespace PerforceService {
             allArgs.push(...args);
         }
 
-        const cwd = config?.localDir ?? wksPath ?? Path.dirname(resource.fsPath);
+        const cwd = config?.localDir ?? wksPath ?? Path.dirname(actualResource.fsPath);
         const env = { ...process.env, PWD: cwd };
         const spawnArgs: CP.SpawnOptions = { cwd, env };
         spawnPerforceCommand(cmd, allArgs, spawnArgs, responseCallback, input);
