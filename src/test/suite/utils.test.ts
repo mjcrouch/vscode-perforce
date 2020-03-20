@@ -3,6 +3,8 @@ import { expect } from "chai";
 import * as vscode from "vscode";
 
 import { Utils } from "../../Utils";
+// TODO test in a different file!
+import * as PerforceUri from "../../PerforceUri";
 
 describe("Utils module", () => {
     describe("Perforce Uris", () => {
@@ -10,17 +12,20 @@ describe("Utils module", () => {
         const depotUri = vscode.Uri.file(depotPath);
 
         it("Can determine a valid path from a Uri", () => {
-            expect(Utils.getDepotPathFromDepotUri(depotUri)).to.be.equal(depotPath);
+            expect(PerforceUri.getDepotPathFromDepotUri(depotUri)).to.be.equal(depotPath);
         });
         it("Can encode and decode a URI Query", () => {
-            const query = Utils.makePerforceUriQuery("print", "-q", {
-                depot: true,
-                nothing: false,
-                stringArg: "s&t=uff"
+            const query = PerforceUri.encodeQuery({
+                command: "print",
+                p4Args: "-q",
+                depot: true
+                //leftDepotPath: "s&t=uff"
             });
-            expect(query).to.equal("p4args=-q&command=print&depot&stringArg=s%26t%3Duff");
+            expect(query).to.equal(
+                "p4args=-q&command=print&depot&leftDepotPath=s%26t%3Duff"
+            );
 
-            const decoded = Utils.decodeUriQuery(query);
+            const decoded = PerforceUri.decodeUriQuery(query);
             expect(decoded).to.deep.equal({
                 p4args: "-q",
                 command: "print",
@@ -29,7 +34,7 @@ describe("Utils module", () => {
             });
         });
         it("Can make a full perforce doc URI", () => {
-            const uri = Utils.makePerforceDocUri(depotUri, "print", "-q", {
+            const uri = PerforceUri.fromUri(depotUri, {
                 depot: true
             });
             expect(uri.scheme).to.equal("perforce");

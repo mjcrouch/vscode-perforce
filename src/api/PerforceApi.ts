@@ -19,7 +19,7 @@ import {
     RawField,
     ChangeSpec
 } from "./CommonTypes";
-import { Utils } from "../Utils";
+import * as PerforceUri from "../PerforceUri";
 
 //const prepareOutput = (value: string) => value.trim();
 const removeLeadingNewline = (value: string) => value.replace(/^\r*?\n/, "");
@@ -614,17 +614,15 @@ export interface HaveFileOptions {
     file: PerforceFile;
 }
 
-const haveFileFlags = flagMapper<HaveFileOptions>([], "file");
+const haveFileFlags = flagMapper<HaveFileOptions>([], "file", [], {
+    ignoreRevisionFragments: true
+});
 
-function parseHaveOutput(output: string): vscode.Uri | undefined {
+function parseHaveOutput(resource: vscode.Uri, output: string): vscode.Uri | undefined {
     const matches = /^(.+)#(\d+) - .+/.exec(output);
 
     if (matches) {
-        return Utils.makePerforceDocUri(vscode.Uri.parse(matches[1]), "print", "-q", {
-            depot: true
-        }).with({
-            fragment: matches[2]
-        });
+        return PerforceUri.fromDepotPath(resource, matches[1], matches[2]);
     }
 }
 
@@ -632,7 +630,16 @@ function parseHaveOutput(output: string): vscode.Uri | undefined {
 
 const haveFileCmd = makeSimpleCommand("have", haveFileFlags);
 
-export const have = asyncOuputHandler(haveFileCmd, parseHaveOutput);
+/**
+ * Checks if we `have` a file.
+ * @param resource Context for where to run the command
+ * @param options Options for the command
+ * @returns a perforce URI representing the depot path, revision etc
+ */
+export async function have(resource: vscode.Uri, options: HaveFileOptions) {
+    const output = await haveFileCmd(resource, options);
+    return parseHaveOutput(resource, output);
+}
 
 // if stdout has any value, we have the file (stderr indicates we don't)
 export const haveFile = asyncOuputHandler(haveFileCmd.ignoringAndHidingStdErr, isTruthy);

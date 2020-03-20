@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import { stubExecute, StubPerforceModel } from "../helpers/StubPerforceModel";
 import p4Commands from "../helpers/p4Commands";
 import { PerforceCommands } from "../../PerforceCommands";
-import { Utils } from "../../Utils";
+import * as PerforceUri from "../../PerforceUri";
 import { PerforceContentProvider } from "../../ContentProvider";
 import { Display } from "../../Display";
 import { getLocalFile } from "../helpers/testUtils";
@@ -58,7 +58,7 @@ describe("Perforce Command Module (integration)", () => {
             await vscode.window.showTextDocument(localFile);
             await PerforceCommands.diff();
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                Utils.makePerforceDocUri(localFile, "print", "-q").with({
+                PerforceUri.fromUri(localFile).with({
                     fragment: "have"
                 }),
                 localFile,
@@ -70,7 +70,7 @@ describe("Perforce Command Module (integration)", () => {
             await vscode.window.showTextDocument(localFile);
             await PerforceCommands.diff(5);
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                Utils.makePerforceDocUri(localFile, "print", "-q").with({
+                PerforceUri.fromUri(localFile).with({
                     fragment: "5"
                 }),
                 localFile,
@@ -148,7 +148,7 @@ describe("Perforce Command Module (integration)", () => {
 
             const localFile = getLocalFile(workspaceUri, "testFolder", "a.txt");
             await vscode.window.showTextDocument(
-                Utils.makePerforceDocUri(localFile, "print", "-q").with({
+                PerforceUri.fromUri(localFile).with({
                     fragment: "5"
                 })
             );

@@ -16,6 +16,7 @@ import { PerforceService } from "./PerforceService";
 import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
 import { Utils } from "./Utils";
+import * as PerforceUri from "./PerforceUri";
 import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
@@ -242,19 +243,16 @@ export namespace PerforceCommands {
         const doc = editor.document;
 
         if (!doc.isUntitled) {
+            if (!revision) {
+                await diffPrevious(editor.document.uri);
+                return;
+            }
+
             const revStr = revision && !isNaN(revision) ? revision.toString() : "have";
-            const depotUri = Utils.makePerforceDocUri(doc.uri, "print", "-q").with({
-                fragment: revStr
-            });
+            const depotUri = PerforceUri.fromUriWithRevision(doc.uri, revStr);
             const rightUri = doc.uri;
 
-            const fn = Path.basename(doc.uri.fsPath);
-            await commands.executeCommand(
-                "vscode.diff",
-                depotUri,
-                rightUri,
-                fn + "#" + revStr + " vs " + fn + " (workspace)"
-            );
+            await DiffProvider.diffFiles(depotUri, rightUri);
         }
     }
 
@@ -328,36 +326,64 @@ export namespace PerforceCommands {
         return fromUri.with({ fragment: (rightRev - 1).toString() });
     }
 
+    /**
+     * Diffs a URI with a revision number against a URI with the previous revision number (provided it is > 0)
+     * @param rightUri
+     */
+    async function diffPreviousFrom(rightUri?: Uri) {
+        if (!rightUri) {
+            Display.showImportantError("No previous revision available");
+            return;
+        }
+        const leftUri = getPreviousUri(rightUri);
+        if (!leftUri) {
+            Display.showImportantError("No previous revision available");
+            return;
+        }
+        await DiffProvider.diffFiles(leftUri, rightUri);
+    }
+
+    /**
+     * Work out the have revision for the file, and diff the working file against that revision
+     */
+    async function diffPreviousFromWorking(fromDoc: Uri) {
+        const leftUri = await p4.have(fromDoc, { file: fromDoc });
+        if (!leftUri) {
+            Display.showImportantError("No previous revision available");
+            return;
+        }
+        await DiffProvider.diffFiles(leftUri, fromDoc);
+    }
+
+    /**
+     * Use the information provided in the right hand URI, about the left hand file, to perform the diff, if possible
+     * @param fromDoc the current right hand URI
+     * @returns a promise if the diff is possible, or false otherwise
+     */
+    function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
+        const args = PerforceUri.decodeUriQuery(fromDoc.query);
+        const workspace = PerforceUri.getUsableWorkspace(fromDoc);
+        if (!workspace) {
+            throw new Error("No usable workspace found for " + fromDoc);
+        }
+        if (!args.leftUri) {
+            return false;
+        }
+        const rightUri = Uri.parse(args.leftUri);
+        return diffPreviousFrom(rightUri);
+    }
+
     async function diffPrevious(fromDoc: Uri) {
-        const rev = parseInt(fromDoc.fragment);
-        if (isNaN(rev)) {
-            let rightUri = await p4.have(fromDoc, { file: fromDoc });
-            if (!rightUri) {
-                Display.showImportantError("No previous revision available");
-                return;
-            }
-            // TODO BLEH
-            rightUri = Utils.makePerforceDocUri(rightUri, "print", "-q", {
-                workspace: fromDoc.fsPath
-            });
-            const leftUri = getPreviousUri(rightUri);
-            if (!leftUri) {
-                Display.showImportantError("No previous revision available");
-                return;
-            }
-            await DiffProvider.diffFiles(leftUri, rightUri);
+        const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
+        if (usingLeftInfo) {
+            await usingLeftInfo;
         } else {
-            const rightUri = getPreviousUri(fromDoc);
-            if (!rightUri) {
-                Display.showImportantError("No previous revision available");
-                return;
+            const rev = parseInt(fromDoc.fragment);
+            if (isNaN(rev)) {
+                await diffPreviousFromWorking(fromDoc);
+            } else {
+                await diffPreviousFrom(getPreviousUri(fromDoc));
             }
-            const leftUri = getPreviousUri(rightUri);
-            if (!leftUri) {
-                Display.showImportantError("No previous revision available");
-                return;
-            }
-            await DiffProvider.diffFiles(leftUri, rightUri);
         }
     }
 

@@ -1,6 +1,7 @@
 import { Utils } from "../Utils";
 import { FileSpec, isFileSpec, PerforceFile, isUri } from "./CommonTypes";
 import * as vscode from "vscode";
+import * as PerforceUri from "../PerforceUri";
 import { PerforceService } from "../PerforceService";
 import { Display } from "../Display";
 
@@ -166,9 +167,9 @@ export function fragmentAsSuffix(
 }
 
 function fileSpecToArg(fileSpec: FileSpec, ignoreRevisionFragments?: boolean) {
-    if (isUri(fileSpec) && Utils.decodeUriQuery(fileSpec.query).depot) {
+    if (isUri(fileSpec) && PerforceUri.isDepotUri(fileSpec)) {
         return (
-            Utils.getDepotPathFromDepotUri(fileSpec) +
+            PerforceUri.getDepotPathFromDepotUri(fileSpec) +
             fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
         );
     }

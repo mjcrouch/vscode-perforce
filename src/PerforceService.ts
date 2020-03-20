@@ -1,6 +1,7 @@
 import { workspace, Uri } from "vscode";
 
 import { Utils } from "./Utils";
+import * as PerforceUri from "./PerforceUri";
 import { Display } from "./Display";
 import { PerforceSCMProvider } from "./ScmProvider";
 
@@ -209,16 +210,6 @@ export namespace PerforceService {
         });
     }
 
-    function getWorkingDirFromPerforceUri(resource: Uri) {
-        if (resource.scheme === "perforce") {
-            // if the open file is in perforce, we hopefully have the workspace path
-            const decoded = Utils.decodeUriQuery(resource.query).workspace;
-            if (decoded && typeof decoded === "string") {
-                return Uri.file(decoded);
-            }
-        }
-    }
-
     function execCommand(
         resource: Uri,
         command: string,
@@ -226,7 +217,7 @@ export namespace PerforceService {
         args?: string[],
         input?: string
     ): void {
-        const actualResource = getWorkingDirFromPerforceUri(resource) ?? resource;
+        const actualResource = PerforceUri.getUsableWorkspace(resource) ?? resource;
         const wksFolder = workspace.getWorkspaceFolder(actualResource);
         const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
         const wksPath = wksFolder?.uri.fsPath;

@@ -11,6 +11,7 @@ import { PerforceSCMProvider } from "../../ScmProvider";
 import { PerforceContentProvider } from "../../ContentProvider";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../../Display";
 import { Utils } from "../../Utils";
+import * as PerforceUri from "../../PerforceUri";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
@@ -51,7 +52,7 @@ function findResourceForShelvedFile(
     const res = group.resourceStates.find(
         resource =>
             (resource as Resource).isShelved &&
-            Utils.getDepotPathFromDepotUri(resource.resourceUri) === file.depotPath
+            PerforceUri.getDepotPathFromDepotUri(resource.resourceUri) === file.depotPath
     );
     if (res === undefined) {
         throw new Error("No shelved resource found");
@@ -1060,10 +1061,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
             });
             it("Does not diff non-file resources", async () => {
-                const inUri = Utils.makePerforceDocUri(
-                    basicFiles.edit().localFile,
-                    "print"
-                );
+                const inUri = PerforceUri.fromUri(basicFiles.edit().localFile);
                 const out = await items.instance.provideOriginalResource(inUri);
                 expect(out).to.be.undefined;
             });

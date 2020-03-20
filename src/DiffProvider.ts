@@ -1,10 +1,10 @@
 import { commands, window, Uri, workspace } from "vscode";
 import { Resource } from "./scm/Resource";
 import { Status } from "./scm/Status";
-import { Utils } from "./Utils";
 import { FileType } from "./scm/FileTypes";
 import * as Path from "path";
 import * as fs from "fs";
+import * as PerforceUri from "./PerforceUri";
 
 export enum DiffType {
     WORKSPACE_V_DEPOT,
@@ -36,18 +36,45 @@ export function diffTitleForDepotPaths(
     return leftTitle + "#" + leftRevision + " ⟷ " + rightTitle + "#" + rightRevision;
 }
 
-export async function diffFiles(leftFile: Uri, rightFile: Uri) {
-    const leftPath = Utils.getDepotPathFromDepotUri(leftFile);
-    const rightPath = Utils.getDepotPathFromDepotUri(rightFile);
+function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
+    if (!PerforceUri.isDepotUri(rightFile)) {
+        return (
+            Path.basename(leftFile.fsPath) +
+            "#" +
+            leftFile.fragment +
+            " ⟷ " +
+            Path.basename(rightFile.fsPath) +
+            (rightFile.fragment ? "#" + rightFile.fragment : " (working)")
+        );
+    }
+    const leftPath = PerforceUri.getDepotPathFromDepotUri(leftFile);
+    const rightPath = PerforceUri.getDepotPathFromDepotUri(rightFile);
 
-    const fullTitle = diffTitleForDepotPaths(
+    return diffTitleForDepotPaths(
         leftPath,
         leftFile.fragment,
         rightPath,
         rightFile.fragment
     );
+}
 
-    await commands.executeCommand<void>("vscode.diff", leftFile, rightFile, fullTitle);
+export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
+    // ensure we don't keep stacking left files
+    const leftFileWithoutLeftFiles = PerforceUri.withArgs(leftFile, {
+        leftUri: undefined
+    });
+    const rightUriWithLeftInfo = PerforceUri.withArgs(rightFile, {
+        leftUri: leftFileWithoutLeftFiles.toString()
+    });
+
+    const fullTitle = title ?? diffTitleForFiles(leftFile, rightFile);
+
+    await commands.executeCommand<void>(
+        "vscode.diff",
+        leftFileWithoutLeftFiles,
+        rightUriWithLeftInfo,
+        fullTitle
+    );
 }
 
 export async function diffDefault(
@@ -55,7 +82,7 @@ export async function diffDefault(
     diffType?: DiffType
 ): Promise<void> {
     if (resource.FileType.base === FileType.BINARY) {
-        const uri = Utils.makePerforceDocUri(resource.resourceUri, "fstat", "");
+        const uri = PerforceUri.fromUri(resource.resourceUri, { command: "fstat" });
         await workspace.openTextDocument(uri).then(doc => window.showTextDocument(doc));
         return;
     }
@@ -82,12 +109,7 @@ export async function diffDefault(
         await window.showTextDocument(left.uri);
         return;
     }
-    await commands.executeCommand<void>(
-        "vscode.diff",
-        left.uri,
-        right,
-        getTitle(resource, left.title, diffType)
-    );
+    await diffFiles(left.uri, right, getTitle(resource, left.title, diffType));
     return;
 }
 
@@ -96,11 +118,6 @@ function getLeftResource(
     resource: Resource,
     diffType: DiffType
 ): { title: string; uri: Uri } | undefined {
-    const args = {
-        depot: resource.isShelved,
-        workspace: resource.model.workspaceUri.fsPath
-    };
-
     if (diffType === DiffType.WORKSPACE_V_SHELVE) {
         // left hand side is the shelve
         switch (resource.status) {
@@ -114,11 +131,10 @@ function getLeftResource(
                         Path.basename(resource.resourceUri.fsPath) +
                         "@=" +
                         resource.change,
-                    uri: resource.resourceUri.with({
-                        scheme: "perforce",
-                        query: Utils.makePerforceUriQuery("print", "-q", args),
-                        fragment: "@=" + resource.change
-                    })
+                    uri: PerforceUri.fromUriWithRevision(
+                        resource.resourceUri,
+                        "@=" + resource.change
+                    )
                 };
             case Status.DELETE:
             case Status.MOVE_DELETE:
@@ -141,12 +157,7 @@ function getLeftResource(
                           "#" +
                           resource.fromEndRev
                         : "Depot Version",
-                    uri: resource.fromFile
-                        ? Utils.makePerforceDocUri(resource.fromFile, "print", "-q", {
-                              depot: true,
-                              workspace: resource.model.workspaceUri.fsPath
-                          }).with({ fragment: resource.fromEndRev })
-                        : emptyDoc
+                    uri: resource.fromFile ?? emptyDoc
                 };
             case Status.INTEGRATE:
             case Status.EDIT:
@@ -157,12 +168,10 @@ function getLeftResource(
                         Path.basename(resource.resourceUri.fsPath) +
                         "#" +
                         resource.workingRevision,
-                    uri: Utils.makePerforceDocUri(
+                    uri: PerforceUri.fromUriWithRevision(
                         resource.resourceUri,
-                        "print",
-                        "-q",
-                        args
-                    ).with({ fragment: resource.workingRevision })
+                        resource.workingRevision
+                    )
                 };
         }
     }
@@ -172,22 +181,13 @@ function getLeftResource(
 function getRightResource(resource: Resource, diffType: DiffType): Uri | undefined {
     const emptyDoc = Uri.parse("perforce:EMPTY");
     if (diffType === DiffType.SHELVE_V_DEPOT) {
-        const args = {
-            depot: resource.isShelved,
-            workspace: resource.model.workspaceUri.fsPath
-        };
-
         switch (resource.status) {
             case Status.ADD:
             case Status.EDIT:
             case Status.MOVE_ADD:
             case Status.INTEGRATE:
             case Status.BRANCH:
-                return resource.resourceUri.with({
-                    scheme: "perforce",
-                    query: Utils.makePerforceUriQuery("print", "-q", args),
-                    fragment: "@=" + resource.change
-                });
+                return resource.resourceUri;
         }
     } else {
         const exists =
