@@ -44,7 +44,7 @@ function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
             leftFile.fragment +
             " ⟷ " +
             Path.basename(rightFile.fsPath) +
-            (rightFile.fragment ? "#" + rightFile.fragment : " (working)")
+            (rightFile.fragment ? "#" + rightFile.fragment : " (workspace)")
         );
     }
     const leftPath = PerforceUri.getDepotPathFromDepotUri(leftFile);
@@ -210,13 +210,13 @@ function getTitle(resource: Resource, leftTitle: string, diffType: DiffType): st
     let text = "";
     switch (diffType) {
         case DiffType.SHELVE_V_DEPOT:
-            text = leftTitle + " vs " + basename + "@=" + resource.change;
+            text = leftTitle + " ⟷ " + basename + "@=" + resource.change;
             break;
         case DiffType.WORKSPACE_V_SHELVE:
-            text = leftTitle + " vs " + basename + " (workspace)";
+            text = leftTitle + " ⟷ " + basename + " (workspace)";
             break;
         case DiffType.WORKSPACE_V_DEPOT:
-            text = leftTitle + " vs " + basename + " (workspace)";
+            text = leftTitle + " ⟷ " + basename + " (workspace)";
     }
     return text;
 }

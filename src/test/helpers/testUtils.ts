@@ -68,9 +68,9 @@ export function perforceLocalUriMatcher(file: StubFile) {
     if (!file.localFile) {
         throw new Error("Can't make a local file matcher without a local file");
     }
-    return PerforceUri.fromUri(file.localFile, {
-        workspace: getWorkspaceUri().fsPath
-    }).with({ fragment: file.depotRevision.toString() });
+    return PerforceUri.fromUri(file.localFile).with({
+        fragment: file.depotRevision.toString()
+    });
 }
 
 /**
@@ -78,10 +78,11 @@ export function perforceLocalUriMatcher(file: StubFile) {
  * @param file
  */
 export function perforceDepotUriMatcher(file: StubFile) {
-    return PerforceUri.fromUri(vscode.Uri.parse("perforce:" + file.depotPath), {
-        depot: true,
-        workspace: getWorkspaceUri().fsPath
-    }).with({ fragment: file.depotRevision.toString() });
+    return PerforceUri.fromDepotPath(
+        file.localFile,
+        file.depotPath,
+        file.depotRevision.toString()
+    );
 }
 
 /**
@@ -89,10 +90,14 @@ export function perforceDepotUriMatcher(file: StubFile) {
  * @param file
  */
 export function perforceFromFileUriMatcher(file: StubFile) {
-    return PerforceUri.fromUri(
-        vscode.Uri.parse("perforce:" + file.resolveFromDepotPath),
-        { depot: true, workspace: getWorkspaceUri().fsPath }
-    ).with({ fragment: file.resolveEndFromRev?.toString() });
+    if (!file.resolveFromDepotPath) {
+        throw new Error("Must have a depot path to resolve from!");
+    }
+    return PerforceUri.fromDepotPath(
+        file.localFile,
+        file.resolveFromDepotPath,
+        file.resolveEndFromRev?.toString()
+    );
 }
 
 /**
@@ -113,7 +118,5 @@ export function perforceLocalShelvedUriMatcher(file: StubFile, chnum: string) {
     if (!file.localFile) {
         throw new Error("Can't make a local file matcher without a local file");
     }
-    return PerforceUri.fromUri(file.localFile.with({ fragment: "@=" + chnum }), {
-        workspace: getWorkspaceUri().fsPath
-    });
+    return PerforceUri.fromUri(file.localFile.with({ fragment: "@=" + chnum }));
 }

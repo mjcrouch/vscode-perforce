@@ -16,21 +16,18 @@ describe("Utils module", () => {
         });
         it("Can encode and decode a URI Query", () => {
             const query = PerforceUri.encodeQuery({
-                command: "print",
+                command: "p&r=int",
                 p4Args: "-q",
-                depot: true
-                //leftDepotPath: "s&t=uff"
+                depot: true,
+                leftUri: undefined
             });
-            expect(query).to.equal(
-                "p4args=-q&command=print&depot&leftDepotPath=s%26t%3Duff"
-            );
+            expect(query).to.equal("command=p%26r%3Dint&p4Args=-q&depot");
 
             const decoded = PerforceUri.decodeUriQuery(query);
             expect(decoded).to.deep.equal({
-                p4args: "-q",
-                command: "print",
-                depot: true,
-                stringArg: "s&t=uff"
+                p4Args: "-q",
+                command: "p&r=int",
+                depot: true
             });
         });
         it("Can make a full perforce doc URI", () => {
@@ -39,7 +36,7 @@ describe("Utils module", () => {
             });
             expect(uri.scheme).to.equal("perforce");
             expect(uri.authority).to.equal("depot");
-            expect(uri.query).to.equal("p4args=-q&command=print&depot");
+            expect(uri.query).to.equal("command=print&p4Args=-q&depot");
         });
     });
     describe("Path expansion", () => {

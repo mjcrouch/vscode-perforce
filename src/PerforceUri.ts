@@ -119,7 +119,7 @@ export function withArgs(uri: vscode.Uri, args: UriArguments) {
 
 export function encodeQuery(args: UriArguments) {
     return Object.entries(args)
-        .filter(arg => arg[1] !== false)
+        .filter(arg => !!arg[1])
         .map(arg => encodeParam(arg[0], arg[1]))
         .filter(arg => !!arg)
         .join("&");
