@@ -30,12 +30,12 @@ export namespace Display {
 
     const _onActiveFileStatusKnown = new EventEmitter<ActiveStatusEvent>();
     export const onActiveFileStatusKnown = _onActiveFileStatusKnown.event;
-    const _onActiveFileStatusCleared = new EventEmitter<void>();
+    const _onActiveFileStatusCleared = new EventEmitter<Uri | undefined>();
     export const onActiveFileStatusCleared = _onActiveFileStatusCleared.event;
     let _initialisedChannel = false;
 
     export const updateEditor = debounce(updateEditorImpl, 1000, () => {
-        _onActiveFileStatusCleared.fire();
+        _onActiveFileStatusCleared.fire(window.activeTextEditor?.document.uri);
         if (_statusBarItem) {
             _statusBarItem.show();
             _statusBarItem.text = "P4: $(sync)";

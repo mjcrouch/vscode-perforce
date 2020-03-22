@@ -1,5 +1,6 @@
-import { Display, ActiveStatusEvent } from "./Display";
+import { Display, ActiveStatusEvent, ActiveEditorStatus } from "./Display";
 import * as vscode from "vscode";
+import * as PerforceUri from "./PerforceUri";
 
 const makeDefault = () => {
     return {
@@ -9,11 +10,12 @@ const makeDefault = () => {
         changelist: "",
         operation: "",
         filetype: "",
-        message: ""
+        message: "",
+        isDiffable: false
     };
 };
 
-type ContextVars = Record<keyof ReturnType<typeof makeDefault>, string>;
+type ContextVars = Record<keyof ReturnType<typeof makeDefault>, string | boolean>;
 
 export function initialize(subscriptions: vscode.Disposable[]) {
     subscriptions.push(Display.onActiveFileStatusKnown(setContextVars));
@@ -34,6 +36,12 @@ function getFileContext(arg: keyof ContextVars) {
 }
 
 function setContextVars(event: ActiveStatusEvent) {
+    const isDiffable =
+        event.status === ActiveEditorStatus.NOT_OPEN ||
+        event.status === ActiveEditorStatus.OPEN ||
+        event.file.scheme === "perforce" ||
+        !!PerforceUri.decodeUriQuery(event.file.query).leftUri;
+
     fileContext = {
         status: event.status.toString(),
         depotPath: event.details?.depotPath ?? "",
@@ -41,7 +49,8 @@ function setContextVars(event: ActiveStatusEvent) {
         changelist: event.details?.chnum ?? "",
         operation: event.details?.operation ?? "",
         filetype: event.details?.filetype ?? "",
-        message: event.details?.message ?? ""
+        message: event.details?.message ?? "",
+        isDiffable
     };
 
     Object.entries(fileContext).forEach(c => {
@@ -53,16 +62,20 @@ function setContextVars(event: ActiveStatusEvent) {
     });
 }
 
-function clearContextVars() {
-    vscode.commands.executeCommand("setContext", "perforce.currentFile.status", "");
-
+function clearContextVars(file?: vscode.Uri) {
     fileContext = makeDefault();
 
-    Object.keys(fileContext).forEach(c => {
+    fileContext.isDiffable =
+        !!file &&
+        (file.scheme === "perforce" || !!PerforceUri.decodeUriQuery(file.query).leftUri);
+
+    Object.entries(fileContext).forEach(c => {
         vscode.commands.executeCommand(
             "setContext",
-            "perforce.currentFile." + c,
-            undefined
+            "perforce.currentFile." + c[0],
+            c[1]
         );
     });
+
+    vscode.commands.executeCommand("setContext", "perforce.currentFile.status", "");
 }

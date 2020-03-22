@@ -373,7 +373,14 @@ export namespace PerforceCommands {
         return diffPreviousFrom(rightUri);
     }
 
-    async function diffPrevious(fromDoc: Uri) {
+    async function diffPrevious(fromDoc?: Uri) {
+        if (!fromDoc) {
+            fromDoc = window.activeTextEditor?.document.uri;
+        }
+        if (!fromDoc) {
+            Display.showError("No file to diff");
+            return false;
+        }
         const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
         if (usingLeftInfo) {
             await usingLeftInfo;
@@ -387,7 +394,14 @@ export namespace PerforceCommands {
         }
     }
 
-    async function diffNext(fromDoc: Uri) {
+    async function diffNext(fromDoc?: Uri) {
+        if (!fromDoc) {
+            fromDoc = window.activeTextEditor?.document.uri;
+        }
+        if (!fromDoc) {
+            Display.showError("No file to diff");
+            return false;
+        }
         const rev = parseInt(fromDoc.fragment);
         if (isNaN(rev)) {
             Display.showImportantError("No more revisions available");

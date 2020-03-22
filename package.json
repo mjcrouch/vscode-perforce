@@ -767,11 +767,13 @@
             "editor/title": [
                 {
                     "command": "perforce.diffPrevious",
-                    "group": "navigation@-10"
+                    "group": "navigation@-10",
+                    "when": "perforce.currentFile.isDiffable" 
                 },
                 {
                     "command": "perforce.diffNext",
-                    "group": "navigation@-9"
+                    "group": "navigation@-9",
+                    "when": "perforce.currentFile.isDiffable" 
                 }
             ]
         },
