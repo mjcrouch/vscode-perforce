@@ -95,10 +95,6 @@ export function fromUri(uri: vscode.Uri, otherArgs?: UriArguments) {
     });
 }
 
-export function fromUriWithWorkspace(workspace: vscode.Uri, uri: vscode.Uri) {
-    return fromUri(uri, { workspace: workspace.fsPath });
-}
-
 export function fromUriWithRevision(perforceUri: vscode.Uri, revisionOrAtLabel: string) {
     return fromUri(perforceUri.with({ fragment: revisionOrAtLabel }));
 }
