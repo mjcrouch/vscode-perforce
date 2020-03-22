@@ -2,9 +2,11 @@ import { commands, window, Uri, workspace } from "vscode";
 import { Resource } from "./scm/Resource";
 import { Status } from "./scm/Status";
 import { FileType } from "./scm/FileTypes";
+import { Display } from "./Display";
 import * as Path from "path";
 import * as fs from "fs";
 import * as PerforceUri from "./PerforceUri";
+import * as p4 from "./api/PerforceApi";
 
 export enum DiffType {
     WORKSPACE_V_DEPOT,
@@ -75,6 +77,92 @@ export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
         rightUriWithLeftInfo,
         fullTitle
     );
+}
+
+function getPreviousUri(fromUri: Uri) {
+    if (!fromUri.fragment) {
+        return undefined;
+    }
+    const rightRev = parseInt(fromUri.fragment);
+    if (isNaN(rightRev)) {
+        return undefined;
+    }
+    if (rightRev <= 1) {
+        return undefined;
+    }
+    return fromUri.with({ fragment: (rightRev - 1).toString() });
+}
+
+/**
+ * Diffs a URI with a revision number against a URI with the previous revision number (provided it is > 0)
+ * @param rightUri
+ */
+async function diffPreviousFrom(rightUri?: Uri) {
+    if (!rightUri) {
+        Display.showImportantError("No previous revision available");
+        return;
+    }
+    const leftUri = getPreviousUri(rightUri);
+    if (!leftUri) {
+        Display.showImportantError("No previous revision available");
+        return;
+    }
+    await diffFiles(leftUri, rightUri);
+}
+
+/**
+ * Work out the have revision for the file, and diff the working file against that revision
+ */
+async function diffPreviousFromWorking(fromDoc: Uri) {
+    const leftUri = await p4.have(fromDoc, { file: fromDoc });
+    if (!leftUri) {
+        Display.showImportantError("No previous revision available");
+        return;
+    }
+    await diffFiles(leftUri, fromDoc);
+}
+
+/**
+ * Use the information provided in the right hand URI, about the left hand file, to perform the diff, if possible
+ * @param fromDoc the current right hand URI
+ * @returns a promise if the diff is possible, or false otherwise
+ */
+function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
+    const args = PerforceUri.decodeUriQuery(fromDoc.query);
+    const workspace = PerforceUri.getUsableWorkspace(fromDoc);
+    if (!workspace) {
+        throw new Error("No usable workspace found for " + fromDoc);
+    }
+    if (!args.leftUri) {
+        return false;
+    }
+    const rightUri = Uri.parse(args.leftUri);
+    return diffPreviousFrom(rightUri);
+}
+
+export async function diffPrevious(fromDoc: Uri) {
+    const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
+    if (usingLeftInfo) {
+        await usingLeftInfo;
+    } else {
+        const rev = parseInt(fromDoc.fragment);
+        if (isNaN(rev)) {
+            await diffPreviousFromWorking(fromDoc);
+        } else {
+            await diffPreviousFrom(getPreviousUri(fromDoc));
+        }
+    }
+}
+
+export async function diffNext(fromDoc: Uri) {
+    const rev = parseInt(fromDoc.fragment);
+    if (isNaN(rev)) {
+        Display.showImportantError("No more revisions available");
+        return;
+    }
+    const leftUri = fromDoc;
+    const rightUri = fromDoc.with({ fragment: (rev + 1).toString() });
+    await diffFiles(leftUri, rightUri);
 }
 
 export async function diffDefault(

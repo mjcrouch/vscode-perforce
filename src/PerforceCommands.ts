@@ -312,67 +312,6 @@ export namespace PerforceCommands {
         );
     }
 
-    function getPreviousUri(fromUri: Uri) {
-        if (!fromUri.fragment) {
-            return undefined;
-        }
-        const rightRev = parseInt(fromUri.fragment);
-        if (isNaN(rightRev)) {
-            return undefined;
-        }
-        if (rightRev <= 1) {
-            return undefined;
-        }
-        return fromUri.with({ fragment: (rightRev - 1).toString() });
-    }
-
-    /**
-     * Diffs a URI with a revision number against a URI with the previous revision number (provided it is > 0)
-     * @param rightUri
-     */
-    async function diffPreviousFrom(rightUri?: Uri) {
-        if (!rightUri) {
-            Display.showImportantError("No previous revision available");
-            return;
-        }
-        const leftUri = getPreviousUri(rightUri);
-        if (!leftUri) {
-            Display.showImportantError("No previous revision available");
-            return;
-        }
-        await DiffProvider.diffFiles(leftUri, rightUri);
-    }
-
-    /**
-     * Work out the have revision for the file, and diff the working file against that revision
-     */
-    async function diffPreviousFromWorking(fromDoc: Uri) {
-        const leftUri = await p4.have(fromDoc, { file: fromDoc });
-        if (!leftUri) {
-            Display.showImportantError("No previous revision available");
-            return;
-        }
-        await DiffProvider.diffFiles(leftUri, fromDoc);
-    }
-
-    /**
-     * Use the information provided in the right hand URI, about the left hand file, to perform the diff, if possible
-     * @param fromDoc the current right hand URI
-     * @returns a promise if the diff is possible, or false otherwise
-     */
-    function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
-        const args = PerforceUri.decodeUriQuery(fromDoc.query);
-        const workspace = PerforceUri.getUsableWorkspace(fromDoc);
-        if (!workspace) {
-            throw new Error("No usable workspace found for " + fromDoc);
-        }
-        if (!args.leftUri) {
-            return false;
-        }
-        const rightUri = Uri.parse(args.leftUri);
-        return diffPreviousFrom(rightUri);
-    }
-
     async function diffPrevious(fromDoc?: Uri) {
         if (!fromDoc) {
             fromDoc = window.activeTextEditor?.document.uri;
@@ -381,17 +320,7 @@ export namespace PerforceCommands {
             Display.showError("No file to diff");
             return false;
         }
-        const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
-        if (usingLeftInfo) {
-            await usingLeftInfo;
-        } else {
-            const rev = parseInt(fromDoc.fragment);
-            if (isNaN(rev)) {
-                await diffPreviousFromWorking(fromDoc);
-            } else {
-                await diffPreviousFrom(getPreviousUri(fromDoc));
-            }
-        }
+        await DiffProvider.diffPrevious(fromDoc);
     }
 
     async function diffNext(fromDoc?: Uri) {
@@ -402,14 +331,7 @@ export namespace PerforceCommands {
             Display.showError("No file to diff");
             return false;
         }
-        const rev = parseInt(fromDoc.fragment);
-        if (isNaN(rev)) {
-            Display.showImportantError("No more revisions available");
-            return;
-        }
-        const leftUri = fromDoc;
-        const rightUri = fromDoc.with({ fragment: (rev + 1).toString() });
-        await DiffProvider.diffFiles(leftUri, rightUri);
+        await DiffProvider.diffNext(fromDoc);
     }
 
     async function diffFiles(leftFile: string, rightFile: string) {

@@ -14,7 +14,8 @@ const makeDefault = () => {
         showDiffPrev: false,
         showDiffNext: false,
         canDiffPrev: false,
-        canDiffNext: false
+        canDiffNext: false,
+        isPerforceOrDiff: false
     };
 };
 
@@ -61,6 +62,8 @@ function calculateDiffOptions(file?: vscode.Uri, status?: ActiveEditorStatus) {
     const isRightWindow = isRightDiffWindow(file);
     // show diff buttons for all perforce files, all diff windows and anything that is NOT 'not in workspace'
 
+    const isPerforceOrDiff = isRightWindow || isPerforceDoc(file);
+
     const isNotUnknown =
         status === ActiveEditorStatus.NOT_OPEN || status === ActiveEditorStatus.OPEN;
     const showDiffPrev =
@@ -79,7 +82,8 @@ function calculateDiffOptions(file?: vscode.Uri, status?: ActiveEditorStatus) {
         showDiffNext,
         showDiffPrev,
         canDiffNext: !disableDiffNext,
-        canDiffPrev: !disableDiffPrev
+        canDiffPrev: !disableDiffPrev,
+        isPerforceOrDiff
     };
 }
 
