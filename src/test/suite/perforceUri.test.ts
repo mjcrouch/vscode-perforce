@@ -1,13 +1,15 @@
 import { expect } from "chai";
 
 import * as vscode from "vscode";
+import * as path from "path";
 
 import * as PerforceUri from "../../PerforceUri";
 
 describe("Perforce Uris", () => {
     const depotPath = "//depot/my/path/file.txt";
     const localUri = vscode.Uri.file("/home/file.txt");
-    const workspaceArg = "workspace=%5Chome%5Cfile.txt";
+    const workspaceArg =
+        "workspace=" + encodeURIComponent(path.sep + "home" + path.sep + "file.txt");
 
     describe("Encode query", () => {
         it("Produces an encoded query string", () => {
