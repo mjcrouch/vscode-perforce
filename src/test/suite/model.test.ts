@@ -344,15 +344,17 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             expect(instance.resources[1].id).to.equal("pending:3");
             expect(instance.resources[1].label).to.equal("#3: shelved changelist 1");
-            expect(instance.resources[1].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveEdit()
-            ]);
+            expect(instance.resources[1].resourceStates).to.be.shelvedResources(
+                { chnum: "3" },
+                [basicFiles.shelveEdit()]
+            );
 
             expect(instance.resources[2].id).to.equal("pending:4");
             expect(instance.resources[2].label).to.equal("#4: shelved changelist 2");
-            expect(instance.resources[2].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveDelete()
-            ]);
+            expect(instance.resources[2].resourceStates).to.be.shelvedResources(
+                { chnum: "4" },
+                [basicFiles.shelveDelete()]
+            );
         });
         it("Handles open and shelved files", async () => {
             stubModel.changelists = [
@@ -381,7 +383,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].label).to.equal("#5: mixed changelist 1");
             expect(
                 instance.resources[1].resourceStates.slice(0, 1)
-            ).to.be.shelvedResources([basicFiles.shelveEdit()]);
+            ).to.be.shelvedResources({ chnum: "5" }, [basicFiles.shelveEdit()]);
             expect(instance.resources[1].resourceStates.slice(1)).to.be.resources([
                 basicFiles.edit(),
                 basicFiles.add()
@@ -391,7 +393,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[2].label).to.equal("#6: mixed changelist 2");
             expect(
                 instance.resources[2].resourceStates.slice(0, 1)
-            ).to.be.shelvedResources([basicFiles.shelveDelete()]);
+            ).to.be.shelvedResources({ chnum: "6" }, [basicFiles.shelveDelete()]);
             expect(instance.resources[2].resourceStates.slice(1)).to.be.resources([
                 basicFiles.delete()
             ]);
@@ -414,9 +416,10 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].id).to.equal("pending:7");
             expect(instance.resources[1].label).to.equal("#7: changelist 1");
 
-            expect(instance.resources[1].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveNoWorkspace()
-            ]);
+            expect(instance.resources[1].resourceStates).to.be.shelvedResources(
+                { chnum: "7" },
+                [basicFiles.shelveNoWorkspace()]
+            );
         });
         it("Handles the same file shelved in two changelists", async () => {
             stubModel.changelists = [
@@ -444,16 +447,18 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].id).to.equal("pending:8");
             expect(instance.resources[1].label).to.equal("#8: changelist 1");
 
-            expect(instance.resources[1].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveEdit()
-            ]);
+            expect(instance.resources[1].resourceStates).to.be.shelvedResources(
+                { chnum: "8" },
+                [basicFiles.shelveEdit()]
+            );
 
             expect(instance.resources[2].id).to.equal("pending:9");
             expect(instance.resources[2].label).to.equal("#9: changelist 2");
 
-            expect(instance.resources[2].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveEdit()
-            ]);
+            expect(instance.resources[2].resourceStates).to.be.shelvedResources(
+                { chnum: "9" },
+                [basicFiles.shelveEdit()]
+            );
         });
         it("Can sort changelists ascending", async () => {
             sinon.stub(workspaceConfig, "changelistOrder").get(() => "ascending");
@@ -522,15 +527,17 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             expect(instance.resources[1].id).to.equal("pending:3");
             expect(instance.resources[1].label).to.equal("#3: shelved changelist 1");
-            expect(instance.resources[1].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveEdit()
-            ]);
+            expect(instance.resources[1].resourceStates).to.be.shelvedResources(
+                { chnum: "3" },
+                [basicFiles.shelveEdit()]
+            );
 
             expect(instance.resources[2].id).to.equal("pending:4");
             expect(instance.resources[2].label).to.equal("#4: shelved changelist 2");
-            expect(instance.resources[2].resourceStates).to.be.shelvedResources([
-                basicFiles.shelveDelete()
-            ]);
+            expect(instance.resources[2].resourceStates).to.be.shelvedResources(
+                { chnum: "4" },
+                [basicFiles.shelveDelete()]
+            );
         });
         it("Has decorations for files", async () => {
             stubModel.changelists = [
@@ -598,7 +605,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.resources[1].label).to.equal("#1: changelist 1");
             expect(
                 instance.resources[1].resourceStates.slice(0, 2)
-            ).to.be.shelvedResources([
+            ).to.be.shelvedResources({ chnum: "1" }, [
                 basicFiles.shelveDelete(),
                 basicFiles.shelveEdit()
             ]);
