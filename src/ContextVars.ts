@@ -11,7 +11,10 @@ const makeDefault = () => {
         operation: "",
         filetype: "",
         message: "",
-        isDiffable: false
+        showDiffPrev: false,
+        showDiffNext: false,
+        canDiffPrev: false,
+        canDiffNext: false
     };
 };
 
@@ -35,12 +38,53 @@ function getFileContext(arg: keyof ContextVars) {
     return fileContext[arg] ?? "";
 }
 
+function isPerforceDoc(file?: vscode.Uri) {
+    return !!file && file.scheme === "perforce";
+}
+
+function isRightDiffWindow(file?: vscode.Uri) {
+    return !!file && !!PerforceUri.decodeUriQuery(file.query).leftUri;
+}
+
+function getRevision(file?: vscode.Uri) {
+    if (!file) {
+        return -1;
+    }
+    const fileRev = parseInt(file.fragment);
+    if (isNaN(fileRev)) {
+        return -1;
+    }
+    return fileRev;
+}
+
+function calculateDiffOptions(file?: vscode.Uri, status?: ActiveEditorStatus) {
+    const isRightWindow = isRightDiffWindow(file);
+    // show diff buttons for all perforce files, all diff windows and anything that is NOT 'not in workspace'
+
+    const isNotUnknown =
+        status === ActiveEditorStatus.NOT_OPEN || status === ActiveEditorStatus.OPEN;
+    const showDiffPrev =
+        isNotUnknown || isPerforceDoc(file) || isRightDiffWindow(file) || isNotUnknown;
+
+    const rev = getRevision(file);
+
+    // show next diff button only for diffs (including diffs without a revision - for consistent button placement)
+    const showDiffNext = showDiffPrev && (rev >= 0 || isRightWindow);
+
+    const disableDiffPrev =
+        (isPerforceDoc && rev === 1) || (isRightWindow && rev <= 2 && rev > 0);
+    const disableDiffNext = isRightDiffWindow && rev <= 0;
+
+    return {
+        showDiffNext,
+        showDiffPrev,
+        canDiffNext: !disableDiffNext,
+        canDiffPrev: !disableDiffPrev
+    };
+}
+
 function setContextVars(event: ActiveStatusEvent) {
-    const isDiffable =
-        event.status === ActiveEditorStatus.NOT_OPEN ||
-        event.status === ActiveEditorStatus.OPEN ||
-        event.file.scheme === "perforce" ||
-        !!PerforceUri.decodeUriQuery(event.file.query).leftUri;
+    const diffOptions = calculateDiffOptions(event.file, event.status);
 
     fileContext = {
         status: event.status.toString(),
@@ -50,7 +94,7 @@ function setContextVars(event: ActiveStatusEvent) {
         operation: event.details?.operation ?? "",
         filetype: event.details?.filetype ?? "",
         message: event.details?.message ?? "",
-        isDiffable
+        ...diffOptions
     };
 
     Object.entries(fileContext).forEach(c => {
@@ -65,17 +109,15 @@ function setContextVars(event: ActiveStatusEvent) {
 function clearContextVars(file?: vscode.Uri) {
     fileContext = makeDefault();
 
-    fileContext.isDiffable =
-        !!file &&
-        (file.scheme === "perforce" || !!PerforceUri.decodeUriQuery(file.query).leftUri);
+    const diffOptions = calculateDiffOptions(file);
 
-    Object.entries(fileContext).forEach(c => {
+    const all = { ...fileContext, ...diffOptions };
+
+    Object.entries(all).forEach(c => {
         vscode.commands.executeCommand(
             "setContext",
             "perforce.currentFile." + c[0],
             c[1]
         );
     });
-
-    vscode.commands.executeCommand("setContext", "perforce.currentFile.status", "");
 }

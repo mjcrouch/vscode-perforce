@@ -38,7 +38,7 @@ export namespace Display {
         _onActiveFileStatusCleared.fire(window.activeTextEditor?.document.uri);
         if (_statusBarItem) {
             _statusBarItem.show();
-            _statusBarItem.text = "P4: $(sync)";
+            _statusBarItem.text = "P4: $(sync~spin)";
             _statusBarItem.tooltip = "Checking file status";
         }
     });
