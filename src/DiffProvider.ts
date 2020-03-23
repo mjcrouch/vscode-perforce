@@ -65,8 +65,13 @@ export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
     const leftFileWithoutLeftFiles = PerforceUri.withArgs(leftFile, {
         leftUri: undefined
     });
+    const gotStartFile =
+        PerforceUri.decodeUriQuery(rightFile.query).diffStartFile ??
+        PerforceUri.decodeUriQuery(leftFile.query).diffStartFile;
+
     const rightUriWithLeftInfo = PerforceUri.withArgs(rightFile, {
-        leftUri: leftFileWithoutLeftFiles.toString()
+        leftUri: leftFileWithoutLeftFiles.toString(),
+        diffStartFile: gotStartFile ?? rightFile.toString()
     });
 
     const fullTitle = title ?? diffTitleForFiles(leftFile, rightFile);
@@ -119,7 +124,10 @@ async function diffPreviousFromWorking(fromDoc: Uri) {
         Display.showImportantError("No previous revision available");
         return;
     }
-    await diffFiles(leftUri, fromDoc);
+    await diffFiles(
+        PerforceUri.withArgs(leftUri, { haveRev: leftUri.fragment }),
+        PerforceUri.withArgs(fromDoc, { haveRev: leftUri.fragment })
+    );
 }
 
 /**
@@ -136,7 +144,9 @@ function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
     if (!args.leftUri) {
         return false;
     }
-    const rightUri = Uri.parse(args.leftUri);
+    const rightUri = PerforceUri.withArgs(Uri.parse(args.leftUri), {
+        diffStartFile: args.diffStartFile
+    });
     return diffPreviousFrom(rightUri);
 }
 
@@ -160,8 +170,16 @@ export async function diffNext(fromDoc: Uri) {
         Display.showImportantError("No more revisions available");
         return;
     }
+
     const leftUri = fromDoc;
-    const rightUri = fromDoc.with({ fragment: (rev + 1).toString() });
+
+    const args = PerforceUri.decodeUriQuery(fromDoc.query);
+    const atHaveRev = args.haveRev && parseInt(args.haveRev) === rev;
+    const rightUri =
+        atHaveRev && args.diffStartFile
+            ? Uri.parse(args.diffStartFile)
+            : fromDoc.with({ fragment: (rev + 1).toString() });
+
     await diffFiles(leftUri, rightUri);
 }
 
@@ -197,7 +215,14 @@ export async function diffDefault(
         await window.showTextDocument(left.uri);
         return;
     }
-    await diffFiles(left.uri, right, getTitle(resource, left.title, diffType));
+
+    const leftUri = PerforceUri.withArgs(left.uri, {
+        haveRev: resource.workingRevision
+    });
+    const rightUri = PerforceUri.withArgs(right, {
+        haveRev: resource.workingRevision
+    });
+    await diffFiles(leftUri, rightUri, getTitle(resource, left.title, diffType));
     return;
 }
 

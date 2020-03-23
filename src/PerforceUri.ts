@@ -6,6 +6,8 @@ export type UriArguments = {
     command?: string;
     p4Args?: string;
     leftUri?: string;
+    haveRev?: string;
+    diffStartFile?: string;
 };
 
 type AnyUriArguments = {
