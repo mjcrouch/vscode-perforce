@@ -105,6 +105,22 @@ describe("Perforce Uris", () => {
                 "command=print&p4Args=hello&depot&" + workspaceArg
             );
         });
+        it("Accepts an optional revision", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
+            const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" }, "3");
+            expect(augmented.query).to.equal(
+                "command=print&p4Args=hello&depot&" + workspaceArg
+            );
+            expect(augmented.fragment).to.equal("3");
+        });
+        it("Does not override the fragment if no revision supplied", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
+            const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" });
+            expect(augmented.query).to.equal(
+                "command=print&p4Args=hello&depot&" + workspaceArg
+            );
+            expect(augmented.fragment).to.equal("2");
+        });
     });
     describe("isDepotUri", () => {
         it("Returns true for depot URIs with the depot flag", () => {

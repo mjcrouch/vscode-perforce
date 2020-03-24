@@ -35,7 +35,14 @@ export function diffTitleForDepotPaths(
     rightRevision: string
 ) {
     const [leftTitle, rightTitle] = getPathsWithoutCommonPrefix(leftPath, rightPath);
-    return leftTitle + "#" + leftRevision + " ⟷ " + rightTitle + "#" + rightRevision;
+    return (
+        leftTitle +
+        "#" +
+        leftRevision +
+        " ⟷ " +
+        rightTitle +
+        (rightRevision ? "#" + rightRevision : "")
+    );
 }
 
 function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
@@ -159,7 +166,7 @@ export async function diffPrevious(fromDoc: Uri) {
         if (isNaN(rev)) {
             await diffPreviousFromWorking(fromDoc);
         } else {
-            await diffPreviousFrom(getPreviousUri(fromDoc));
+            await diffPreviousFrom(fromDoc);
         }
     }
 }

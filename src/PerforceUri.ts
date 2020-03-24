@@ -106,13 +106,19 @@ export function fromUriWithRevision(perforceUri: vscode.Uri, revisionOrAtLabel: 
  * @param uri the uri to add args to
  * @param args the arguments to add
  */
-export function withArgs(uri: vscode.Uri, args: UriArguments) {
+export function withArgs(
+    uri: vscode.Uri,
+    args: UriArguments,
+    revisionOrAtLabel?: string
+) {
     const curArgs = decodeUriQuery(uri.query);
     const newQuery = encodeQuery({
         ...curArgs,
         ...args
     });
-    return uri.with({ query: newQuery });
+    return revisionOrAtLabel !== undefined
+        ? uri.with({ query: newQuery, fragment: revisionOrAtLabel })
+        : uri.with({ query: newQuery });
 }
 
 export function encodeQuery(args: UriArguments) {
