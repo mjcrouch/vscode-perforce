@@ -66,8 +66,7 @@ function calculateDiffOptions(file?: vscode.Uri, status?: ActiveEditorStatus) {
 
     const isNotUnknown =
         status === ActiveEditorStatus.NOT_OPEN || status === ActiveEditorStatus.OPEN;
-    const showDiffPrev =
-        isNotUnknown || isPerforceDoc(file) || isRightDiffWindow(file) || isNotUnknown;
+    const showDiffPrev = isNotUnknown || isPerforceOrDiff;
 
     const rev = getRevision(file);
 
