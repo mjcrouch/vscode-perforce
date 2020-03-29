@@ -8,8 +8,7 @@ import {
     splitIntoChunks,
     mergeAll,
     extractSection,
-    sectionArrayBy,
-    isTruthy
+    sectionArrayBy
 } from "./CommandUtils";
 import {
     FstatInfo,
@@ -20,6 +19,7 @@ import {
     ChangeSpec
 } from "./CommonTypes";
 import * as PerforceUri from "../PerforceUri";
+import { isTruthy } from "../TsUtils";
 
 //const prepareOutput = (value: string) => value.trim();
 const removeLeadingNewline = (value: string) => value.replace(/^\r*?\n/, "");

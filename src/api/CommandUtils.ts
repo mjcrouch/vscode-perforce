@@ -4,16 +4,7 @@ import * as vscode from "vscode";
 import * as PerforceUri from "../PerforceUri";
 import { PerforceService } from "../PerforceService";
 import { Display } from "../Display";
-
-/**
- * Predicate used for filtering out undefined or null values from an array,
- * and resulting in an array of type T
- * @param obj a single element
- * @returns the truthiness of the value, and narrows the type to T
- */
-export function isTruthy<T>(obj: T | undefined | null): obj is T {
-    return !!obj;
-}
+import { isTruthy } from "../TsUtils";
 
 /**
  * Extract a section of an array between two matching predicates

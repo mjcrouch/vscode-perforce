@@ -157,17 +157,30 @@ function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
     return diffPreviousFrom(rightUri);
 }
 
+async function diffPreviousUsingRevision(fromDoc: Uri) {
+    const rev = parseInt(fromDoc.fragment);
+    if (isNaN(rev)) {
+        await diffPreviousFromWorking(fromDoc);
+    } else {
+        await diffPreviousFrom(fromDoc);
+    }
+}
+
+/**
+ * Diffs against the fromDoc's previous revision, regardless of whether
+ * the supplied URI is the right hand of a diff
+ * @param fromDoc the Uri to diff
+ */
+export async function diffPreviousIgnoringLeftInfo(fromDoc: Uri) {
+    await diffPreviousUsingRevision(fromDoc);
+}
+
 export async function diffPrevious(fromDoc: Uri) {
     const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
     if (usingLeftInfo) {
         await usingLeftInfo;
     } else {
-        const rev = parseInt(fromDoc.fragment);
-        if (isNaN(rev)) {
-            await diffPreviousFromWorking(fromDoc);
-        } else {
-            await diffPreviousFrom(fromDoc);
-        }
+        await diffPreviousUsingRevision(fromDoc);
     }
 }
 

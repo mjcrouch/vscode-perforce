@@ -3,7 +3,7 @@ import * as p4 from "../api/PerforceApi";
 import TimeAgo from "javascript-time-ago";
 import * as en from "javascript-time-ago/locale/en";
 import { Display } from "../Display";
-import { isTruthy } from "../api/CommandUtils";
+import { isTruthy } from "../TsUtils";
 
 TimeAgo.addLocale(en);
 

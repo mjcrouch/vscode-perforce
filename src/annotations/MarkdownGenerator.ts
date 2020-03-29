@@ -3,7 +3,7 @@ import * as p4 from "../api/PerforceApi";
 
 import * as PerforceUri from "../PerforceUri";
 import * as DiffProvider from "../DiffProvider";
-import { isTruthy } from "../api/CommandUtils";
+import { isTruthy } from "../TsUtils";
 
 export function makeSwarmHostURL(change: p4.FileLogItem, swarmHost: string) {
     return swarmHost + "/changes/" + change.chnum;

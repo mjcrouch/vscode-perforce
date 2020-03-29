@@ -20,6 +20,7 @@ import * as PerforceUri from "./PerforceUri";
 import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
+import * as QuickPickProvider from "./QuickPickProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -34,6 +35,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.diffRevision", diffRevision);
         commands.registerCommand("perforce.diffPrevious", diffPrevious);
         commands.registerCommand("perforce.diffNext", diffNext);
+        commands.registerCommand("perforce.depotActions", showDepotActions);
         commands.registerCommand("perforce.annotate", annotate);
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);
@@ -350,6 +352,16 @@ export namespace PerforceCommands {
 
         const doc = editor.document;
         return doc.uri;
+    }
+
+    async function showDepotActions() {
+        // DO NOT USE URI from vscode command - only returns the right uri - we need the active editor
+        const fromDoc = window.activeTextEditor?.document.uri;
+        if (!fromDoc) {
+            Display.showError("No document selected");
+            return;
+        }
+        await QuickPickProvider.showQuickPickForFile(fromDoc);
     }
 
     export async function annotate(file?: string) {

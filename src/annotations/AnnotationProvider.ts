@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as p4 from "../api/PerforceApi";
 
-import { isTruthy } from "../api/CommandUtils";
+import { isTruthy } from "../TsUtils";
 import * as PerforceUri from "../PerforceUri";
 import * as md from "./MarkdownGenerator";
 import * as ColumnFormatter from "./ColumnFormatter";
