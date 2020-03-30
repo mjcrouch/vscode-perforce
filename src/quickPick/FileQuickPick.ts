@@ -6,6 +6,7 @@ import * as DiffProvider from "../DiffProvider";
 import { Display } from "../Display";
 import { AnnotationProvider } from "../annotations/AnnotationProvider";
 import { isTruthy } from "../TsUtils";
+import * as Path from "path";
 
 import * as ChangeQuickPick from "./ChangeQuickPick";
 
@@ -25,6 +26,37 @@ export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
     }
 };
 
+export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
+    provideActions: async (uri: vscode.Uri, cached?: CachedOutput) => {
+        const changes = await getChangeDetails(uri, cached);
+        const actions = makeAllRevisionPicks(uri, changes);
+        return {
+            items: actions,
+            placeHolder:
+                "Choose revision for " +
+                changes.current.file +
+                "#" +
+                changes.current.revision
+        };
+    }
+};
+
+export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
+    provideActions: async (uri: vscode.Uri) => {
+        const changes = await getChangeDetails(uri, undefined, true);
+        const actions = makeDiffRevisionPicks(uri, changes);
+        return {
+            items: actions,
+            excludeFromHistory: true,
+            placeHolder:
+                "Diff revision for " +
+                changes.current.file +
+                "#" +
+                changes.current.revision
+        };
+    }
+};
+
 type CachedOutput = {
     filelog: p4.FileLogItem[];
 };
@@ -32,14 +64,15 @@ type CachedOutput = {
 type ChangeDetails = {
     all: p4.FileLogItem[];
     current: p4.FileLogItem;
+    currentIndex: number;
     next?: p4.FileLogItem;
     prev?: p4.FileLogItem;
     latest: p4.FileLogItem;
 };
 
-function makeRevisionSummary(change: p4.FileLogItem) {
+function makeRevisionSummary(change: p4.FileLogItem, shortName?: boolean) {
     return (
-        change.file +
+        (shortName ? Path.basename(change.file) : change.file) +
         "#" +
         change.revision +
         " " +
@@ -53,7 +86,8 @@ function makeRevisionSummary(change: p4.FileLogItem) {
 
 async function getChangeDetails(
     uri: vscode.Uri,
-    cached?: CachedOutput
+    cached?: CachedOutput,
+    followBranches?: boolean
 ): Promise<ChangeDetails> {
     const rev = uri.fragment;
     if (!uri.fragment) {
@@ -67,7 +101,9 @@ async function getChangeDetails(
 
     const arg = PerforceUri.fromUriWithRevision(uri, ""); // need more history than this! `#${revNum},${revNum}`);
     // TODO pass this in again when navigating revisions to prevent having to get it every time
-    const filelog = cached?.filelog ?? (await p4.getFileHistory(uri, { file: arg }));
+    const filelog =
+        cached?.filelog ??
+        (await p4.getFileHistory(uri, { file: arg, followBranches: followBranches }));
 
     if (filelog.length === 0) {
         // TODO
@@ -80,11 +116,108 @@ async function getChangeDetails(
     const prev = filelog[currentIndex + 1];
     const latest = filelog[0];
 
-    return { all: filelog, current, next, prev, latest };
+    return { all: filelog, current, currentIndex, next, prev, latest };
 }
 
 export async function showQuickPickForFile(uri: vscode.Uri, cached?: CachedOutput) {
     await qp.showQuickPick("file", uri, cached);
+}
+
+export async function showRevChooserForFile(uri: vscode.Uri, cached?: CachedOutput) {
+    await qp.showQuickPick("filerev", uri, cached);
+}
+
+export async function showDiffChooserForFile(uri: vscode.Uri) {
+    await qp.showQuickPick("filediff", uri);
+}
+
+function makeAllRevisionPicks(
+    uri: vscode.Uri,
+    changes: ChangeDetails
+): qp.ActionableQuickPickItem[] {
+    return changes.all.map(change => {
+        const icon =
+            change === changes.current ? "$(location)" : "$(debug-stackframe-dot)";
+        return {
+            label: icon + " #" + change.revision,
+            description:
+                change.operation +
+                " by " +
+                change.user +
+                " : " +
+                change.description.slice(0, 32),
+            performAction: () => {
+                const revUri = PerforceUri.fromDepotPath(
+                    PerforceUri.getUsableWorkspace(uri) ?? uri,
+                    change.file,
+                    change.revision
+                );
+                return showQuickPickForFile(revUri, { filelog: changes.all });
+            }
+        };
+    });
+}
+
+function makeDiffRevisionPicks(
+    uri: vscode.Uri,
+    changes: ChangeDetails
+): qp.ActionableQuickPickItem[] {
+    const currentUri = PerforceUri.fromDepotPath(
+        PerforceUri.getUsableWorkspace(uri) ?? uri,
+        changes.current.file,
+        changes.current.revision
+    );
+    return changes.all.flatMap((change, i) => {
+        const prefix =
+            change === changes.current
+                ? "$(location) "
+                : change.file === changes.current.file
+                ? "$(debug-stackframe-dot) "
+                : "$(git-merge) " + change.file;
+        //const fromRev = change.integrations.find(c => c.direction === p4.Direction.FROM);
+        const isOldRev = i > changes.currentIndex;
+        return [
+            {
+                label: prefix + "#" + change.revision,
+                description:
+                    change.operation +
+                    " by " +
+                    change.user +
+                    " : " +
+                    change.description.slice(0, 32),
+                performAction: () => {
+                    const thisUri = PerforceUri.fromDepotPath(
+                        PerforceUri.getUsableWorkspace(uri) ?? uri,
+                        change.file,
+                        change.revision
+                    );
+                    DiffProvider.diffFiles(
+                        isOldRev ? thisUri : currentUri,
+                        isOldRev ? currentUri : thisUri
+                    );
+                }
+            }
+            /*
+            TODO - don't think this really makes sense - probably remove this
+            fromRev && fromRev.file !== changes.all[i + 1]?.file // ignore integrations when the next revision is the same thing
+                ? {
+                      label: "$(git-merge) " + fromRev.file + "#" + fromRev.endRev,
+                      performAction: () => {
+                          const thisUri = PerforceUri.fromDepotPath(
+                              PerforceUri.getUsableWorkspace(uri) ?? uri,
+                              fromRev.file,
+                              fromRev.endRev
+                          );
+                          DiffProvider.diffFiles(
+                              isOldRev ? thisUri : currentUri,
+                              isOldRev ? currentUri : thisUri
+                          );
+                      }
+                  }
+                : undefined
+                */
+        ].filter(isTruthy);
+    });
 }
 
 function makeNextAndPrevPicks(
@@ -100,7 +233,7 @@ function makeNextAndPrevPicks(
         prev
             ? {
                   label: "$(arrow-small-left) Previous revision",
-                  description: makeRevisionSummary(prev),
+                  description: makeRevisionSummary(prev, true),
                   performAction: () => {
                       const prevUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -110,11 +243,17 @@ function makeNextAndPrevPicks(
                       return showQuickPickForFile(prevUri, { filelog: changes.all });
                   }
               }
-            : undefined,
+            : {
+                  label: "$(arrow-small-left) Previous revision",
+                  description: "n/a",
+                  performAction: () => {
+                      return showQuickPickForFile(uri, { filelog: changes.all });
+                  }
+              },
         next
             ? {
                   label: "$(arrow-small-right) Next revision",
-                  description: makeRevisionSummary(next),
+                  description: makeRevisionSummary(next, true),
                   performAction: () => {
                       const nextUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -124,7 +263,20 @@ function makeNextAndPrevPicks(
                       return showQuickPickForFile(nextUri, { filelog: changes.all });
                   }
               }
-            : undefined,
+            : {
+                  label: "$(arrow-small-right) Next revision",
+                  description: "n/a",
+                  performAction: () => {
+                      return showQuickPickForFile(uri, { filelog: changes.all });
+                  }
+              },
+        {
+            label: "$(symbol-numeric) Revision...",
+            description: "Go to a specific revision",
+            performAction: () => {
+                showRevChooserForFile(uri, { filelog: changes.all });
+            }
+        },
         integFrom
             ? {
                   label: "$(git-merge) Go to integration source revision",
@@ -146,8 +298,7 @@ function makeNextAndPrevPicks(
             : undefined,
         {
             label: "$(source-control) View integrations...",
-            // TODO - from this file or including this revision?
-            description: "See integrations from this file",
+            description: "See integrations including this revision",
             performAction: () => {
                 Display.showMessage("TODO: implement p4 integrated");
             }
@@ -223,7 +374,7 @@ function makeDiffPicks(
             description: "Choose another revision to diff against",
             performAction: () => {
                 // do this in the diff provider
-                Display.showMessage("TODO - get revision list");
+                showDiffChooserForFile(uri);
             }
         }
     ].filter(isTruthy);
@@ -235,7 +386,7 @@ function makeChangelistPicks(
 ): qp.ActionableQuickPickItem[] {
     return [
         {
-            label: "$(list-flat) Show changelist details",
+            label: "$(list-flat) Go to changelist details",
             description: "Change " + changes.current.chnum,
             performAction: () =>
                 ChangeQuickPick.showQuickPickForChangelist(changes.current.chnum)

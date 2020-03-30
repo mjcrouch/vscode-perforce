@@ -3,6 +3,7 @@ import { isTruthy } from "../TsUtils";
 
 export type ActionableQuickPick = {
     items: ActionableQuickPickItem[];
+    excludeFromHistory?: boolean;
     placeHolder: string;
 };
 
@@ -31,7 +32,7 @@ export function registerQuickPickProvider(
     registeredQuickPickProviders.set(type, provider);
 }
 
-function makeStackActions(): ActionableQuickPickItem[] {
+function makeStackActions(type: string, ...args: any[]): ActionableQuickPickItem[] {
     const prev = quickPickStack[quickPickStack.length - 1];
     return [
         prev
@@ -43,7 +44,13 @@ function makeStackActions(): ActionableQuickPickItem[] {
                       showQuickPickImpl(prev.type, true, ...prev.args);
                   }
               }
-            : undefined
+            : {
+                  label: "$(discard) Go Back",
+                  description: "n/a",
+                  performAction: () => {
+                      showQuickPickImpl(type, true, ...args);
+                  }
+              }
     ].filter(isTruthy);
 }
 
@@ -51,21 +58,26 @@ export async function showQuickPick(type: string, ...args: any[]) {
     await showQuickPickImpl(type, false, ...args);
 }
 
-async function showQuickPickImpl(type: string, goingBack: boolean, ...args: any[]) {
+async function showQuickPickImpl(
+    type: string,
+    excludeFromHistory: boolean,
+    ...args: any[]
+) {
     const provider = registeredQuickPickProviders.get(type);
 
     if (provider) {
         const actions = await provider.provideActions(...args);
 
         const picked = await vscode.window.showQuickPick(
-            actions.items.concat(makeStackActions()),
+            makeStackActions(type, ...args).concat(actions.items),
             {
                 //ignoreFocusOut: true,
+                matchOnDescription: true,
                 placeHolder: actions.placeHolder
             }
         );
 
-        if (!goingBack) {
+        if (!excludeFromHistory && !actions.excludeFromHistory) {
             // TODO - don't push if the args are the same - may need some kind of comparator
             quickPickStack.push({ type, args, description: actions.placeHolder });
         }

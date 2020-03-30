@@ -10,6 +10,14 @@ export function registerQuickPicks() {
         FileQuickPick.fileQuickPickProvider
     );
     QuickPickProvider.registerQuickPickProvider(
+        "filerev",
+        FileQuickPick.fileRevisionQuickPickProvider
+    );
+    QuickPickProvider.registerQuickPickProvider(
+        "filediff",
+        FileQuickPick.fileDiffQuickPickProvider
+    );
+    QuickPickProvider.registerQuickPickProvider(
         "change",
         ChangeQuickPick.changeQuickPickProvider
     );
