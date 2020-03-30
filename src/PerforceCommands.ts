@@ -20,7 +20,7 @@ import * as PerforceUri from "./PerforceUri";
 import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
-import * as QuickPickProvider from "./QuickPickProvider";
+import * as QuickPicks from "./quickPick/QuickPicks";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -361,7 +361,7 @@ export namespace PerforceCommands {
             Display.showError("No document selected");
             return;
         }
-        await QuickPickProvider.showQuickPickForFile(fromDoc);
+        await QuickPicks.showQuickPickForFile(fromDoc);
     }
 
     export async function annotate(file?: string) {
