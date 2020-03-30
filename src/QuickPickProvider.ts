@@ -23,6 +23,8 @@ function makeRevisionSummary(change: p4.FileLogItem) {
         change.file +
         "#" +
         change.revision +
+        " " +
+        change.operation +
         " by " +
         change.user +
         " : " +
@@ -77,7 +79,7 @@ export async function showQuickPickForFile(uri: vscode.Uri) {
     await picked?.performAction();
 }
 
-export async function showQuickPickForChangelist(chnum: string) {
+export async function showQuickPickForChangelist(_chnum: string) {
     // TODO
 }
 
@@ -87,6 +89,9 @@ function makeNextAndPrevPicks(
 ): ActionableQuickPickItem[] {
     const prev = changes.prev;
     const next = changes.next;
+    const integFrom = changes.current.integrations.find(
+        i => i.direction === p4.Direction.FROM
+    );
     return [
         prev
             ? {
@@ -115,7 +120,34 @@ function makeNextAndPrevPicks(
                       return showQuickPickForFile(nextUri);
                   }
               }
-            : undefined
+            : undefined,
+        integFrom
+            ? {
+                  label: "$(git-merge) Go to integration source file",
+                  description:
+                      integFrom.operation +
+                      " from " +
+                      integFrom.file +
+                      "#" +
+                      integFrom.endRev,
+                  performAction: () => {
+                      const integUri = PerforceUri.fromDepotPath(
+                          PerforceUri.getUsableWorkspace(uri) ?? uri,
+                          integFrom.file,
+                          integFrom.endRev
+                      );
+                      return showQuickPickForFile(integUri);
+                  }
+              }
+            : undefined,
+        {
+            label: "$(source-control) View integrations...",
+            // TODO - from this file or including this revision?
+            description: "See integrations from this file",
+            performAction: () => {
+                Display.showMessage("TODO: implement p4 integrated");
+            }
+        }
     ].filter(isTruthy);
 }
 

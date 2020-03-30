@@ -708,6 +708,19 @@ function parseDate(dateString: string) {
     }
 }
 
+export enum Direction {
+    TO,
+    FROM
+}
+
+export type FileLogIntegration = {
+    file: string;
+    startRev: string;
+    endRev: string;
+    operation: string;
+    direction: Direction;
+};
+
 export type FileLogItem = {
     file: string;
     description: string;
@@ -717,12 +730,34 @@ export type FileLogItem = {
     date?: Date;
     user: string;
     client: string;
+    integrations: FileLogIntegration[];
 };
 
+function parseFileLogIntegrations(lines: string[]): FileLogIntegration[] {
+    return lines
+        .map(line => {
+            const matches = /^.{3} .{3} (\S+) (into|from) (.*?)#(\d+)(?:,#(\d+))?$/.exec(
+                line
+            );
+            if (matches) {
+                const [, operation, dirString, file, startRev, endRev] = matches;
+                const direction = dirString === "into" ? Direction.TO : Direction.FROM;
+                return { operation, direction, file, startRev, endRev };
+            }
+        })
+        .filter(isTruthy);
+}
+
 function parseFilelogItem(item: string[], file: string): FileLogItem | undefined {
-    const [header, ...desc] = item;
     // example:
-    // ... #5 change 45 edit on 2020/02/15 18:48:43 by super@matto (text)
+    // ... #9 change 43 integrate on 2020/03/29 18:48:43 by zogge@default (text)
+    //
+    //    integrate from main
+    //
+    // ... ... copy into //depot/TestArea/newFile.txt#5
+    // ... ... edit from //depot/TestArea/newFile.txt#3,#4
+    const [header, ...desc] = item;
+
     const matches = /^\.{3} #(\d+) change (\d+) (\S+) on (.*?) by (.*?)@(.*?) (.*?)$/.exec(
         header
     );
@@ -732,6 +767,8 @@ function parseFilelogItem(item: string[], file: string): FileLogItem | undefined
             .filter(l => l.startsWith("\t"))
             .map(l => l.slice(1))
             .join("\n");
+        const integStrings = desc.filter(l => l.startsWith("... ..."));
+        const integrations = parseFileLogIntegrations(integStrings);
 
         return {
             file,
@@ -741,7 +778,8 @@ function parseFilelogItem(item: string[], file: string): FileLogItem | undefined
             operation,
             date: parseDate(date),
             user,
-            client
+            client,
+            integrations
         };
     }
 }
