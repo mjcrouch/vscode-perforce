@@ -26,12 +26,21 @@ export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
     }
 };
 
+export async function showQuickPickForFile(uri: vscode.Uri, cached?: CachedOutput) {
+    await qp.showQuickPick("file", uri, cached);
+}
+
 export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
-    provideActions: async (uri: vscode.Uri, cached?: CachedOutput) => {
+    provideActions: async (
+        uri: vscode.Uri,
+        includeIntegrations: boolean,
+        cached?: CachedOutput
+    ) => {
         const changes = await getChangeDetails(uri, cached);
-        const actions = makeAllRevisionPicks(uri, changes);
+        const actions = makeAllRevisionPicks(uri, changes, includeIntegrations);
         return {
             items: actions,
+            excludeFromHistory: true,
             placeHolder:
                 "Choose revision for " +
                 changes.current.file +
@@ -40,6 +49,18 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
         };
     }
 };
+
+export async function showRevChooserForFile(uri: vscode.Uri, cached?: CachedOutput) {
+    await qp.showQuickPick("filerev", uri, false, cached);
+}
+
+async function showRevChooserWithIntegrations(
+    uri: vscode.Uri,
+    includeIntegrations: boolean,
+    cached?: CachedOutput
+) {
+    await qp.showQuickPick("filerev", uri, includeIntegrations, cached);
+}
 
 export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (uri: vscode.Uri) => {
@@ -56,6 +77,10 @@ export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
         };
     }
 };
+
+export async function showDiffChooserForFile(uri: vscode.Uri) {
+    await qp.showQuickPick("filediff", uri);
+}
 
 type CachedOutput = {
     filelog: p4.FileLogItem[];
@@ -119,43 +144,63 @@ async function getChangeDetails(
     return { all: filelog, current, currentIndex, next, prev, latest };
 }
 
-export async function showQuickPickForFile(uri: vscode.Uri, cached?: CachedOutput) {
-    await qp.showQuickPick("file", uri, cached);
-}
-
-export async function showRevChooserForFile(uri: vscode.Uri, cached?: CachedOutput) {
-    await qp.showQuickPick("filerev", uri, cached);
-}
-
-export async function showDiffChooserForFile(uri: vscode.Uri) {
-    await qp.showQuickPick("filediff", uri);
-}
-
 function makeAllRevisionPicks(
     uri: vscode.Uri,
-    changes: ChangeDetails
+    changes: ChangeDetails,
+    includeIntegrations: boolean
 ): qp.ActionableQuickPickItem[] {
-    return changes.all.map(change => {
+    const revPicks = changes.all.flatMap(change => {
         const icon =
             change === changes.current ? "$(location)" : "$(debug-stackframe-dot)";
-        return {
-            label: icon + " #" + change.revision,
-            description:
-                change.operation +
-                " by " +
-                change.user +
-                " : " +
-                change.description.slice(0, 32),
-            performAction: () => {
-                const revUri = PerforceUri.fromDepotPath(
-                    PerforceUri.getUsableWorkspace(uri) ?? uri,
-                    change.file,
-                    change.revision
-                );
-                return showQuickPickForFile(revUri, { filelog: changes.all });
-            }
-        };
+        const fromRev = includeIntegrations
+            ? change.integrations.find(c => c.direction === p4.Direction.FROM)
+            : undefined;
+        return [
+            {
+                label: icon + " #" + change.revision,
+                description:
+                    change.operation +
+                    " by " +
+                    change.user +
+                    " : " +
+                    change.description.slice(0, 32),
+                performAction: () => {
+                    const revUri = PerforceUri.fromDepotPath(
+                        PerforceUri.getUsableWorkspace(uri) ?? uri,
+                        change.file,
+                        change.revision
+                    );
+                    return showQuickPickForFile(revUri, { filelog: changes.all });
+                }
+            },
+            fromRev
+                ? {
+                      label: "$(git-merge) " + fromRev.file + "#" + fromRev.endRev,
+                      description: fromRev.operation,
+                      performAction: () => {
+                          const revUri = PerforceUri.fromDepotPath(
+                              PerforceUri.getUsableWorkspace(uri) ?? uri,
+                              fromRev.file,
+                              fromRev.endRev
+                          );
+                          return showQuickPickForFile(revUri, { filelog: changes.all });
+                      }
+                  }
+                : undefined
+        ].filter(isTruthy);
     });
+    return [
+        {
+            label: includeIntegrations
+                ? "$(exclude) Hide integration source files"
+                : "$(gear) Show integration source files",
+            performAction: () => {
+                return showRevChooserWithIntegrations(uri, !includeIntegrations, {
+                    filelog: changes.all
+                });
+            }
+        }
+    ].concat(revPicks);
 }
 
 function makeDiffRevisionPicks(
@@ -167,56 +212,34 @@ function makeDiffRevisionPicks(
         changes.current.file,
         changes.current.revision
     );
-    return changes.all.flatMap((change, i) => {
+    return changes.all.map((change, i) => {
         const prefix =
             change === changes.current
                 ? "$(location) "
                 : change.file === changes.current.file
                 ? "$(debug-stackframe-dot) "
                 : "$(git-merge) " + change.file;
-        //const fromRev = change.integrations.find(c => c.direction === p4.Direction.FROM);
         const isOldRev = i > changes.currentIndex;
-        return [
-            {
-                label: prefix + "#" + change.revision,
-                description:
-                    change.operation +
-                    " by " +
-                    change.user +
-                    " : " +
-                    change.description.slice(0, 32),
-                performAction: () => {
-                    const thisUri = PerforceUri.fromDepotPath(
-                        PerforceUri.getUsableWorkspace(uri) ?? uri,
-                        change.file,
-                        change.revision
-                    );
-                    DiffProvider.diffFiles(
-                        isOldRev ? thisUri : currentUri,
-                        isOldRev ? currentUri : thisUri
-                    );
-                }
+        return {
+            label: prefix + "#" + change.revision,
+            description:
+                change.operation +
+                " by " +
+                change.user +
+                " : " +
+                change.description.slice(0, 32),
+            performAction: () => {
+                const thisUri = PerforceUri.fromDepotPath(
+                    PerforceUri.getUsableWorkspace(uri) ?? uri,
+                    change.file,
+                    change.revision
+                );
+                DiffProvider.diffFiles(
+                    isOldRev ? thisUri : currentUri,
+                    isOldRev ? currentUri : thisUri
+                );
             }
-            /*
-            TODO - don't think this really makes sense - probably remove this
-            fromRev && fromRev.file !== changes.all[i + 1]?.file // ignore integrations when the next revision is the same thing
-                ? {
-                      label: "$(git-merge) " + fromRev.file + "#" + fromRev.endRev,
-                      performAction: () => {
-                          const thisUri = PerforceUri.fromDepotPath(
-                              PerforceUri.getUsableWorkspace(uri) ?? uri,
-                              fromRev.file,
-                              fromRev.endRev
-                          );
-                          DiffProvider.diffFiles(
-                              isOldRev ? thisUri : currentUri,
-                              isOldRev ? currentUri : thisUri
-                          );
-                      }
-                  }
-                : undefined
-                */
-        ].filter(isTruthy);
+        };
     });
 }
 
@@ -271,7 +294,7 @@ function makeNextAndPrevPicks(
                   }
               },
         {
-            label: "$(symbol-numeric) Revision...",
+            label: "$(symbol-numeric) File history...",
             description: "Go to a specific revision",
             performAction: () => {
                 showRevChooserForFile(uri, { filelog: changes.all });
