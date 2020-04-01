@@ -1,6 +1,7 @@
 import * as QuickPickProvider from "./QuickPickProvider";
 import * as FileQuickPick from "./FileQuickPick";
 import * as ChangeQuickPick from "./ChangeQuickPick";
+import * as IntegrationQuickPick from "./IntegrationQuickPick";
 
 export const showQuickPickForFile = FileQuickPick.showQuickPickForFile;
 
@@ -20,5 +21,9 @@ export function registerQuickPicks() {
     QuickPickProvider.registerQuickPickProvider(
         "change",
         ChangeQuickPick.changeQuickPickProvider
+    );
+    QuickPickProvider.registerQuickPickProvider(
+        "integ",
+        IntegrationQuickPick.integrationQuickPickProvider
     );
 }

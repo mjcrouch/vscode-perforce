@@ -6,11 +6,14 @@ import * as DiffProvider from "../DiffProvider";
 import { Display } from "../Display";
 import { AnnotationProvider } from "../annotations/AnnotationProvider";
 import { isTruthy } from "../TsUtils";
-import * as Path from "path";
 
 import * as ChangeQuickPick from "./ChangeQuickPick";
 
 import * as qp from "./QuickPickProvider";
+import { showIntegPickForFile } from "./IntegrationQuickPick";
+import { timeAgo, toReadableDateTime } from "../DateFormatter";
+
+const nbsp = "\xa0";
 
 export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (uri: vscode.Uri, cached?: CachedOutput) => {
@@ -34,10 +37,16 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (
         uri: vscode.Uri,
         includeIntegrations: boolean,
+        includeIntegrationTargets: boolean,
         cached?: CachedOutput
     ) => {
         const changes = await getChangeDetails(uri, cached);
-        const actions = makeAllRevisionPicks(uri, changes, includeIntegrations);
+        const actions = makeAllRevisionPicks(
+            uri,
+            changes,
+            includeIntegrations,
+            includeIntegrationTargets
+        );
         return {
             items: actions,
             excludeFromHistory: true,
@@ -51,15 +60,22 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
 };
 
 export async function showRevChooserForFile(uri: vscode.Uri, cached?: CachedOutput) {
-    await qp.showQuickPick("filerev", uri, false, cached);
+    await qp.showQuickPick("filerev", uri, false, false, cached);
 }
 
 async function showRevChooserWithIntegrations(
     uri: vscode.Uri,
     includeIntegrations: boolean,
+    includeIntegrationTargets: boolean,
     cached?: CachedOutput
 ) {
-    await qp.showQuickPick("filerev", uri, includeIntegrations, cached);
+    await qp.showQuickPick(
+        "filerev",
+        uri,
+        includeIntegrations,
+        includeIntegrationTargets,
+        cached
+    );
 }
 
 export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
@@ -95,16 +111,30 @@ type ChangeDetails = {
     latest: p4.FileLogItem;
 };
 
-function makeRevisionSummary(change: p4.FileLogItem, shortName?: boolean) {
+function makeRevisionSummary(change: p4.FileLogItem) {
     return (
-        (shortName ? Path.basename(change.file) : change.file) +
+        change.file +
         "#" +
         change.revision +
         " " +
         change.operation +
+        " on " +
+        toReadableDateTime(change.date) +
         " by " +
         change.user +
         " : " +
+        change.description
+    );
+}
+
+function makeShortSummary(change: p4.FileLogItem) {
+    return (
+        "#" +
+        change.revision +
+        (change.date ? "  $(calendar) " + timeAgo.format(change.date) : "") +
+        " $(person) " +
+        change.user +
+        " $(circle-filled) " +
         change.description.slice(0, 32)
     );
 }
@@ -147,7 +177,8 @@ async function getChangeDetails(
 function makeAllRevisionPicks(
     uri: vscode.Uri,
     changes: ChangeDetails,
-    includeIntegrations: boolean
+    includeIntegrations: boolean,
+    includeIntegrationTargets: boolean
 ): qp.ActionableQuickPickItem[] {
     const revPicks = changes.all.flatMap(change => {
         const icon =
@@ -155,15 +186,22 @@ function makeAllRevisionPicks(
         const fromRev = includeIntegrations
             ? change.integrations.find(c => c.direction === p4.Direction.FROM)
             : undefined;
+        const toRevs = includeIntegrationTargets
+            ? change.integrations.filter(c => c.direction === p4.Direction.TO)
+            : undefined;
         return [
             {
                 label: icon + " #" + change.revision,
-                description:
+                description: change.description,
+                detail:
+                    nbsp.repeat(10) +
                     change.operation +
-                    " by " +
+                    " $(person) " +
                     change.user +
-                    " : " +
-                    change.description.slice(0, 32),
+                    nbsp +
+                    " $(calendar) " +
+                    nbsp +
+                    toReadableDateTime(change.date),
                 performAction: () => {
                     const revUri = PerforceUri.fromDepotPath(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -175,8 +213,16 @@ function makeAllRevisionPicks(
             },
             fromRev
                 ? {
-                      label: "$(git-merge) " + fromRev.file + "#" + fromRev.endRev,
-                      description: fromRev.operation,
+                      label:
+                          nbsp.repeat(10) +
+                          "$(git-merge) " +
+                          fromRev.operation +
+                          " from " +
+                          fromRev.file +
+                          "#" +
+                          fromRev.startRev +
+                          "," +
+                          fromRev.endRev,
                       performAction: () => {
                           const revUri = PerforceUri.fromDepotPath(
                               PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -187,7 +233,30 @@ function makeAllRevisionPicks(
                       }
                   }
                 : undefined
-        ].filter(isTruthy);
+        ]
+            .concat(
+                toRevs?.map(rev => {
+                    return {
+                        label:
+                            nbsp.repeat(10) +
+                            "$(source-control) " +
+                            rev.operation +
+                            " into " +
+                            rev.file +
+                            "#" +
+                            rev.startRev,
+                        performAction: () => {
+                            const revUri = PerforceUri.fromDepotPath(
+                                PerforceUri.getUsableWorkspace(uri) ?? uri,
+                                rev.file,
+                                rev.startRev
+                            );
+                            return showQuickPickForFile(revUri, { filelog: changes.all });
+                        }
+                    };
+                })
+            )
+            .filter(isTruthy);
     });
     return [
         {
@@ -195,9 +264,29 @@ function makeAllRevisionPicks(
                 ? "$(exclude) Hide integration source files"
                 : "$(gear) Show integration source files",
             performAction: () => {
-                return showRevChooserWithIntegrations(uri, !includeIntegrations, {
-                    filelog: changes.all
-                });
+                return showRevChooserWithIntegrations(
+                    uri,
+                    !includeIntegrations,
+                    includeIntegrationTargets,
+                    {
+                        filelog: changes.all
+                    }
+                );
+            }
+        },
+        {
+            label: includeIntegrationTargets
+                ? "$(exclude) Hide integration target files"
+                : "$(gear) Show integration target files",
+            performAction: () => {
+                return showRevChooserWithIntegrations(
+                    uri,
+                    includeIntegrations,
+                    !includeIntegrationTargets,
+                    {
+                        filelog: changes.all
+                    }
+                );
             }
         }
     ].concat(revPicks);
@@ -256,7 +345,7 @@ function makeNextAndPrevPicks(
         prev
             ? {
                   label: "$(arrow-small-left) Previous revision",
-                  description: makeRevisionSummary(prev, true),
+                  description: makeShortSummary(prev),
                   performAction: () => {
                       const prevUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -276,7 +365,7 @@ function makeNextAndPrevPicks(
         next
             ? {
                   label: "$(arrow-small-right) Next revision",
-                  description: makeRevisionSummary(next, true),
+                  description: makeShortSummary(next),
                   performAction: () => {
                       const nextUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -320,11 +409,9 @@ function makeNextAndPrevPicks(
               }
             : undefined,
         {
-            label: "$(source-control) View integrations...",
+            label: "$(source-control) Go to integration target...",
             description: "See integrations including this revision",
-            performAction: () => {
-                Display.showMessage("TODO: implement p4 integrated");
-            }
+            performAction: () => showIntegPickForFile(uri)
         }
     ].filter(isTruthy);
 }

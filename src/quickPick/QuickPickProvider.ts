@@ -32,20 +32,21 @@ export function registerQuickPickProvider(
     registeredQuickPickProviders.set(type, provider);
 }
 
+const backLabel = "$(discard) Go Back";
+
 function makeStackActions(type: string, ...args: any[]): ActionableQuickPickItem[] {
     const prev = quickPickStack[quickPickStack.length - 1];
     return [
         prev
             ? {
-                  label: "$(discard) Go Back",
-                  description: prev.description,
+                  label: backLabel,
+                  description: "to " + prev.description,
                   performAction: () => {
-                      quickPickStack.pop();
-                      showQuickPickImpl(prev.type, true, ...prev.args);
+                      showQuickPickImpl(prev.type, false, ...prev.args);
                   }
               }
             : {
-                  label: "$(discard) Go Back",
+                  label: backLabel,
                   description: "n/a",
                   performAction: () => {
                       showQuickPickImpl(type, true, ...args);
@@ -67,19 +68,23 @@ async function showQuickPickImpl(
 
     if (provider) {
         const actions = await provider.provideActions(...args);
+        const excludeFromStack = excludeFromHistory || !!actions.excludeFromHistory;
+        const stackActions = makeStackActions(type, ...args);
 
         const picked = await vscode.window.showQuickPick(
-            makeStackActions(type, ...args).concat(actions.items),
+            stackActions.concat(actions.items),
             {
                 //ignoreFocusOut: true,
                 matchOnDescription: true,
+                matchOnDetail: true,
                 placeHolder: actions.placeHolder
             }
         );
 
-        if (!excludeFromHistory && !actions.excludeFromHistory) {
-            // TODO - don't push if the args are the same - may need some kind of comparator
+        if (backLabel !== picked?.label && !excludeFromStack) {
             quickPickStack.push({ type, args, description: actions.placeHolder });
+        } else if (backLabel === picked?.label) {
+            quickPickStack.pop();
         }
 
         await picked?.performAction();

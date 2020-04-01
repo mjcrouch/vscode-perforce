@@ -4,6 +4,7 @@ import * as p4 from "../api/PerforceApi";
 import * as PerforceUri from "../PerforceUri";
 import * as DiffProvider from "../DiffProvider";
 import { isTruthy } from "../TsUtils";
+import { toReadableDateTime } from "../DateFormatter";
 
 export function makeSwarmHostURL(change: p4.FileLogItem, swarmHost: string) {
     return swarmHost + "/changes/" + change.chnum;
@@ -89,14 +90,6 @@ function doubleUpNewlines(str: string) {
 }
 
 export function makeUserAndDateSummary(change: p4.FileLogItem) {
-    const dateOptions: Intl.DateTimeFormatOptions = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric"
-    };
     return (
         change.file +
         "#" +
@@ -107,7 +100,7 @@ export function makeUserAndDateSummary(change: p4.FileLogItem) {
         "`** by **`" +
         change.user +
         "`** on `" +
-        (change.date?.toLocaleString(vscode.env.language, dateOptions) ?? "???") +
+        toReadableDateTime(change.date) +
         "`"
     );
 }
