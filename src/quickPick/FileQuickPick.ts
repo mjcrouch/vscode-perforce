@@ -483,7 +483,6 @@ function makeDiffPicks(
             label: "$(diff) Diff against...",
             description: "Choose another revision to diff against",
             performAction: () => {
-                // do this in the diff provider
                 showDiffChooserForFile(uri);
             }
         }

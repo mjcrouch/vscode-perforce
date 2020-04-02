@@ -6,6 +6,12 @@ import { PerforceService } from "../PerforceService";
 import { Display } from "../Display";
 import { isTruthy } from "../TsUtils";
 
+export const removeLeadingNewline = (value: string) => value.replace(/^\r*?\n/, "");
+export const splitIntoLines = (value: string) => value.split(/\r*?\n/);
+export const splitIntoSections = (str: string) => str.split(/\r*?\n\r*?\n/);
+export const removeIndent = (lines: string[]) =>
+    lines.map(line => line.replace(/^\t/, ""));
+
 /**
  * Extract a section of an array between two matching predicates
  * @param allLines The array to extract from
