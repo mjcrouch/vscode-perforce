@@ -9,6 +9,7 @@ import * as chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import sinonChai from "sinon-chai";
 import { ChangeSpec, ChangeInfo, FixedJob } from "../../api/CommonTypes";
+import { Direction } from "../../api/PerforceApi";
 
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
@@ -979,6 +980,7 @@ describe("Perforce API", () => {
             "\tmake some changes to the new file",
             "",
             "... ... branch into //depot/brancha/newFile.txt#1",
+            "... ... integrate into //depot/branchb/newFile.txt#7",
             "... #1 change 21 add on 2018/03/09 21:29:32 by user.x@stuff (text)",
             "",
             "\tadd a file",
@@ -1003,6 +1005,7 @@ describe("Perforce API", () => {
                     description: "make some changes in the branch\nover multiple lines",
                     revision: "2",
                     chnum: "24",
+                    integrations: [],
                     operation: "edit",
                     date: date1,
                     user: "user.b",
@@ -1013,6 +1016,15 @@ describe("Perforce API", () => {
                     description: "move the file",
                     revision: "1",
                     chnum: "23",
+                    integrations: [
+                        {
+                            direction: Direction.FROM,
+                            file: "//depot/TestArea/newFile.txt",
+                            startRev: "1",
+                            endRev: "2",
+                            operation: "move"
+                        }
+                    ],
                     operation: "move/add",
                     date: date2,
                     user: "user.a",
@@ -1040,6 +1052,7 @@ describe("Perforce API", () => {
                     description: "make some changes in the branch\nover multiple lines",
                     revision: "2",
                     chnum: "24",
+                    integrations: [],
                     operation: "edit",
                     date: date1,
                     user: "user.b",
@@ -1050,6 +1063,15 @@ describe("Perforce API", () => {
                     description: "move the file",
                     revision: "1",
                     chnum: "23",
+                    integrations: [
+                        {
+                            direction: Direction.FROM,
+                            file: "//depot/TestArea/newFile.txt",
+                            startRev: "1",
+                            endRev: "2",
+                            operation: "move"
+                        }
+                    ],
                     operation: "move/add",
                     date: date2,
                     user: "user.a",
@@ -1060,6 +1082,22 @@ describe("Perforce API", () => {
                     description: "make some changes to the new file",
                     revision: "2",
                     chnum: "22",
+                    integrations: [
+                        {
+                            direction: Direction.TO,
+                            file: "//depot/brancha/newFile.txt",
+                            startRev: "1",
+                            endRev: undefined,
+                            operation: "branch"
+                        },
+                        {
+                            direction: Direction.TO,
+                            file: "//depot/branchb/newFile.txt",
+                            startRev: "7",
+                            endRev: undefined,
+                            operation: "integrate"
+                        }
+                    ],
                     operation: "edit",
                     date: date3,
                     user: "user.a",
@@ -1070,6 +1108,7 @@ describe("Perforce API", () => {
                     description: "add a file",
                     revision: "1",
                     chnum: "21",
+                    integrations: [],
                     operation: "add",
                     date: date4,
                     user: "user.x",

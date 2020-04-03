@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import {
     flagMapper,
     makeSimpleCommand,
-    extractSection,
     sectionArrayBy,
     splitIntoLines,
     asyncOuputHandler,
@@ -173,42 +172,14 @@ function parseFixedJobsSection(subLines: string[]): FixedJob[] {
     });
 }
 
-// TODO can this be merged into common handling for describe output?
-function parseFixedJobsOutput(output: string): FixedJob[] {
-    /**
-     * example:
-     *
-     * Jobs fixed ...
-     *
-     * job000001 on 2020/02/22 by super *open*
-     *
-     * \ta job
-     * \thooray
-     *
-     * etc
-     * Affected files ...
-     */
-    const allLines = splitIntoLines(output.trim());
-    const subLines = extractSection(
-        allLines,
-        line => line.startsWith("Jobs fixed ..."),
-        line => !line.startsWith("\t") && line.includes("files ...")
-    );
-
-    if (subLines) {
-        parseFixedJobsSection(subLines);
-    }
-    return [];
-}
-
 export interface GetFixedJobsOptions {
     chnum: string;
 }
 
 export async function getFixedJobs(resource: vscode.Uri, options: GetFixedJobsOptions) {
-    const output = await describeCommand(resource, {
+    const output = await describe(resource, {
         chnums: [options.chnum],
         omitDiffs: true
     });
-    return parseFixedJobsOutput(output);
+    return output[0]?.fixedJobs;
 }
