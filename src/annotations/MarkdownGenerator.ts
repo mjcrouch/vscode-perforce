@@ -41,6 +41,20 @@ function makePerforceURI(underlying: vscode.Uri, change: p4.FileLogItem) {
     return PerforceUri.fromDepotPath(underlying, change.file, change.revision);
 }
 
+function makeQuickPickURI(underlying: vscode.Uri, change: p4.FileLogItem) {
+    return (
+        makeCommandURI(
+            "perforce.showQuickPick",
+            "change",
+            underlying.toString(),
+            change.chnum
+        ) +
+        ' "Show more actions for changelist ' +
+        change.chnum +
+        '"'
+    );
+}
+
 export function makeAnnotateURI(underlying: vscode.Uri, change: p4.FileLogItem) {
     const args = makePerforceURI(underlying, change).toString();
     return (
@@ -81,8 +95,11 @@ export function makeAllLinks(
     const swarmLink = swarmHost
         ? makeMarkdownLink("Open in Swarm", makeSwarmHostURL(change, swarmHost))
         : undefined;
+    const moreLink = makeMarkdownLink("More…", makeQuickPickURI(underlying, change));
 
-    return [swarmLink, diffLink, diffLatestLink, annotateLink].filter(isTruthy).join(" ");
+    return [swarmLink, diffLink, diffLatestLink, annotateLink, moreLink]
+        .filter(isTruthy)
+        .join(" ");
 }
 
 function doubleUpNewlines(str: string) {

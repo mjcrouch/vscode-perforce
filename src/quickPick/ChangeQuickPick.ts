@@ -8,14 +8,16 @@ import { Display } from "../Display";
 import { DescribedChangelist } from "../api/PerforceApi";
 import { showQuickPickForFile } from "./FileQuickPick";
 import { toReadableDateTime } from "../DateFormatter";
+import { WorkspaceConfigAccessor } from "../ConfigService";
 
 const nbsp = "\xa0";
 
 export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (
-        resource: vscode.Uri,
+        resourceOrStr: vscode.Uri | string,
         chnum: string
     ): Promise<qp.ActionableQuickPick> => {
+        const resource = qp.asUri(resourceOrStr);
         const changes = await p4.describe(resource, { chnums: [chnum], omitDiffs: true });
 
         if (changes.length < 1) {
@@ -24,7 +26,9 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         }
 
         const change = changes[0];
-        const actions = makeJobPicks(resource, changes[0]).concat(
+        const actions = makeSwarmPick(resource, changes[0]).concat(
+            makeClipboardPicks(resource, changes[0]),
+            makeJobPicks(resource, changes[0]),
             makeFilePicks(resource, change)
         );
 
@@ -62,6 +66,65 @@ function getOperationIcon(operation: string) {
         default:
             return "$(diff-modified)";
     }
+}
+
+function makeSwarmPick(
+    resource: vscode.Uri,
+    change: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    const config = new WorkspaceConfigAccessor(
+        PerforceUri.getUsableWorkspace(resource) ?? resource
+    );
+    const host = config.swarmHost;
+    if (!host) {
+        return [];
+    }
+
+    const swarmAddr = host + "/changes/" + change.chnum;
+    try {
+        const uri = vscode.Uri.parse(swarmAddr);
+        return [
+            {
+                label: "$(eye) Open in swarm",
+                description: "$(link-external) " + uri.toString(),
+                performAction: () => {
+                    vscode.env.openExternal(uri);
+                }
+            }
+        ];
+    } catch (err) {
+        Display.showImportantError("Could not parse swarm link " + swarmAddr);
+        return [];
+    }
+}
+
+function makeClipboardPicks(
+    _uri: vscode.Uri,
+    change: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    return [
+        {
+            label: "$(clippy) Copy change number to clipboard",
+            description: change.chnum,
+            performAction: () => {
+                vscode.env.clipboard.writeText(change.chnum);
+            }
+        },
+        {
+            label: "$(clippy) Copy user to clipboard",
+            description: change.user,
+            performAction: () => {
+                vscode.env.clipboard.writeText(change.user);
+            }
+        },
+        {
+            label: "$(clippy) Copy change description to clipboard",
+            description: change.chnum,
+            performAction: () => {
+                vscode.env.clipboard.writeText(change.description.join("\n"));
+            }
+        }
+    ];
 }
 
 function makeFilePicks(

@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
 import { isTruthy } from "../TsUtils";
 
+export function asUri(uri: vscode.Uri | string) {
+    if (typeof uri === "string") {
+        return vscode.Uri.parse(uri);
+    }
+    return uri;
+}
+
 export type ActionableQuickPick = {
     items: ActionableQuickPickItem[];
     excludeFromHistory?: boolean;

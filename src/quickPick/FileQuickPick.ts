@@ -16,9 +16,11 @@ import { timeAgo, toReadableDateTime } from "../DateFormatter";
 const nbsp = "\xa0";
 
 export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
-    provideActions: async (uri: vscode.Uri, cached?: CachedOutput) => {
+    provideActions: async (uriOrStr: vscode.Uri | string, cached?: CachedOutput) => {
+        const uri = qp.asUri(uriOrStr);
         const changes = await getChangeDetails(uri, cached);
         const actions = makeNextAndPrevPicks(uri, changes).concat(
+            makeClipboardPicks(uri, changes),
             makeDiffPicks(uri, changes),
             makeChangelistPicks(uri, changes)
         );
@@ -35,11 +37,12 @@ export async function showQuickPickForFile(uri: vscode.Uri, cached?: CachedOutpu
 
 export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (
-        uri: vscode.Uri,
+        uriOrStr: vscode.Uri | string,
         includeIntegrations: boolean,
         includeIntegrationTargets: boolean,
         cached?: CachedOutput
     ) => {
+        const uri = qp.asUri(uriOrStr);
         const changes = await getChangeDetails(uri, cached);
         const actions = makeAllRevisionPicks(
             uri,
@@ -79,7 +82,8 @@ async function showRevChooserWithIntegrations(
 }
 
 export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
-    provideActions: async (uri: vscode.Uri) => {
+    provideActions: async (uriOrStr: vscode.Uri | string) => {
+        const uri = qp.asUri(uriOrStr);
         const changes = await getChangeDetails(uri, undefined, true);
         const actions = makeDiffRevisionPicks(uri, changes);
         return {
@@ -322,11 +326,7 @@ function makeDiffRevisionPicks(
         return {
             label: prefix + "#" + change.revision,
             description:
-                change.operation +
-                " by " +
-                change.user +
-                " : " +
-                change.description.slice(0, 32),
+                change.operation + " by " + change.user + " : " + change.description,
             performAction: () => {
                 const thisUri = PerforceUri.fromDepotPath(
                     PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -426,21 +426,49 @@ function makeNextAndPrevPicks(
     ].filter(isTruthy);
 }
 
+function makeClipboardPicks(
+    _uri: vscode.Uri,
+    changes: ChangeDetails
+): qp.ActionableQuickPickItem[] {
+    return [
+        {
+            label: "$(clippy) Copy depot path to clipboard",
+            performAction: () => {
+                vscode.env.clipboard.writeText(
+                    changes.current.file + "#" + changes.current.revision
+                );
+            }
+        }
+    ];
+}
+
 function makeDiffPicks(
     uri: vscode.Uri,
     changes: ChangeDetails
 ): qp.ActionableQuickPickItem[] {
     const prev = changes.prev;
     const latest = changes.latest;
+    const have = changes.haveFile;
     return [
         {
             label: "$(file) Show this revision",
+            description: "Open this revision in the editor",
             performAction: () => {
                 vscode.window.showTextDocument(uri);
             }
         },
+        have
+            ? {
+                  label: "$(file) Open workspace file",
+                  description: "Open the local file in the editor",
+                  performAction: () => {
+                      vscode.window.showTextDocument(have.localUri);
+                  }
+              }
+            : undefined,
         {
-            label: "$(list-ordered) Annotate",
+            label: "$(list-ordered) Annotate this revision",
+            description: "Open in the editor, with change details for each line",
             performAction: () => {
                 // TODO SWARM HOST
                 AnnotationProvider.annotate(uri);
@@ -484,10 +512,10 @@ function makeDiffPicks(
             : undefined,
         {
             label: "$(diff) Diff against workspace file",
-            description: changes.haveFile ? "" : "No matching workspace file found",
+            description: have ? "" : "No matching workspace file found",
             performAction: () => {
                 // do this in the diff provider
-                if (!changes.haveFile) {
+                if (!have) {
                     Display.showImportantError("File not in workspace!");
                     return showQuickPickForFile(uri, makeCache(changes));
                 } else {
@@ -497,7 +525,7 @@ function makeDiffPicks(
                             changes.current.file,
                             changes.current.revision
                         ),
-                        changes.haveFile?.localUri
+                        have.localUri
                     );
                 }
             }

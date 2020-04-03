@@ -21,6 +21,7 @@ import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
+import { showQuickPick } from "./quickPick/QuickPickProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -36,6 +37,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.diffPrevious", diffPrevious);
         commands.registerCommand("perforce.diffNext", diffNext);
         commands.registerCommand("perforce.depotActions", showDepotActions);
+        commands.registerCommand("perforce.showQuickPick", showQuickPick);
         commands.registerCommand("perforce.annotate", annotate);
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);

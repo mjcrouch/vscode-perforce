@@ -7,7 +7,8 @@ import * as qp from "./QuickPickProvider";
 import { showQuickPickForFile } from "./FileQuickPick";
 
 export const integrationQuickPickProvider: qp.ActionableQuickPickProvider = {
-    provideActions: async (uri: vscode.Uri) => {
+    provideActions: async (uriOrStr: vscode.Uri | string) => {
+        const uri = qp.asUri(uriOrStr);
         const actions = await makeIntegrationPicks(uri);
         return {
             items: actions,
