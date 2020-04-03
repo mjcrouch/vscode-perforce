@@ -37,7 +37,9 @@ async function makeIntegrationPicks(uri: vscode.Uri) {
 
     return integs
         .filter(
-            int => parseInt(int.fromStartRev) <= rev && parseInt(int.fromEndRev) >= rev
+            int =>
+                parseInt(int.fromStartRev) === rev ||
+                (parseInt(int.fromStartRev) <= rev && parseInt(int.fromEndRev) >= rev)
         )
         .map<qp.ActionableQuickPickItem>(int => {
             return {

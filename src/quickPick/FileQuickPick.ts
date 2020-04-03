@@ -227,6 +227,9 @@ function makeAllRevisionPicks(
             }
         };
 
+        const fromRevStr = fromRev?.endRev
+            ? fromRev.startRev + "," + fromRev.endRev
+            : fromRev?.startRev;
         const fromPick: qp.ActionableQuickPickItem | undefined = fromRev
             ? {
                   label:
@@ -236,14 +239,12 @@ function makeAllRevisionPicks(
                       " from " +
                       fromRev.file +
                       "#" +
-                      fromRev.startRev +
-                      "," +
-                      fromRev.endRev,
+                      fromRevStr,
                   performAction: () => {
                       const revUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
                           fromRev.file,
-                          fromRev.endRev
+                          fromRev.endRev ?? fromRev.startRev
                       );
                       return showQuickPickForFile(revUri);
                   }
@@ -404,15 +405,15 @@ function makeNextAndPrevPicks(
                   label: "$(git-merge) Go to integration source revision",
                   description:
                       integFrom.operation +
-                      " from " +
-                      integFrom.file +
-                      "#" +
-                      integFrom.endRev,
+                          " from " +
+                          integFrom.file +
+                          "#" +
+                          integFrom.endRev ?? integFrom.startRev,
                   performAction: () => {
                       const integUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
                           integFrom.file,
-                          integFrom.endRev
+                          integFrom.endRev ?? integFrom.startRev
                       );
                       return showQuickPickForFile(integUri);
                   }
