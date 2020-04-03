@@ -126,7 +126,7 @@ async function diffPreviousFrom(rightUri?: Uri) {
  * Work out the have revision for the file, and diff the working file against that revision
  */
 async function diffPreviousFromWorking(fromDoc: Uri) {
-    const leftUri = await p4.have(fromDoc, { file: fromDoc });
+    const leftUri = (await p4.have(fromDoc, { file: fromDoc }))?.depotUri;
     if (!leftUri) {
         Display.showImportantError("No previous revision available");
         return;

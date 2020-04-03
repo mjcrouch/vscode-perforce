@@ -167,11 +167,21 @@ const haveFileFlags = flagMapper<HaveFileOptions>([], "file", [], {
     ignoreRevisionFragments: true
 });
 
-function parseHaveOutput(resource: vscode.Uri, output: string): vscode.Uri | undefined {
-    const matches = /^(.+)#(\d+) - .+/.exec(output);
+export type HaveFile = {
+    depotPath: string;
+    revision: string;
+    depotUri: vscode.Uri;
+    localUri: vscode.Uri;
+};
+
+function parseHaveOutput(resource: vscode.Uri, output: string): HaveFile | undefined {
+    const matches = /^(.+)#(\d+) - (.+)/.exec(output);
 
     if (matches) {
-        return PerforceUri.fromDepotPath(resource, matches[1], matches[2]);
+        const [, depotPath, revision, localPath] = matches;
+        const depotUri = PerforceUri.fromDepotPath(resource, matches[1], matches[2]);
+        const localUri = vscode.Uri.file(localPath);
+        return { depotPath, revision, depotUri, localUri };
     }
 }
 
@@ -186,7 +196,7 @@ const haveFileCmd = makeSimpleCommand("have", haveFileFlags);
  * @returns a perforce URI representing the depot path, revision etc
  */
 export async function have(resource: vscode.Uri, options: HaveFileOptions) {
-    const output = await haveFileCmd(resource, options);
+    const output = await haveFileCmd.ignoringStdErr(resource, options);
     return parseHaveOutput(resource, output);
 }
 

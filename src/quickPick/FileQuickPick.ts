@@ -100,6 +100,7 @@ export async function showDiffChooserForFile(uri: vscode.Uri) {
 
 type CachedOutput = {
     filelog: p4.FileLogItem[];
+    haveFile?: p4.HaveFile;
 };
 
 type ChangeDetails = {
@@ -109,7 +110,15 @@ type ChangeDetails = {
     next?: p4.FileLogItem;
     prev?: p4.FileLogItem;
     latest: p4.FileLogItem;
+    haveFile?: p4.HaveFile;
 };
+
+function makeCache(details: ChangeDetails): CachedOutput {
+    return {
+        filelog: details.all,
+        haveFile: details.haveFile
+    };
+}
 
 function makeRevisionSummary(change: p4.FileLogItem) {
     return (
@@ -160,6 +169,8 @@ async function getChangeDetails(
         cached?.filelog ??
         (await p4.getFileHistory(uri, { file: arg, followBranches: followBranches }));
 
+    const haveFile = cached?.haveFile ?? (await p4.have(uri, { file: uri }));
+
     if (filelog.length === 0) {
         Display.showImportantError("No file history found");
         throw new Error("Filelog info empty");
@@ -171,7 +182,7 @@ async function getChangeDetails(
     const prev = filelog[currentIndex + 1];
     const latest = filelog[0];
 
-    return { all: filelog, current, currentIndex, next, prev, latest };
+    return { all: filelog, current, currentIndex, next, prev, latest, haveFile };
 }
 
 function makeAllRevisionPicks(
@@ -208,7 +219,7 @@ function makeAllRevisionPicks(
                     change.file,
                     change.revision
                 );
-                return showQuickPickForFile(revUri, { filelog: changes.all });
+                return showQuickPickForFile(revUri, makeCache(changes));
             }
         };
 
@@ -269,9 +280,7 @@ function makeAllRevisionPicks(
                     uri,
                     includeIntegrations,
                     !includeIntegrationTargets,
-                    {
-                        filelog: changes.all
-                    }
+                    makeCache(changes)
                 );
             }
         },
@@ -284,9 +293,7 @@ function makeAllRevisionPicks(
                     uri,
                     !includeIntegrations,
                     includeIntegrationTargets,
-                    {
-                        filelog: changes.all
-                    }
+                    makeCache(changes)
                 );
             }
         }
@@ -355,14 +362,14 @@ function makeNextAndPrevPicks(
                           prev.file,
                           prev.revision
                       );
-                      return showQuickPickForFile(prevUri, { filelog: changes.all });
+                      return showQuickPickForFile(prevUri, makeCache(changes));
                   }
               }
             : {
                   label: "$(arrow-small-left) Previous revision",
                   description: "n/a",
                   performAction: () => {
-                      return showQuickPickForFile(uri, { filelog: changes.all });
+                      return showQuickPickForFile(uri, makeCache(changes));
                   }
               },
         next
@@ -375,21 +382,21 @@ function makeNextAndPrevPicks(
                           next.file,
                           next.revision
                       );
-                      return showQuickPickForFile(nextUri, { filelog: changes.all });
+                      return showQuickPickForFile(nextUri, makeCache(changes));
                   }
               }
             : {
                   label: "$(arrow-small-right) Next revision",
                   description: "n/a",
                   performAction: () => {
-                      return showQuickPickForFile(uri, { filelog: changes.all });
+                      return showQuickPickForFile(uri, makeCache(changes));
                   }
               },
         {
             label: "$(symbol-numeric) File history...",
             description: "Go to a specific revision",
             performAction: () => {
-                showRevChooserForFile(uri, { filelog: changes.all });
+                showRevChooserForFile(uri, makeCache(changes));
             }
         },
         integFrom
@@ -477,9 +484,22 @@ function makeDiffPicks(
             : undefined,
         {
             label: "$(diff) Diff against workspace file",
+            description: changes.haveFile ? "" : "No matching workspace file found",
             performAction: () => {
                 // do this in the diff provider
-                Display.showMessage("TODO - work out workspace file for a depot file");
+                if (!changes.haveFile) {
+                    Display.showImportantError("File not in workspace!");
+                    return showQuickPickForFile(uri, makeCache(changes));
+                } else {
+                    DiffProvider.diffFiles(
+                        PerforceUri.fromDepotPath(
+                            PerforceUri.getUsableWorkspace(uri) ?? uri,
+                            changes.current.file,
+                            changes.current.revision
+                        ),
+                        changes.haveFile?.localUri
+                    );
+                }
             }
         },
         {
