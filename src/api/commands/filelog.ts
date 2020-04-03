@@ -6,7 +6,7 @@ import {
     splitIntoLines
 } from "../CommandUtils";
 import { PerforceFile } from "../CommonTypes";
-import { isTruthy } from "../../TsUtils";
+import { isTruthy, parseDate } from "../../TsUtils";
 
 export interface FilelogOptions {
     file: PerforceFile;
@@ -19,29 +19,6 @@ const filelogFlags = flagMapper<FilelogOptions>([["i", "followBranches"]], "file
 ]);
 
 const filelog = makeSimpleCommand("filelog", filelogFlags);
-
-function parseDate(dateString: string) {
-    // example: 2020/02/15 18:48:43
-    // or: 2020/02/15
-    const matches = /(\d{4})\/(\d{2})\/(\d{2})(?: (\d{2}):(\d{2}):(\d{2}))?/.exec(
-        dateString.trim()
-    );
-
-    if (matches) {
-        const [, year, month, day, hours, minutes, seconds] = matches;
-
-        const hasTime = hours && minutes && seconds;
-
-        return new Date(
-            parseInt(year),
-            parseInt(month) - 1,
-            parseInt(day),
-            hasTime ? parseInt(hours) : undefined,
-            hasTime ? parseInt(minutes) : undefined,
-            hasTime ? parseInt(seconds) : undefined
-        );
-    }
-}
 
 export enum Direction {
     TO,

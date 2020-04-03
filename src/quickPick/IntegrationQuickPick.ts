@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 
 import * as PerforceUri from "../PerforceUri";
 import * as p4 from "../api/PerforceApi";
-import { isTruthy } from "../TsUtils";
 
 import * as qp from "./QuickPickProvider";
 import { showQuickPickForFile } from "./FileQuickPick";

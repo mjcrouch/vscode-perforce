@@ -151,18 +151,18 @@ async function getChangeDetails(
     const revNum = parseInt(rev);
     if (isNaN(revNum)) {
         throw new Error("TODO - not a revision");
-        // TODO handle shelved files
+        // TODO handle shelved files - need pending changelists for this - so not possible yet
     }
 
-    const arg = PerforceUri.fromUriWithRevision(uri, ""); // need more history than this! `#${revNum},${revNum}`);
-    // TODO pass this in again when navigating revisions to prevent having to get it every time
+    const arg = PerforceUri.fromUriWithRevision(uri, "");
+
     const filelog =
         cached?.filelog ??
         (await p4.getFileHistory(uri, { file: arg, followBranches: followBranches }));
 
     if (filelog.length === 0) {
-        // TODO
-        throw new Error("TODO - no filelog info");
+        Display.showImportantError("No file history found");
+        throw new Error("Filelog info empty");
     }
 
     const currentIndex = filelog.findIndex(c => c.revision === uri.fragment);
@@ -188,92 +188,78 @@ function makeAllRevisionPicks(
             : undefined;
         const toRevs = includeIntegrationTargets
             ? change.integrations.filter(c => c.direction === p4.Direction.TO)
+            : [];
+
+        const revPick: qp.ActionableQuickPickItem = {
+            label: icon + " #" + change.revision,
+            description: change.description,
+            detail:
+                nbsp.repeat(10) +
+                change.operation +
+                " $(person) " +
+                change.user +
+                nbsp +
+                " $(calendar) " +
+                nbsp +
+                toReadableDateTime(change.date),
+            performAction: () => {
+                const revUri = PerforceUri.fromDepotPath(
+                    PerforceUri.getUsableWorkspace(uri) ?? uri,
+                    change.file,
+                    change.revision
+                );
+                return showQuickPickForFile(revUri, { filelog: changes.all });
+            }
+        };
+
+        const fromPick: qp.ActionableQuickPickItem | undefined = fromRev
+            ? {
+                  label:
+                      nbsp.repeat(10) +
+                      "$(git-merge) " +
+                      fromRev.operation +
+                      " from " +
+                      fromRev.file +
+                      "#" +
+                      fromRev.startRev +
+                      "," +
+                      fromRev.endRev,
+                  performAction: () => {
+                      const revUri = PerforceUri.fromDepotPath(
+                          PerforceUri.getUsableWorkspace(uri) ?? uri,
+                          fromRev.file,
+                          fromRev.endRev
+                      );
+                      return showQuickPickForFile(revUri);
+                  }
+              }
             : undefined;
-        return [
-            {
-                label: icon + " #" + change.revision,
-                description: change.description,
-                detail:
+
+        const toPicks = toRevs.map(rev => {
+            return {
+                label:
                     nbsp.repeat(10) +
-                    change.operation +
-                    " $(person) " +
-                    change.user +
-                    nbsp +
-                    " $(calendar) " +
-                    nbsp +
-                    toReadableDateTime(change.date),
+                    "$(source-control) " +
+                    rev.operation +
+                    " into " +
+                    rev.file +
+                    "#" +
+                    rev.startRev,
                 performAction: () => {
                     const revUri = PerforceUri.fromDepotPath(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,
-                        change.file,
-                        change.revision
+                        rev.file,
+                        rev.startRev
                     );
-                    return showQuickPickForFile(revUri, { filelog: changes.all });
+                    return showQuickPickForFile(revUri);
                 }
-            },
-            fromRev
-                ? {
-                      label:
-                          nbsp.repeat(10) +
-                          "$(git-merge) " +
-                          fromRev.operation +
-                          " from " +
-                          fromRev.file +
-                          "#" +
-                          fromRev.startRev +
-                          "," +
-                          fromRev.endRev,
-                      performAction: () => {
-                          const revUri = PerforceUri.fromDepotPath(
-                              PerforceUri.getUsableWorkspace(uri) ?? uri,
-                              fromRev.file,
-                              fromRev.endRev
-                          );
-                          return showQuickPickForFile(revUri, { filelog: changes.all });
-                      }
-                  }
-                : undefined
-        ]
-            .concat(
-                toRevs?.map(rev => {
-                    return {
-                        label:
-                            nbsp.repeat(10) +
-                            "$(source-control) " +
-                            rev.operation +
-                            " into " +
-                            rev.file +
-                            "#" +
-                            rev.startRev,
-                        performAction: () => {
-                            const revUri = PerforceUri.fromDepotPath(
-                                PerforceUri.getUsableWorkspace(uri) ?? uri,
-                                rev.file,
-                                rev.startRev
-                            );
-                            return showQuickPickForFile(revUri, { filelog: changes.all });
-                        }
-                    };
-                })
-            )
-            .filter(isTruthy);
+            };
+        });
+
+        return [revPick, ...toPicks, fromPick].filter(isTruthy);
     });
-    return [
-        {
-            label: includeIntegrations
-                ? "$(exclude) Hide integration source files"
-                : "$(gear) Show integration source files",
-            performAction: () => {
-                return showRevChooserWithIntegrations(
-                    uri,
-                    !includeIntegrations,
-                    includeIntegrationTargets,
-                    {
-                        filelog: changes.all
-                    }
-                );
-            }
-        },
+
+    const controls: qp.ActionableQuickPickItem[] = [
         {
             label: includeIntegrationTargets
                 ? "$(exclude) Hide integration target files"
@@ -288,8 +274,25 @@ function makeAllRevisionPicks(
                     }
                 );
             }
+        },
+        {
+            label: includeIntegrations
+                ? "$(exclude) Hide integration source files"
+                : "$(gear) Show integration source files",
+            performAction: () => {
+                return showRevChooserWithIntegrations(
+                    uri,
+                    !includeIntegrations,
+                    includeIntegrationTargets,
+                    {
+                        filelog: changes.all
+                    }
+                );
+            }
         }
-    ].concat(revPicks);
+    ];
+
+    return controls.concat(revPicks);
 }
 
 function makeDiffRevisionPicks(
@@ -410,7 +413,7 @@ function makeNextAndPrevPicks(
             : undefined,
         {
             label: "$(source-control) Go to integration target...",
-            description: "See integrations including this revision",
+            description: "See integrations that include this revision",
             performAction: () => showIntegPickForFile(uri)
         }
     ].filter(isTruthy);
@@ -490,7 +493,7 @@ function makeDiffPicks(
 }
 
 function makeChangelistPicks(
-    _uri: vscode.Uri,
+    uri: vscode.Uri,
     changes: ChangeDetails
 ): qp.ActionableQuickPickItem[] {
     return [
@@ -498,7 +501,7 @@ function makeChangelistPicks(
             label: "$(list-flat) Go to changelist details",
             description: "Change " + changes.current.chnum,
             performAction: () =>
-                ChangeQuickPick.showQuickPickForChangelist(changes.current.chnum)
+                ChangeQuickPick.showQuickPickForChangelist(uri, changes.current.chnum)
         }
     ];
 }

@@ -1,9 +1,7 @@
 import * as vscode from "vscode";
-import { flagMapper, makeSimpleCommand } from "../CommandUtils";
-import { PerforceFile, ChangeInfo } from "../CommonTypes";
+import { flagMapper, makeSimpleCommand, splitIntoLines } from "../CommandUtils";
+import { PerforceFile } from "../CommonTypes";
 import { isTruthy } from "../../TsUtils";
-
-const splitIntoLines = (value: string) => value.split(/\r*?\n/);
 
 export type OpenedFileOptions = { chnum?: string; files?: PerforceFile[] };
 
