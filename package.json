@@ -307,13 +307,13 @@
                 "command": "perforce.submitDefault",
                 "title": "Submit Default Changelist",
                 "category": "Perforce",
-                "icon": "$(repo-push)"
+                "icon": "$(check)"
             },
             {
                 "command": "perforce.submitChangelist",
                 "title": "Submit changelist",
                 "category": "Perforce",
-                "icon": "$(repo-push)"
+                "icon": "$(check)"
             },
             {
                 "command": "perforce.submitSelectedFiles",
@@ -370,10 +370,7 @@
                 "command": "perforce.shelveunshelve",
                 "title": "Shelve/Unshelve file",
                 "category": "Perforce",
-                "icon": {
-                    "light": "resources/icons/light/shelveunshelve.svg",
-                    "dark": "resources/icons/dark/shelveunshelve.svg"
-                }
+                "icon": "$(files)"
             },
             {
                 "command": "perforce.shelveChangelist",
