@@ -119,7 +119,7 @@ function makeClipboardPicks(
         },
         {
             label: "$(clippy) Copy change description to clipboard",
-            description: change.chnum,
+            description: change.description.join(" ").slice(0, 32),
             performAction: () => {
                 vscode.env.clipboard.writeText(change.description.join("\n"));
             }
@@ -133,10 +133,7 @@ function makeFilePicks(
 ): qp.ActionableQuickPickItem[] {
     return [
         {
-            label: "Changed files: " + change.affectedFiles.length,
-            performAction: () => {
-                showQuickPickForChangelist(uri, change.chnum);
-            }
+            label: "Changed files: " + change.affectedFiles.length
         }
     ].concat(
         change.affectedFiles.map<qp.ActionableQuickPickItem>(file => {
@@ -167,19 +164,13 @@ function makeJobPicks(
 ): qp.ActionableQuickPickItem[] {
     return [
         {
-            label: "Jobs fixed: " + change.fixedJobs.length,
-            performAction: () => {
-                showQuickPickForChangelist(uri, change.chnum);
-            }
+            label: "Jobs fixed: " + change.fixedJobs.length
         }
     ].concat(
         change.fixedJobs.map<qp.ActionableQuickPickItem>(job => {
             return {
                 label: nbsp.repeat(3) + "$(tools) " + job.id,
-                description: job.description.join(" "),
-                performAction: () => {
-                    showQuickPickForChangelist(uri, change.chnum);
-                }
+                description: job.description.join(" ")
             };
         })
     );

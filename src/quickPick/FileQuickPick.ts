@@ -4,7 +4,7 @@ import * as PerforceUri from "../PerforceUri";
 import * as p4 from "../api/PerforceApi";
 import * as DiffProvider from "../DiffProvider";
 import { Display } from "../Display";
-import { AnnotationProvider } from "../annotations/AnnotationProvider";
+import * as AnnotationProvider from "../annotations/AnnotationProvider";
 import { isTruthy } from "../TsUtils";
 
 import * as ChangeQuickPick from "./ChangeQuickPick";
@@ -368,10 +368,7 @@ function makeNextAndPrevPicks(
               }
             : {
                   label: "$(arrow-small-left) Previous revision",
-                  description: "n/a",
-                  performAction: () => {
-                      return showQuickPickForFile(uri, makeCache(changes));
-                  }
+                  description: "n/a"
               },
         next
             ? {
@@ -388,10 +385,7 @@ function makeNextAndPrevPicks(
               }
             : {
                   label: "$(arrow-small-right) Next revision",
-                  description: "n/a",
-                  performAction: () => {
-                      return showQuickPickForFile(uri, makeCache(changes));
-                  }
+                  description: "n/a"
               },
         {
             label: "$(symbol-numeric) File history...",
@@ -471,7 +465,6 @@ function makeDiffPicks(
             label: "$(list-ordered) Annotate this revision",
             description: "Open in the editor, with change details for each line",
             performAction: () => {
-                // TODO SWARM HOST
                 AnnotationProvider.annotate(uri);
             }
         },
@@ -514,22 +507,18 @@ function makeDiffPicks(
         {
             label: "$(diff) Diff against workspace file",
             description: have ? "" : "No matching workspace file found",
-            performAction: () => {
-                // do this in the diff provider
-                if (!have) {
-                    Display.showImportantError("File not in workspace!");
-                    return showQuickPickForFile(uri, makeCache(changes));
-                } else {
-                    DiffProvider.diffFiles(
-                        PerforceUri.fromDepotPath(
-                            PerforceUri.getUsableWorkspace(uri) ?? uri,
-                            changes.current.file,
-                            changes.current.revision
-                        ),
-                        have.localUri
-                    );
-                }
-            }
+            performAction: have
+                ? () => {
+                      DiffProvider.diffFiles(
+                          PerforceUri.fromDepotPath(
+                              PerforceUri.getUsableWorkspace(uri) ?? uri,
+                              changes.current.file,
+                              changes.current.revision
+                          ),
+                          have.localUri
+                      );
+                  }
+                : undefined
         },
         {
             label: "$(diff) Diff against...",
@@ -548,7 +537,8 @@ function makeChangelistPicks(
     return [
         {
             label: "$(list-flat) Go to changelist details",
-            description: "Change " + changes.current.chnum,
+            description:
+                "Change " + changes.current.chnum + " : " + changes.current.description,
             performAction: () =>
                 ChangeQuickPick.showQuickPickForChangelist(uri, changes.current.chnum)
         }

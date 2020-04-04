@@ -373,9 +373,7 @@ export namespace PerforceCommands {
             return false;
         }
 
-        const conf = workspace.getConfiguration("perforce");
-        const swarmHost = conf.get<string>("swarmHost");
-        await AnnotationProvider.annotate(uri, swarmHost);
+        await AnnotationProvider.annotate(uri);
     }
 
     export function opened() {

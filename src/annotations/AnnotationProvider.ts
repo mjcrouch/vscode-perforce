@@ -6,6 +6,7 @@ import * as PerforceUri from "../PerforceUri";
 import * as md from "./MarkdownGenerator";
 import * as ColumnFormatter from "./ColumnFormatter";
 import { Display } from "../Display";
+import { ConfigAccessor } from "../ConfigService";
 
 const nbsp = "\xa0";
 
@@ -204,11 +205,12 @@ function makeHoverMessage(
     );
 
     const markdown = new vscode.MarkdownString(
-        md.makeUserAndDateSummary(change) +
+        md.makeUserAndDateSummary(underlying, change) +
             "\n\n" +
             links +
             "\n\n" +
-            md.convertToMarkdown(change.description)
+            md.convertToMarkdown(change.description),
+        true
     );
     markdown.isTrusted = true;
 
@@ -327,6 +329,7 @@ function getDecorations(
         .filter(isTruthy);
 }
 
-export async function annotate(uri: vscode.Uri, swarmHost?: string) {
+export async function annotate(uri: vscode.Uri) {
+    const swarmHost = new ConfigAccessor().swarmHost;
     return AnnotationProvider.annotate(uri, swarmHost);
 }

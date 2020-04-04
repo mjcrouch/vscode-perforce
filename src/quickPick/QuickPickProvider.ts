@@ -19,7 +19,7 @@ export interface ActionableQuickPickProvider {
 }
 
 export interface ActionableQuickPickItem extends vscode.QuickPickItem {
-    performAction: () => void | Promise<any>;
+    performAction?: () => void | Promise<any>;
 }
 
 const registeredQuickPickProviders = new Map<string, ActionableQuickPickProvider>();
@@ -41,7 +41,7 @@ export function registerQuickPickProvider(
 
 const backLabel = "$(discard) Go Back";
 
-function makeStackActions(type: string, ...args: any[]): ActionableQuickPickItem[] {
+function makeStackActions(): ActionableQuickPickItem[] {
     const prev = quickPickStack[quickPickStack.length - 1];
     return [
         prev
@@ -49,34 +49,23 @@ function makeStackActions(type: string, ...args: any[]): ActionableQuickPickItem
                   label: backLabel,
                   description: "to " + prev.description,
                   performAction: () => {
-                      showQuickPickImpl(prev.type, false, ...prev.args);
+                      quickPickStack.pop();
+                      showQuickPick(prev.type, ...prev.args);
                   }
               }
             : {
                   label: backLabel,
-                  description: "n/a",
-                  performAction: () => {
-                      showQuickPickImpl(type, true, ...args);
-                  }
+                  description: "n/a"
               }
     ].filter(isTruthy);
 }
 
 export async function showQuickPick(type: string, ...args: any[]) {
-    await showQuickPickImpl(type, false, ...args);
-}
-
-async function showQuickPickImpl(
-    type: string,
-    excludeFromHistory: boolean,
-    ...args: any[]
-) {
     const provider = registeredQuickPickProviders.get(type);
 
     if (provider) {
         const actions = await provider.provideActions(...args);
-        const excludeFromStack = excludeFromHistory || !!actions.excludeFromHistory;
-        const stackActions = makeStackActions(type, ...args);
+        const stackActions = makeStackActions();
 
         const picked = await vscode.window.showQuickPick(
             stackActions.concat(actions.items),
@@ -88,13 +77,18 @@ async function showQuickPickImpl(
             }
         );
 
-        if (backLabel !== picked?.label && !excludeFromStack) {
-            quickPickStack.push({ type, args, description: actions.placeHolder });
-        } else if (backLabel === picked?.label) {
-            quickPickStack.pop();
+        const isNoOp = picked && !picked.performAction;
+        if (isNoOp) {
+            // show own menu again, without adding this one to the stack
+            await showQuickPick(type, ...args);
+            return;
         }
 
-        await picked?.performAction();
+        if (backLabel !== picked?.label && !actions.excludeFromHistory) {
+            quickPickStack.push({ type, args, description: actions.placeHolder });
+        }
+
+        await picked?.performAction?.();
     } else {
         throw new Error("No registered quick pick provider for type " + type);
     }
