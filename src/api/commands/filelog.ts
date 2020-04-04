@@ -27,7 +27,7 @@ export enum Direction {
 
 export type FileLogIntegration = {
     file: string;
-    startRev: string;
+    startRev?: string;
     endRev: string;
     operation: string;
     direction: Direction;
@@ -52,8 +52,10 @@ function parseFileLogIntegrations(lines: string[]): FileLogIntegration[] {
                 line
             );
             if (matches) {
-                const [, operation, dirString, file, startRev, endRev] = matches;
+                const [, operation, dirString, file, startRevStr, endRevStr] = matches;
                 const direction = dirString === "into" ? Direction.TO : Direction.FROM;
+                const startRev = endRevStr ? startRevStr : undefined;
+                const endRev = endRevStr ? endRevStr : startRevStr;
                 return { operation, direction, file, startRev, endRev };
             }
         })

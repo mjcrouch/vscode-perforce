@@ -26,9 +26,9 @@ const integrateFlags = flagMapper<IntegratedOptions>(
 const integratedCommand = makeSimpleCommand("integrated", integrateFlags)
     .ignoringAndHidingStdErr;
 
-type IntegratedRevision = {
+export type IntegratedRevision = {
     fromFile: string;
-    fromStartRev: string;
+    fromStartRev?: string;
     fromEndRev: string;
     operation: string;
     toFile: string;
@@ -63,8 +63,8 @@ function parseIntegratedRevision(line: string): IntegratedRevision | undefined {
         return direction === "from"
             ? {
                   fromFile: rightFile,
-                  fromStartRev: rightStartRev,
-                  fromEndRev: rightEndRev,
+                  fromStartRev: rightEndRev ? rightStartRev : undefined,
+                  fromEndRev: rightEndRev || rightStartRev,
                   operation,
                   toFile: leftFile,
                   toRev: leftStartRev,
@@ -72,8 +72,8 @@ function parseIntegratedRevision(line: string): IntegratedRevision | undefined {
               }
             : {
                   fromFile: leftFile,
-                  fromStartRev: leftStartRev,
-                  fromEndRev: leftEndRev,
+                  fromStartRev: leftEndRev ? leftStartRev : undefined,
+                  fromEndRev: leftEndRev || leftStartRev,
                   operation,
                   toFile: rightFile,
                   toRev: rightStartRev,

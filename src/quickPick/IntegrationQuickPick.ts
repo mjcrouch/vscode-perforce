@@ -26,6 +26,13 @@ export async function showIntegPickForFile(uri: vscode.Uri) {
     await qp.showQuickPick("integ", uri);
 }
 
+function isInRevRange(rev: number, startRev: string | undefined, endRev: string) {
+    if (!startRev) {
+        return parseInt(endRev) === rev;
+    }
+    return parseInt(startRev) <= rev && parseInt(endRev) >= rev;
+}
+
 async function makeIntegrationPicks(uri: vscode.Uri) {
     const rev = parseInt(uri.fragment);
 
@@ -36,16 +43,14 @@ async function makeIntegrationPicks(uri: vscode.Uri) {
     });
 
     return integs
-        .filter(
-            int =>
-                parseInt(int.fromStartRev) === rev ||
-                (parseInt(int.fromStartRev) <= rev && parseInt(int.fromEndRev) >= rev)
-        )
+        .filter(int => isInRevRange(rev, int.fromStartRev, int.fromEndRev))
         .map<qp.ActionableQuickPickItem>(int => {
             return {
                 label: "$(git-merge) " + int.toFile + "#" + int.toRev,
                 description:
-                    int.operation + " from #" + int.fromStartRev + "," + int.fromEndRev,
+                    int.operation +
+                    " from #" +
+                    qp.toRevString(int.fromStartRev, int.fromEndRev),
                 performAction: () => {
                     const thisUri = PerforceUri.fromDepotPath(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,

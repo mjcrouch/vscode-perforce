@@ -227,9 +227,6 @@ function makeAllRevisionPicks(
             }
         };
 
-        const fromRevStr = fromRev?.endRev
-            ? fromRev.startRev + "," + fromRev.endRev
-            : fromRev?.startRev;
         const fromPick: qp.ActionableQuickPickItem | undefined = fromRev
             ? {
                   label:
@@ -239,12 +236,12 @@ function makeAllRevisionPicks(
                       " from " +
                       fromRev.file +
                       "#" +
-                      fromRevStr,
+                      qp.toRevString(fromRev.startRev, fromRev.endRev),
                   performAction: () => {
                       const revUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
                           fromRev.file,
-                          fromRev.endRev ?? fromRev.startRev
+                          fromRev.endRev
                       );
                       return showQuickPickForFile(revUri);
                   }
@@ -260,12 +257,12 @@ function makeAllRevisionPicks(
                     " into " +
                     rev.file +
                     "#" +
-                    rev.startRev,
+                    rev.endRev,
                 performAction: () => {
                     const revUri = PerforceUri.fromDepotPath(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,
                         rev.file,
-                        rev.startRev
+                        rev.endRev
                     );
                     return showQuickPickForFile(revUri);
                 }
@@ -399,15 +396,15 @@ function makeNextAndPrevPicks(
                   label: "$(git-merge) Go to integration source revision",
                   description:
                       integFrom.operation +
-                          " from " +
-                          integFrom.file +
-                          "#" +
-                          integFrom.endRev ?? integFrom.startRev,
+                      " from " +
+                      integFrom.file +
+                      "#" +
+                      integFrom.endRev,
                   performAction: () => {
                       const integUri = PerforceUri.fromDepotPath(
                           PerforceUri.getUsableWorkspace(uri) ?? uri,
                           integFrom.file,
-                          integFrom.endRev ?? integFrom.startRev
+                          integFrom.endRev
                       );
                       return showQuickPickForFile(integUri);
                   }

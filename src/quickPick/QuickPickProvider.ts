@@ -93,3 +93,7 @@ export async function showQuickPick(type: string, ...args: any[]) {
         throw new Error("No registered quick pick provider for type " + type);
     }
 }
+
+export function toRevString(startRev: string | undefined, endRev: string) {
+    return startRev ? startRev + "," + endRev : endRev;
+}
