@@ -158,13 +158,9 @@ async function getChangeDetails(
     followBranches?: boolean
 ): Promise<ChangeDetails> {
     const rev = uri.fragment;
-    if (!uri.fragment) {
-        throw new Error("TODO - no revision");
-    }
-    const revNum = parseInt(rev);
-    if (isNaN(revNum)) {
-        throw new Error("TODO - not a revision");
-        // TODO handle shelved files - need pending changelists for this - so not possible yet
+    if (!uri.fragment || isNaN(parseInt(rev))) {
+        Display.showError("Unable to get file details without a revision");
+        throw new Error("No revision available for " + uri.toString());
     }
 
     const arg = PerforceUri.fromUriWithRevision(uri, "");
