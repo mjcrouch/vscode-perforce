@@ -324,7 +324,13 @@ function makeDiffRevisionPicks(
         return {
             label: prefix + "#" + change.revision,
             description:
-                change.operation + " by " + change.user + " : " + change.description,
+                change.operation +
+                " $(person) " +
+                change.user +
+                nbsp +
+                " $(book) " +
+                nbsp +
+                change.description,
             performAction: () => {
                 const thisUri = PerforceUri.fromDepotPath(
                     PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -535,7 +541,12 @@ function makeChangelistPicks(
         {
             label: "$(list-flat) Go to changelist details",
             description:
-                "Change " + changes.current.chnum + " : " + changes.current.description,
+                "Change " +
+                changes.current.chnum +
+                nbsp +
+                " $(book) " +
+                nbsp +
+                changes.current.description,
             performAction: () =>
                 ChangeQuickPick.showQuickPickForChangelist(uri, changes.current.chnum)
         }
