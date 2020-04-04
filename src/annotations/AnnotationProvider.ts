@@ -182,6 +182,11 @@ export class AnnotationProvider {
         const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
         const decorations = getDecorations(underlying, swarmHost, annotations, log);
 
+        // try to use the depot URI to open the document, so that we can perform revision actions on it
+        if (!uri.fragment && !PerforceUri.isDepotUri(uri) && log[0]) {
+            uri = PerforceUri.fromDepotPath(uri, log[0].file, log[0].revision);
+        }
+
         const provider = new AnnotationProvider(uri, annotations, decorations);
         this._annotationsByUri.set(uri, provider);
 
