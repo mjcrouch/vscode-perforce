@@ -60,17 +60,17 @@ Click on the 'p4' in the status bar to perform an operation
 
 ## What's new in the fork?
 
-The fork has a variety of new features to help you manage your changes and understand your code history, without having to switch to p4v or the command line.
+The fork has a variety of new features to help you manage your changes and understand your code history, reducing the time spent switching back and forth to p4v or the command line.
 
 We've borrowed ideas from popular extensions like [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) and... okay, mainly just GitLens, adapting them for the perforce workflow.
 
-And there's still lots of new features to implement to improve your experience without getting in the way.
+And there's still lots of new features to implement to improve your experience, without getting in the way.
 
 ### Improved annotation view
 
 See more context about each line, including the author and the changelist description.
 
-The format of the annotations is customisable if this is too much information
+The format of the annotations is customisable in the extension configuration if this is too much information.
 
 ### All new revision & changelist quick pick
 
@@ -305,7 +305,7 @@ It's generally not recommended to rebind your ctrl+s keyboard shortcut, due to t
 
 ## Requirements
 
-Visual Studio Code v1.40
+Visual Studio Code v1.42
 
 ## Credits
 
