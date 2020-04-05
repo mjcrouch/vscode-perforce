@@ -14,17 +14,189 @@ This is a fork of the `slevesque.perforce` extension, published in 2020, as the 
 
 If you install this extension, please uninstall or disable `slevesque.perforce` to prevent issues with duplicate icons.
 
+If you are installing for the first time, Proceed to [the setup section](#Setup) for setup instructions. If you have a working setup from the old extension, it will probably continue to work.
+
+## What's included?
+
+### All the features you've come to expect
+
+Built on the foundation of the most installed perforce extension on the market, it has all the core features you already know
+
+### Login & go
+
+If your perforce server requires a password, you can log in from within VS Code
+
 ![Login Example](images/login.gif)
 
-## Commands
+### Integration with VS Code's SCM View
+
+* Create and manage your open changelists from the built in SCM View
+* Submit and revert changelists
+* Shelve and unshelve files
+* Move files between changelists
+* Click on an open file to see the diff
+
+### Run common perforce operations on the open file
+
+Click on the 'p4' in the status bar to perform an operation
 
 * `add` - Open a new file to add it to the depot
 * `edit` - Open an existing file for edit
 * `revert` - Discard changes from an opened file
 * `diff` - Display diff of client file with depot file
 * `diff revision` - Display diff of client file with depot file at a specific revision
-* `info` - Display client/server information
 * `login`, `logout` - Login operations
+* ... and more!
+
+### Automatically open files for add and edit as you work
+
+* Enable the settings `perforce.editOnFileSave`, `perforce.addOnFileCreate` and `perforce.deleteOnFileDelete` to automatically perform depot operations without that pesky warning dialog
+
+### Diff files using VS Code's built in tools
+
+* Diff the open file against the workspace file
+* Diff against any revision of a file
+* See diffs as you work with gutter decorations
+
+## What's new in the fork?
+
+The fork has a variety of new features to help you manage your changes and understand your code history, without having to switch to p4v or the command line.
+
+We've borrowed ideas from popular extensions like [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) and... okay, mainly just GitLens, adapting them for the perforce workflow.
+
+And there's still lots of new features to implement to improve your experience without getting in the way.
+
+### Improved annotation view
+
+See more context about each line, including the author and the changelist description.
+
+The format of the annotations is customisable if this is too much information
+
+### All new revision & changelist quick pick
+
+Looking at a diff or annotation? Dive in to the depot with a single click to see some context:
+
+* Browse through revisions and file history
+* See integrations into and from the file
+* See other files in the same changelist
+* Using swarm for reviews? click through to the swarm review
+* ... more :)
+
+### Improved diff behaviour
+
+* Diffs against the have revision, not the latest revision
+  * This includes the gutter decorations - so you'll have an accurate view of what you've actually changed
+  * But you can still manually select a newer revision for a diff if needed
+* Click through revisions using the left and right arrows
+* Diff a shelved file against its depot revision, or the current workspace file
+* Automatically diffs a moved file against the original file
+
+### Much more!
+
+Internally, almost every feature has been refactored, rewritten or touched in some way
+
+This fork fixes many issues from the original extension and adds a variety of other new features. A few more examples:
+
+* Adds support for attaching jobs to changelists
+* Improved support for shelved files & changelists
+* Works more reliably with [personal servers](https://github.com/stef-levesque/vscode-perforce/issues/169#issuecomment-592976290)
+* Ability to move selected file from the default changelist to a new changelist
+
+[Head over to the changelog](CHANGELOG.md) to see everything that's changed
+
+But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscode-perforce/issues)
+ and [contributions](CONTRIBUTING.md) are welcome!
+
+## Installation
+
+1. Install *[Visual Studio Code](https://code.visualstudio.com/)*
+2. Launch *Code*
+3. From the command palette `ctrl+shift+p` (Windows, Linux) or `cmd+shift+p` (OS X)
+4. Select `Install Extensions`
+5. Choose the extension `Perforce for VS Code` by `mjcrouch`
+6. Reload *Visual Studio Code*
+
+Or [visit us on the marketplace](https://marketplace.visualstudio.com/items/mjcrouch.perforce)
+
+## Setup
+
+You must properly configure a perforce depot area before the extension activates.
+
+If you try to run a command, and VS Code tells you **"command not found"** it means the extension has not found a valid perforce depot area. Don't forget, if you are tweaking settings, internally or externally, you probably need to restart VS code for the extension to perform this detection again.
+
+Please note that there is still some work to do in this area, which is [being tracked in an issue](https://github.com/mjcrouch/vscode-perforce/issues/41)
+
+#### Having trouble? Output log to the rescue
+
+If you are having trouble, check the **output log** for Perforce. Here, you will be able to see what the extension is trying to do, and what it has found during initialisation
+
+To see the output log, you can run the command "Perforce: Show Output", or you can reach it from `View` -> `Output` and select Perforce in the dropdown
+
+### The Best Way
+
+The best way to setup your perforce workspace is using perforce's own standard behaviour and tools.
+
+The perforce extension uses the standard p4 command line interface. If you can run perforce commands in your workspace directory without any additional setup, then you *should* be able to use the perforce extension without extra configuration.
+
+#### The simplest setup
+
+So, in a very simple case, for example where you always work in one particular perforce client, you could
+
+* Use `p4 set` to set your `P4USER`, `P4PORT`, `P4CLIENT` to the correct values, OR
+* Set up your `P4USER`, `P4PORT`, `P4CLIENT` environment variables (e.g. in your `.bashrc` file)
+
+If necessary, restart VS Code and it should *just work*™
+
+#### Multiple perforce clients
+
+If you work across multiple different perforce client workspaces, you can use [P4CONFIG](https://www.perforce.com/perforce/r17.1/manuals/cmdref/index.html#CmdRef/P4CONFIG.html?Highlight=p4config) to set up the different client locations.
+
+Place a p4config file in your client root, like this:
+
+```
+P4USER=your_user
+P4CLIENT=your_client
+P4PORT=example.com:1666
+```
+
+and we should be able to pick it up (some issues are pending with more complicated cases, such as having multiple folders open in vscode)
+
+### The Fallback Method
+
+Can't get it to work? Or just want it your own way?
+
+The following VS Code settings will run commands using a specific username, client or port that you provide
+
+```json
+{
+    "perforce.user": "your_user",
+    "perforce.client": "your_client",
+    "perforce.port": "example.com:1666"
+}
+```
+
+Remember that VS Code's settings operate in a hierarchy of `user` and `workspace`. If you set your client in the `user` level of the hierarchy, it will apply to **all** of your VS Code workspaces - this may not be desirable, so take care and check the logs if you have issues.
+
+Don't forget you can also combine these approaches, For example, you can set just `perforce.client` in each specific workspace, while using environment variables for your user and port.
+
+### Multi-root workspaces
+
+These settings also support multi-root workspaces, so they can be set at the level of an individual folder within in your multi-root VS Code workspace.
+
+See the VS Code docs: [Multi-root Workspaces - Settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_settings) for more details.
+
+### Activation
+You can specify how you want the extension to activate by setting the parameter `perforce.activationMode`
+
+* `autodetect` (default) - The extension will only activate if it detects a valid perforce client that contains the workspace root, or a `.p4config` file in the workspace. If one is not detected, perforce commands will not be registered with VSCode, but you will be able to view the perforce output log to see why the extension did not activate
+* `always` - Always try to activate the extension, even if a valid client was not found. This may be useful if you want to use perforce commands on files outside of the workspace, **and** you either have perforce set up properly with .p4config files for that area, or you have manually specified a user / client / port etc in your vscode configuration. Otherwise, you should probably avoid this setting
+* `off` - Don't try to activate the extension. No perforce log output will be produced
+
+## Status bar icons
+
+* ![check](images/check.png) opened for add or edit
+* ![file-text](images/file-text.png) not opened on this client
+* ![circle-slash](images/circle-slash.png) not under client's root
 
 ## Configuration
 
@@ -47,7 +219,7 @@ If you install this extension, please uninstall or disable `slevesque.perforce` 
 |`perforce.activationMode`          |`string`   |Controls when to activate the extension (`always`,`autodetect`,`off`)
 |`perforce.countBadge`              |`string`   |Controls the badge counter for Perforce (`all`,`off`)
 |`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actions when annotating a file
-|`perforce.annotate.gutterColumns`  |`string`   |**Experimental** Format for annotation summary messages
+|`perforce.annotate.gutterColumns`  |`object`   |**Experimental** Format for annotation summary messages
 |`perforce.changelistOrder`         |`string`   |Specifies the direction of the chnagelist sorting (`descending`,`ascending`)
 |`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer
 |`perforce.ignoredChangelistPrefix` |`string`   |Specifies the prefix of the changelists to be ignored.
@@ -57,61 +229,11 @@ If you install this extension, please uninstall or disable `slevesque.perforce` 
 |`perforce.hideEmptyChangelists`    |`boolean`  |Hide changelists with no file in the SCM Explorer.
 |`perforce.hideSubmitIcon`          |`boolean`  |Don't show the submit icon next to the changelist description.
 |`perforce.promptBeforeSubmit`      |`boolean`  |Whether to prompt for confirmation before submitting a saved changelist.
+|`perforce.editorButtons.diffPrevAndNext`      |`enum`  |Controls when to show buttons on the editor title menu for diffing next / previous
 |&nbsp;
 |`perforce.bottleneck.maxConcurrent` |`number`  |Limit the maximum number of perforce commands running at any given time.
 
-## Activation
-
-You must properly configure a perforce depot area before the extension activates.
-
-You can specify how you want the extension to activate by setting the parameter `perforce.activationMode`
-
-* `autodetect` (default) - The extension will only activate if it detects a valid perforce client that contains the workspace root, or a `.p4config` file in the workspace. If one is not detected, perforce commands will not be registered with VSCode, but you will be able to view the perforce output log to see why the extension did not activate
-* `always` - Always try to activate the extension, even if a valid client was not found. This may be useful if you want to use perforce commands on files outside of the workspace, **and** you either have perforce set up properly with .p4config files for that area, or you have manually specified a user / client / port etc in your vscode configuration. Otherwise, you should probably avoid this setting
-* `off` - Don't try to activate the extension. No perforce log output will be produced
-
-The following can be set in VSCode user or workspace settings to properly detect the perforce depot
-```json
-{
-    "perforce.user": "your_user",
-    "perforce.client": "your_client",
-    "perforce.port": "example.com:1666"
-}
-```
-
-You can also create a `.p4config` file at the root of your workspace with perforce variables
-```
-P4USER=your_user
-P4CLIENT=your_client
-P4PORT=example.com:1666
-```
-More detail in [Perforce Documentation](https://www.perforce.com/perforce/r17.1/manuals/cmdref/index.html#CmdRef/P4CONFIG.html?Highlight=p4config)
-
-## Multi-root support
-
-You can specify the following settings per workspace:
-* `perforce.client`
-* `perforce.user`
-* `perforce.port`
-* `perforce.password`
-* `perforce.dir`
-
-This allows you to work with different repository within the same editor.
-See [Multi-root Workspaces - Settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_settings) for more details.
-
-## Status bar icons
-
-* ![check](images/check.png) opened for add or edit
-* ![file-text](images/file-text.png) not opened on this client
-* ![circle-slash](images/circle-slash.png) not under client's root
-
-## SCM view
-
-![SCM Perforce](images/scm-perforce.png)  
-
-Explore and leave your comments on [GitHub](https://github.com/mjcrouch/vscode-perforce/issues)
-
-## Command variables
+## Command and Context Variables
 
 The extension provides a few commands and context variables relating to the file currently open in the editor. These can be used in tasks, keyboard shortcuts etc. as required, if you can find a use for them!
 
@@ -138,32 +260,44 @@ In all cases, the command name and the context variable name are the same
 
 ## Common Questions
 
-#### **Q:** Nothing works and vscode cannot find the commands
-**A:** Ensure you have a perforce area set up. If all else fails, try setting
+#### **Q:** vscode reports that commands do not exist
+**A:** Make sure you have read [the setup section](#Setup). If all else fails, try setting
 `perforce.client`, `perforce.user` and `perforce.port` to the right values for your depot and workspace, and then reload the window. If that does not work, continue below:
 
 #### **Q:** Something is not working
 **A:** Here are a few steps you should try first:
+1. Make sure you have read [the setup section](#Setup)
 1. Look at the logs with `Perforce: Show Output`
 1. Search for the [existing issue on GitHub](https://github.com/mjcrouch/vscode-perforce/issues?utf8=✓&q=is%3Aissue)
 1. If you can't find your problem, [create an issue](https://github.com/mjcrouch/vscode-perforce/issues/new), and please include the logs when possible
 
 #### **Q:** Does it work with Remote-SSH?
 **A:** Yes - you will need to install the extension on the remote instance of VSCode, using the normal extensions view
-  
-#### **Q:** I'm using this old thing called *Source Depot*...
-**A:** I don't think you exist, since Microsoft has migrated to git. Compatibility mode has been removed.
-If i'm wrong, and you do exist, the original slevesque version of this extension provides a compatibility mode setting, which may or may not work
-[original issue...](https://github.com/stef-levesque/vscode-perforce/issues/47)
 
-## Installation
+#### **Q:** My perforce server is slow and shows an file write error even with `editOnFileSave` enabled
 
-1. Install *Visual Studio Code* (1.19 or higher)
-2. Launch *Code*
-3. From the command palette `ctrl+shift+p` (Windows, Linux) or `cmd+shift+p` (OS X)
-4. Select `Install Extensions`
-5. Choose the extension `Perforce for VS Code` by `mjcrouch`
-6. Reload *Visual Studio Code*
+When you enable `editOnFileSave`, we tell VS Code to delay saving the file until the edit is complete.
+
+However, there is a time limit for this. If you have a slow or distant perforce server, VS Code may time out the save command before your file has become writable.
+
+A special command is available to edit and save in one operation, bypassing VS Code's timeout.
+
+Using edit on save ensures that the open completes before it tries to save the file.
+
+It's generally not recommended to rebind your ctrl+s keyboard shortcut, due to the small risk that the save never happens if your perforce server never responds, but if you wish, you could rebind your save command like this, to open the file for edit if it's not already open and then save it.
+
+```
+{
+  "key": "ctrl+s",
+  "command": "workbench.action.files.save",
+  "when": "perforce.currentFile.status != 'NOT_OPEN'"
+}
+{
+  "key": "ctrl+s",
+  "command": "perforce.editAndSave",
+  "when": "perforce.currentFile.status == 'NOT_OPEN'"
+}
+```
 
 ## Contributing
 
