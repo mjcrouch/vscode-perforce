@@ -208,6 +208,14 @@ export class PerforceSCMProvider {
             "perforce.unfixJob",
             PerforceSCMProvider.UnfixJob.bind(this)
         );
+        commands.registerCommand(
+            "perforce.loginScm",
+            PerforceSCMProvider.Login.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.logoutScm",
+            PerforceSCMProvider.Logout.bind(this)
+        );
     }
 
     private onDidModelChange(): void {
@@ -215,10 +223,14 @@ export class PerforceSCMProvider {
         commands.executeCommand("setContext", "perforceState", this.stateContextKey);
     }
 
+    private static isSourceControl(arg: any): arg is SourceControl {
+        return arg && arg.inputBox;
+    }
+
     private static GetInstance(
         sourceControl?: SourceControl | undefined
     ): PerforceSCMProvider | undefined {
-        if (!sourceControl) {
+        if (!this.isSourceControl(sourceControl)) {
             return PerforceSCMProvider.instances?.[0];
         }
         return this.instances.find(
@@ -240,6 +252,16 @@ export class PerforceSCMProvider {
         return this.instances.find((instance) =>
             this.isSameClient(instance._clientRoot, clientRoot)
         );
+    }
+
+    public static async Login(sourceControl?: SourceControl) {
+        const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
+        await perforceProvider?._model.Login();
+    }
+
+    public static async Logout(sourceControl?: SourceControl) {
+        const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
+        await perforceProvider?._model.Logout();
     }
 
     public static async OpenFile(...resourceStates: SourceControlResourceState[]) {

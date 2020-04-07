@@ -249,8 +249,18 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.loginScm",
+                "title": "Log in to Perforce",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.logout",
                 "title": "Log out from Perforce",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.logoutScm",
+                "title": "Log in to Perforce",
                 "category": "Perforce"
             },
             {
@@ -552,6 +562,14 @@
                 {
                     "command": "perforce.diffFiles",
                     "when": "0"
+                },
+                {
+                    "command": "perforce.loginScm",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.logoutScm",
+                    "when": "0"
                 }
             ],
             "scm/title": [
@@ -576,12 +594,12 @@
                     "when": "scmProvider == perforce"
                 },
                 {
-                    "command": "perforce.login",
+                    "command": "perforce.loginScm",
                     "group": "2_login",
                     "when": "scmProvider == perforce"
                 },
                 {
-                    "command": "perforce.logout",
+                    "command": "perforce.logoutScm",
                     "group": "2_login",
                     "when": "scmProvider == perforce"
                 },

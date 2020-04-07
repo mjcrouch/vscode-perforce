@@ -170,6 +170,14 @@ export class Model implements Disposable {
         }
     }
 
+    public Login() {
+        return Display.doLoginFlow(this._workspaceUri);
+    }
+
+    public Logout() {
+        return Display.doLogoutFlow(this._workspaceUri);
+    }
+
     public async Sync(): Promise<void> {
         const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {

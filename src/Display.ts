@@ -138,4 +138,38 @@ export namespace Display {
         window.showErrorMessage(error);
         channel.appendLine(`ERROR: ${JSON.stringify(error)}`);
     }
+
+    export async function doLoginFlow(resource: Uri) {
+        let loggedIn = await p4.isLoggedIn(resource);
+        if (!loggedIn) {
+            const password = await window.showInputBox({
+                prompt: "Enter password",
+                password: true,
+            });
+            if (password) {
+                try {
+                    await p4.login(resource, { password });
+
+                    Display.showMessage("Login successful");
+                    Display.updateEditor();
+                    loggedIn = true;
+                } catch {}
+            }
+        } else {
+            Display.showMessage("Login successful");
+            Display.updateEditor();
+            loggedIn = true;
+        }
+        return loggedIn;
+    }
+
+    export async function doLogoutFlow(resource: Uri) {
+        try {
+            await p4.logout(resource, {});
+            Display.showMessage("Logout successful");
+            Display.updateEditor();
+            return true;
+        } catch {}
+        return false;
+    }
 }
