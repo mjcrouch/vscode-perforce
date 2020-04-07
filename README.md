@@ -14,7 +14,9 @@ This is a fork of the `slevesque.perforce` extension, published in 2020, as the 
 
 If you install this extension, please uninstall or disable `slevesque.perforce` to prevent issues with duplicate icons.
 
-If you are installing for the first time, Proceed to [the setup section](#Setup) for setup instructions. If you have a working setup from the old extension, it will probably continue to work.
+If you are installing for the first time, Proceed to [the setup section](#Setup) for setup instructions.
+
+If you have a working setup from the old extension, it will almost certainly continue to work. If for any reason your setup stops working after switching over, please check [the migration guide](MIGRATION.md) for more help.
 
 ## What's included?
 
@@ -118,13 +120,23 @@ But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscod
 
 Or [visit us on the marketplace](https://marketplace.visualstudio.com/items/mjcrouch.perforce)
 
+## A Couple of Notes
+
+### What's a "Workspace"?
+VS Code generally refers to the folder you have open as a "workspace". Meanwhile,
+Perforce uses the words "client" and "workspace" in various contexts to mean the mapping of depot paths to client files. Specifically *P4V* refers to perforce clients as "workspaces".
+
+For the avoidance of doubt, in the text below, "workspace" means a VS Code workspace, unless it's preceded by the words "perforce client".
+
+### Creating Perforce Clients
+The extension does not provide a way to *create* a perforce client. It only allows you to work with already existing clients. The client mapping from depot paths to local files must first be created using either the command line interface (`p4 client`), or from *P4V*, using `Connection->New Workspace...`
+
 ## Setup
 
 You must properly configure a perforce depot area before the extension activates.
 
 If you try to run a command, and VS Code tells you **"command not found"** it means the extension has not found a valid perforce depot area. Don't forget, if you are tweaking settings, internally or externally, you probably need to restart VS code for the extension to perform this detection again.
 
-Please note that there is still some work to do in this area, which is [being tracked in an issue](https://github.com/mjcrouch/vscode-perforce/issues/41)
 
 #### Having trouble? Output log to the rescue
 
@@ -132,26 +144,33 @@ If you are having trouble, check the **output log** for Perforce. Here, you will
 
 To see the output log, you can run the command "Perforce: Show Output", or you can reach it from `View` -> `Output` and select Perforce in the dropdown
 
-### The Best Way
+### **The Best Way**
 
 The best way to setup your perforce workspace is using perforce's own standard behaviour and tools.
 
-The perforce extension uses the standard p4 command line interface. If you can run perforce commands in your workspace directory without any additional setup, then you *should* be able to use the perforce extension without extra configuration.
+The perforce extension works by running the standard p4 command line interface. If you can run perforce commands in your workspace directory without any additional setup, then you *should* in most cases be able to use the perforce extension without extra configuration.
 
 #### The simplest setup
 
-So, in a very simple case, for example where you always work in one particular perforce client, you could
+So, in a very simple case, for example where you always work in one particular perforce client, you could:
 
 * Use `p4 set` to set your `P4USER`, `P4PORT`, `P4CLIENT` to the correct values, OR
 * Set up your `P4USER`, `P4PORT`, `P4CLIENT` environment variables (e.g. in your `.bashrc` file)
+  * Note that updating environment variables may require you to close *all* vscode windows to take effect
 
-If necessary, restart VS Code and it should *just work*™
+If necessary, restart VS Code and it should *just work*™.
 
-#### Multiple perforce clients
+#### Multiple perforce clients (P4CONFIG)
 
 If you work across multiple different perforce client workspaces, you can use [P4CONFIG](https://www.perforce.com/perforce/r17.1/manuals/cmdref/index.html#CmdRef/P4CONFIG.html?Highlight=p4config) to set up the different client locations.
 
-Place a p4config file in your client root, like this:
+Place a file with the right name in the root directory for each client. Normally the file name is as follows:
+ * on **windows**: `p4config.txt`
+ * on **linux / mac**: `.p4config`
+
+If you are still not sure of the right filename, run `p4 set` or check the "perforce output log", where it will be logged during startup. See the perforce docs linked above for more information.
+
+The file contents should look like this:
 
 ```
 P4USER=your_user
@@ -159,13 +178,61 @@ P4CLIENT=your_client
 P4PORT=example.com:1666
 ```
 
-and we should be able to pick it up (some issues are pending with more complicated cases, such as having multiple folders open in vscode)
+Restart VS Code and we should be able to detect the client.
 
-### The Fallback Method
+Note that perforce config files in lower directories layer on top of files in higher directories and the general environment, so, for example, you can just specify the P4CLIENT if that is the only thing you need to change.
 
-Can't get it to work? Or just want it your own way?
+As a simple example, if you want two different clients in your workspace, you can set up your file system like this:
 
-The following VS Code settings will run commands using a specific username, client or port that you provide
+```
+my_dev_area/  <── You want to open this directory in VS Code
+├── .vscode/
+├── not_perforce_stuff/
+|   ├── random_file1
+|   ├── random_file2
+|   ├── ...
+├── perforce_area_a/
+|   ├── .p4config     <── Place your config for client a here
+|   ├── checked_out_file_1
+|   ├── ...
+├── perforce_area_b/
+|   ├── .p4config     <── Place your config for client b here
+|   ├── checked_out_file_n
+|   ├── ...
+```
+
+This will initialise *both* client areas in the SCM view when you open `my_dev_area` in vscode, which will be shown as two "Source Control Providers". You will be able to work on both sets of files.
+
+P4CONFIG can also be useful if you want to open different branches for one product within the same perforce client, independently of each other. As before, create a .p4config at the client root containing the name of your P4CLIENT.
+
+Example file system:
+```
+product_X/
+├── .p4config     <── Place your .p4config or p4config.txt here
+├── branches/
+│   ├── branch1/
+|   |   ├── .vscode/
+|   |   ├── src/
+|   |   ├── ...
+│   ├── branch2/     <── Today, you want to open this directory
+|   |   ├── .vscode/
+|   |   ├── src/
+|   |   ├── ...
+├── main/            <── Tomorrow, you want to open this directory
+|   ├── .vscode/
+|   ├── src/
+|   ├── ...
+```
+
+Now you can open `branch1`, `branch2` or `main` in their own VS Code windows, and the client will be detected correctly. Or you can open `product_X` and see them all at once.
+
+This reduces the amount of configuration you have to create per workspace.
+
+### **The Fallback Method** (VS Code Configuration)
+
+Can't get it to work, or don't want to create P4CONFIG files?
+
+The following VS Code settings will run all perforce commands using a specific username, client and/or port that you provide:
 
 ```json
 {
@@ -175,21 +242,36 @@ The following VS Code settings will run commands using a specific username, clie
 }
 ```
 
-Remember that VS Code's settings operate in a hierarchy of `user` and `workspace`. If you set your client in the `user` level of the hierarchy, it will apply to **all** of your VS Code workspaces - this may not be desirable, so take care and check the logs if you have issues.
+Remember that VS Code's settings operate in a hierarchy of `user` and `workspace`. These can be placed in the `settings.json` for your workspace, or in your user level settings.
 
-Don't forget you can also combine these approaches, For example, you can set just `perforce.client` in each specific workspace, while using environment variables for your user and port.
+For example, If you set your `perforce.client` in the `user` level of the hierarchy, it will override the perforce client in **all** of your VS Code workspaces / windows - this may be undesirable. If you override the client, you **cannot** then create a P4CONFIG file that uses a different client, because it will run all commands using the manual override.
 
-### Multi-root workspaces
+If you always connect to one server and host, You could set `perforce.user` and `perforce.port` at the `user` level, and then apply the `perforce.client` setting in each workspace.
 
-These settings also support multi-root workspaces, so they can be set at the level of an individual folder within in your multi-root VS Code workspace.
+Don't forget you can also combine these approaches, For example, you can use environment variables for `P4USER` and `P4PORT`, and then just set `perforce.client` in each specific workspace.
+
+### **Multi-root workspaces**
+
+VS Code Multi-root workspaces are supported.
+
+A multi-root workspace is a VS Code term meaning that you have chosen `File->Add Folder to Workspace...` to create a workspace containing multiple folders.
+
+Generally, if your settings work in a given workspace by themselves, they should continue to work in a multi-root workspace. But be aware that the 'workspace' settings are treated slightly differently in a multi-root workspace, which can cause confusion, particularly when converting from a normal workspace to a multi-root.
 
 See the VS Code docs: [Multi-root Workspaces - Settings](https://code.visualstudio.com/docs/editor/multi-root-workspaces#_settings) for more details.
+
+The configuration settings `perforce.user`, `perforce.client`, `perforce.port` and `perforce.password` also support multi-root workspaces, so they can be set at the level of an individual folder within in your multi-root VS Code workspace.
+
+If you have multiple workspaces using different perforce clients, each perforce client will show as a different "Source Control Provider" in the SCM view. If they all use the same perforce client, only one "Source Control Provider" will be created.
 
 ### Activation
 You can specify how you want the extension to activate by setting the parameter `perforce.activationMode`
 
 * `autodetect` (default) - The extension will only activate if it detects a valid perforce client that contains the workspace root, or a `.p4config` file in the workspace. If one is not detected, perforce commands will not be registered with VSCode, but you will be able to view the perforce output log to see why the extension did not activate
-* `always` - Always try to activate the extension, even if a valid client was not found. This may be useful if you want to use perforce commands on files outside of the workspace, **and** you either have perforce set up properly with .p4config files for that area, or you have manually specified a user / client / port etc in your vscode configuration. Otherwise, you should probably avoid this setting
+* `always` - Always try to activate the extension, even if a valid client was not found. This may be useful if you want to use perforce commands on files outside of the workspace, **and** you either:
+  * have perforce set up properly with .p4config files for that area, OR
+  * you have manually specified a user / client / port etc in your vscode configuration, OR
+  * those files are in your 'default' perforce client configured using environment variables
 * `off` - Don't try to activate the extension. No perforce log output will be produced
 
 ## Status bar icons
