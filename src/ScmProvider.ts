@@ -86,6 +86,7 @@ export class PerforceSCMProvider {
     ) {
         this._model = new Model(
             this._clientRoot.configSource,
+            this._clientRoot.clientName,
             this._workspaceConfig,
             scm.createSourceControl(this.id, this.label, this._clientRoot.clientRoot)
         );
