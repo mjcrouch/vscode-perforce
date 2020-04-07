@@ -134,7 +134,7 @@
                 "perforce.dir": {
                     "type": "string",
                     "default": "none",
-                    "description": "Overrides any PWD setting (current working directory) and replaces it with the specified directory",
+                    "description": "Overrides any PWD setting (current working directory) and replaces it with the specified directory. This item should NOT normally be used - it is only useful in very specific cases, typically when the vs code workspace contains filesystem links to an actual perforce client workspace.",
                     "scope": "resource"
                 },
                 "perforce.command": {
@@ -223,6 +223,12 @@
                     ],
                     "default": "All diffable files",
                     "description": "When to show buttons on the editor title menu for diffing the next / previous revision"
+                },
+                "perforce.enableP4ConfigScanOnStartup": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Whether to scan the workspace for perforce P4CONFIG files, in order to find perforce clients to show in the SCM Provider view. Disabling this setting is NOT generally recommeded, but if you have a very large workspace containing many directories, and you do NOT have P4CONFIG files outside of the workspace root, this can reduce startup time",
+                    "scope": "resource"
                 }
             }
         },

@@ -1,4 +1,4 @@
-import { workspace, Uri } from "vscode";
+import { workspace, Uri, FileType } from "vscode";
 
 import { Utils } from "./Utils";
 import * as PerforceUri from "./PerforceUri";
@@ -9,42 +9,6 @@ import * as CP from "child_process";
 import spawn from "cross-spawn";
 import { CommandLimiter } from "./CommandLimiter";
 import * as Path from "path";
-
-// eslint-disable-next-line @typescript-eslint/interface-name-prefix
-export interface IPerforceConfig {
-    // p4 standard configuration variables
-    p4Client?: string;
-    p4Host?: string;
-    p4Pass?: string;
-    p4Port?: number;
-    p4Tickets?: string;
-    p4User?: string;
-
-    // specific to this exension
-    // use this value as the clientRoot PWD for this .p4config file's location
-    p4Dir?: string;
-
-    // root directory of the user space (or .p4config)
-    localDir: string;
-
-    // whether to strip the localDir when calling espansePath
-    stripLocalDir?: boolean;
-}
-
-export function matchConfig(config: IPerforceConfig, uri: Uri): boolean {
-    // path fixups:
-    const trailingSlash = /^(.*)(\/)$/;
-    let compareDir = Utils.normalize(uri.fsPath);
-    if (!trailingSlash.exec(compareDir)) {
-        compareDir += "/";
-    }
-
-    if (config.localDir === compareDir) {
-        return true;
-    }
-
-    return false;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace PerforceService {
@@ -58,34 +22,32 @@ export namespace PerforceService {
 
     let debugModeSetup = false;
 
-    const _configs: { [key: string]: IPerforceConfig } = {};
+    function addTrailingSlash(str: string) {
+        const trailingSlash = /^(.*)(\/)$/;
 
-    export function addConfig(inConfig: IPerforceConfig, workspacePath: string): void {
-        _configs[workspacePath] = inConfig;
+        if (!trailingSlash.exec(str)) {
+            return str + "/";
+        }
+        return str;
     }
-    export function removeConfig(workspacePath: string): void {
-        delete _configs[workspacePath];
+
+    export function getOverrideDir(workspaceUri?: Uri) {
+        const dir = workspace
+            .getConfiguration("perforce", workspaceUri)
+            .get<string>("dir");
+        return dir === "none" ? undefined : dir;
     }
-    export function getConfig(workspacePath: string): IPerforceConfig {
-        return _configs[workspacePath];
-    }
+
     export function convertToRel(path: string): string {
         const wksFolder = workspace.getWorkspaceFolder(Uri.file(path));
-        const config = wksFolder ? _configs[wksFolder.uri.fsPath] : null;
-        if (
-            !config ||
-            !config.stripLocalDir ||
-            !config.localDir ||
-            config.localDir.length === 0 ||
-            !config.p4Dir ||
-            config.p4Dir.length === 0
-        ) {
+        const p4Dir = getOverrideDir(wksFolder?.uri);
+        if (!wksFolder || !p4Dir) {
             return path;
         }
-
+        const localDir = addTrailingSlash(Utils.normalize(wksFolder?.uri.fsPath));
         const pathN = Utils.normalize(path);
-        if (pathN.startsWith(config.localDir)) {
-            path = pathN.slice(config.localDir.length);
+        if (pathN.startsWith(localDir)) {
+            path = pathN.slice(localDir.length);
         }
         return path;
     }
@@ -114,19 +76,12 @@ export namespace PerforceService {
     }
 
     function getPerforceCmdParams(resource: Uri): string[] {
-        const p4User = workspace
-            .getConfiguration("perforce", resource)
-            .get("user", "none");
-        const p4Client = workspace
-            .getConfiguration("perforce", resource)
-            .get("client", "none");
-        const p4Port = workspace
-            .getConfiguration("perforce", resource)
-            .get("port", "none");
-        const p4Pass = workspace
-            .getConfiguration("perforce", resource)
-            .get("password", "none");
-        const p4Dir = workspace.getConfiguration("perforce", resource).get("dir", "none");
+        const config = workspace.getConfiguration("perforce", resource);
+        const p4User = config.get("user", "none");
+        const p4Client = config.get("client", "none");
+        const p4Port = config.get("port", "none");
+        const p4Pass = config.get("password", "none");
+        const p4Dir = config.get("dir", "none");
 
         const ret: string[] = [];
 
@@ -142,17 +97,6 @@ export namespace PerforceService {
         ret.push(...buildCmd(p4Port, "-p"));
         ret.push(...buildCmd(p4Pass, "-P"));
         ret.push(...buildCmd(p4Dir, "-d"));
-
-        // later args override earlier args
-        const wksFolder = workspace.getWorkspaceFolder(resource);
-        const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
-        if (config) {
-            ret.push(...buildCmd(config.p4User, "-u"));
-            ret.push(...buildCmd(config.p4Client, "-c"));
-            ret.push(...buildCmd(config.p4Port, "-p"));
-            ret.push(...buildCmd(config.p4Pass, "-P"));
-            ret.push(...buildCmd(config.p4Dir, "-d"));
-        }
 
         return ret;
     }
@@ -210,31 +154,44 @@ export namespace PerforceService {
         });
     }
 
-    function execCommand(
+    async function execCommand(
         resource: Uri,
         command: string,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
         args?: string[],
         input?: string
-    ): void {
+    ) {
         const actualResource = PerforceUri.getUsableWorkspace(resource) ?? resource;
-        const wksFolder = workspace.getWorkspaceFolder(actualResource);
-        const config = wksFolder ? getConfig(wksFolder.uri.fsPath) : null;
-        const wksPath = wksFolder?.uri.fsPath;
         const cmd = getPerforceCmdPath();
 
         const allArgs: string[] = getPerforceCmdParams(actualResource);
         allArgs.push(command);
 
-        if (args !== undefined) {
-            if (config && config.stripLocalDir) {
-                args = args.map((arg) => arg.replace(config.localDir, ""));
+        if (args) {
+            const overrideDir = PerforceService.getOverrideDir();
+            if (overrideDir) {
+                const wksFolder = workspace.getWorkspaceFolder(actualResource);
+                if (wksFolder) {
+                    args = args.map((arg) =>
+                        arg.replace(addTrailingSlash(wksFolder.uri.fsPath), "")
+                    );
+                }
             }
+            // NOTE - actual dir override happens with -d argument
+            // TODO tidy this up
+        }
 
+        if (args) {
             allArgs.push(...args);
         }
 
-        const cwd = config?.localDir ?? wksPath ?? Path.dirname(actualResource.fsPath);
+        const isDirectory =
+            (await workspace.fs.stat(actualResource)).type === FileType.Directory;
+
+        const cwd = isDirectory
+            ? actualResource.fsPath
+            : Path.dirname(actualResource.fsPath);
+
         const env = { ...process.env, PWD: cwd };
         const spawnArgs: CP.SpawnOptions = { cwd, env };
         spawnPerforceCommand(cmd, allArgs, spawnArgs, responseCallback, input);
@@ -283,7 +240,7 @@ export namespace PerforceService {
         // should at least be copy-pastable and work
         const escapedArgs = args.map((arg) => `'${arg.replace(/'/g, `'\\''`)}'`);
         const loggedCommand = [cmd].concat(escapedArgs);
-        const censoredInput = cmd === "login" ? "***" : input;
+        const censoredInput = args[0].includes("login") ? "***" : input;
         const loggedInput = input ? " < " + censoredInput : "";
         Display.channel.appendLine(
             spawnArgs.cwd + ": " + loggedCommand.join(" ") + loggedInput
