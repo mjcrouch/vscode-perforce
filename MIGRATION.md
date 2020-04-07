@@ -8,9 +8,17 @@ In almost all cases, the new extension will continue to work with existing confi
 
 However, there are a few more unusual setups that *may* not be correctly detected
 
-This guide covers the main changes between these versions in how perforce client workspaces are detected and used, and any action you may need to take
+This guide covers, in probably far too much detail, the changes between these versions in how perforce client workspaces are detected and used, and any action you may need to take
 
 (Remember, if you are switching from the old extension you **must uninstall or disable the `slevesque.perforce` extension** to prevent conflicting behaviour)
+
+### Terminology
+
+* SCM Provider: An SCM Provider appears in the "Source Control" view in VS Code's activity bar. If you have multiple perforce clients in your workspace, you should be able to choose between them, or right click on "Source Control" to show more than one at the same time.
+
+  ![scm provider](images/scmProvider.png)
+
+* Workspace: In this text, "workspace" refers to a VS Code workspace, unless it's preceded by the words "Perforce Client" - in which case it refers to the local area where your working copy of the depot is stored. This may or may not be the same thing depending on your configuration.
 
 ## Perforce Output Log
 
@@ -21,6 +29,16 @@ Additionally, each perforce command is prefixed with its working directory, and 
 Generally, if commands work in the terminal, then we should be able to detect your client and use it.
 
 If you are still having problems, [create an issue](https://github.com/mjcrouch/vscode-perforce/issues) for further help. If it works on the old version, then 'before and after' logs would be useful for finding the issue
+
+# Short Summary
+
+* Improved P4CONFIG file detection - there should only be breaking changes if you used an undocumented feature inside of a P4CONFIG file, or if your P4CONFIG variable was not set but you still used `.p4config` files
+* Changes to activation mode, when set to `always`, to prevent an unusable SCM provider being created. This should not break any real use cases, but may be noticable
+* Other sections detail internal changes that should not result in any breaking changes but are documented in case you run in to issues
+
+TODO - activation when client root is inside workspace root
+
+# Potential Breaking Changes
 
 ## P4CONFIG Files
 
@@ -65,6 +83,44 @@ It would also read a value called `P4DIR` from this config file. This is not a s
 * If you have multiple p4config files in your workspace, these can now be detected properly
 * P4CONFIG files can include variable expansions specific to perforce, such as `$configdir` - we couldn't reasonably reproduce all of the variable expansion in the extension, and it would be a waste of effort to do so. By not reading the config file, we leave all of this parsing where it belongs, in your actual perforce client.
   * This means we can now correctly detect "Personal" perforce servers without you having to mangle the auto-generated p4config file
+
+# Not Expected to Break
+
+The following should **not** be breaking changes unless there has been an error or misunderstanding during implementation
+
+## Activation Mode
+
+The extension has a setting called `perforce.activationMode` that controls the 'activation' of the extension. The behaviour is now slightly different.
+
+### Old Behaviour
+
+* Previously, when activation mode was `always`, the extension would **always** create an SCM Provider for the workspace, even if it didn't find *any* perforce client information using that directory. In this case, the SCM provider could never be used, and would always be empty, so did not make any sense
+* At the same time as creating an SCM provider, all the VS Code commands such as 'edit' and 'revert' were registered, and the status bar 'P4' menu was enabled
+* If activation mode was `autodetect`, and no workspace was found, commands were not registered with VS Code, resulting in errors like "Command not found"
+
+### New Behaviour
+
+* Creation of the SCM provider and the commands / status bar have been decoupled
+  * If activation mode is `always`, the extension only creates an SCM Provider for the workspace if:
+    * it finds that a perforce client workspace is accessible from the root directory of the VS Code workspace (including cases where they are in totally different directories), AND
+    * no P4CONFIG files were found in the workspace
+  * Regardless of whether the SCM provider is created, the VS Code commands are **always** registered, even if activation mode is set to `autodetect`
+  * The status bar 'P4' menu is enabled if activation mode is `always` OR the activation mode is `autodetect` AND a valid client was found
+
+### How this could affect you
+
+* This is unlikely to cause problems in valid workspaces. When opening an editor with a workspace that doesn't have an associated perforce client, you may have previously seen an empty SCM provider that is no longer present
+* Otherwise, it should work the same. If you have activation mode set to `always` and it is not working as expected, please check the output logs, and raise an issue if appropriate.
+
+### Why this is better
+
+* Hopefully, not creating an empty SCM provider reduces confusion
+* By always registering perforce commands, users should no longer see the confusing "Command not fond" message that would pop-up - instead, you are likely to see errors from perforce, that are more useful.
+* By always registering the perforce commands, behaviour for random files opened without a workspace is improved. Provided your perforce area is set up properly, it's now possible to run commands like 'edit', 'revert' etc. using the command palette while such a file is open in the editor.
+
+### Opening Directories *above* the perforce client root
+
+**TODO**
 
 ## `perforce.client`, `perforce.user`, `perforce.port` `perforce.password` Settings
 

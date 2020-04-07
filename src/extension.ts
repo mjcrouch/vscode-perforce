@@ -33,6 +33,7 @@ export type ClientRoot = {
     userName: string;
     serverAddress: string;
     isInRoot: boolean;
+    isAboveRoot?: boolean;
 };
 
 async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> {
@@ -44,6 +45,7 @@ async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> 
             const serverAddress = info.get("Server address") ?? "";
             const userName = info.get("User name") ?? "";
             const isInRoot = isInClientRoot(uri, Utils.normalize(rootStr));
+            const isAboveRoot = isClientRootIn(uri, Utils.normalize(rootStr));
             return {
                 configSource: uri,
                 clientRoot: vscode.Uri.file(rootStr),
@@ -51,6 +53,7 @@ async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> 
                 userName,
                 serverAddress,
                 isInRoot,
+                isAboveRoot,
             };
         }
     } catch (err) {}
@@ -60,6 +63,11 @@ async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> 
 function isInClientRoot(testFile: vscode.Uri, rootFsPath: string) {
     const wksRootN = Utils.normalize(testFile.fsPath);
     return wksRootN.startsWith(rootFsPath);
+}
+
+function isClientRootIn(workspace: vscode.Uri, rootFsPath: string) {
+    const wksRootN = Utils.normalize(workspace.fsPath);
+    return rootFsPath.startsWith(wksRootN);
 }
 
 async function findP4ConfigFiles(wksFolder: vscode.WorkspaceFolder) {
@@ -77,13 +85,16 @@ async function findP4ConfigFiles(wksFolder: vscode.WorkspaceFolder) {
 function clientRootLog(
     source: string,
     foundRoot: ClientRoot | undefined,
-    hasWorkingDirOverride?: boolean
+    hasWorkingDirOverride?: boolean,
+    shouldAlwaysActivate?: boolean
 ) {
     if (!foundRoot) {
         return "  * " + source + " : NO CLIENT ROOT FOUND";
     }
     const ignoreMsg = hasWorkingDirOverride
         ? "USING ANYWAY because working dir override is set"
+        : shouldAlwaysActivate
+        ? "USING ANYWAY because activation mode is set to ALWAYS"
         : "IGNORING THIS CLIENT";
     return (
         "  * " +
@@ -93,9 +104,16 @@ function clientRootLog(
         "\n\tClient root: " +
         foundRoot.clientRoot.fsPath +
         "\n\t" +
-        (foundRoot.isInRoot
-            ? "Folder IS in client root"
+        (foundRoot.isInRoot || foundRoot.isAboveRoot
+            ? "Folder IS in or above client root"
             : "Folder IS NOT in client root - " + ignoreMsg)
+    );
+}
+
+function getActivationMode() {
+    return (
+        vscode.workspace.getConfiguration("perforce").get<string>("activationMode") ??
+        "autodetect"
     );
 }
 
@@ -150,6 +168,7 @@ function initClientRoot(workspaceUri: vscode.Uri, client: ClientRoot): boolean {
         _disposable.push(new FileSystemActions(vscode.workspace, workspaceConfig));
 
         doOneTimeRegistration();
+        Display.activateStatusBar();
         return true;
     }
 }
@@ -198,6 +217,8 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
     const workspaceUri = wksFolder.uri;
 
     const overrideDir = PerforceService.getOverrideDir(workspaceUri);
+    const activationMode = getActivationMode();
+    const shouldAlwaysActivate = activationMode === "always";
 
     logInitProgress(
         workspaceUri,
@@ -218,7 +239,8 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
                 clientRootLog(
                     "VS Code workspace root directory",
                     workspaceClientRoot,
-                    !!overrideDir
+                    !!overrideDir,
+                    shouldAlwaysActivate
                 )
         );
     }
@@ -248,7 +270,9 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
         }
     }
 
-    const filteredRoots = allRoots.filter(isTruthy).filter((r) => r.isInRoot);
+    const filteredRoots = allRoots
+        .filter(isTruthy)
+        .filter((r) => r.isInRoot || r.isAboveRoot);
 
     const helpMsg =
         "If you were expecting a valid client to be found:\n" +
@@ -258,28 +282,26 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
         "    * you may need to set or unset them appropriately";
 
     if (filteredRoots.length < 1) {
-        if (
-            vscode.workspace.getConfiguration("perforce").get("activationMode") ===
-            "always"
-        ) {
-            logInitProgress(
-                workspaceUri,
-                "NO valid perforce clients found in this directory.\n" +
-                    helpMsg +
-                    "\n" +
-                    "Activation mode is set to ALWAYS. Creating dummy SCM Provider for this workspace and activating now."
-            );
+        if (shouldAlwaysActivate) {
+            if (workspaceClientRoot) {
+                logInitProgress(
+                    workspaceUri,
+                    "NO valid perforce clients found in this directory, but activation mode is set to ALWAYS and a perforce client was found with a different client root\n" +
+                        helpMsg +
+                        "\n" +
+                        "Creating SCM Provider using the workspace found in the root directory."
+                );
 
-            const fakeRoot: ClientRoot = {
-                clientName: "",
-                clientRoot: workspaceUri,
-                configSource: workspaceUri,
-                serverAddress: "",
-                isInRoot: true,
-                userName: "",
-            };
-
-            initClientRoots(workspaceUri, fakeRoot);
+                initClientRoots(workspaceUri, workspaceClientRoot);
+            } else {
+                logInitProgress(
+                    workspaceUri,
+                    "NO valid perforce clients found in this directory." +
+                        "Activation mode is set to ALWAYS, but cannot create an scm provider without any client found.\n" +
+                        "Note: It should still be possible to use perforce commands on individual files in the editor.\n" +
+                        helpMsg
+                );
+            }
         } else {
             logInitProgress(
                 workspaceUri,
@@ -302,13 +324,20 @@ export function activate(ctx: vscode.ExtensionContext): void {
     // ALWAYS register the edit and save command
     PerforceCommands.registerImportantCommands(_disposable);
 
-    QuickPicks.registerQuickPicks();
-
-    if (vscode.workspace.getConfiguration("perforce").get("activationMode") === "off") {
+    const activationMode = vscode.workspace
+        .getConfiguration("perforce")
+        .get("activationMode");
+    if (activationMode === "off") {
         return;
     }
 
-    Display.initializeChannel(_disposable);
+    doOneTimeRegistration();
+
+    if (activationMode === "always") {
+        Display.activateStatusBar();
+    }
+
+    QuickPicks.registerQuickPicks();
 
     ctx.subscriptions.push(
         new vscode.Disposable(() => Disposable.from(..._disposable).dispose())
