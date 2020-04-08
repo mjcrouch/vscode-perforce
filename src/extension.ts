@@ -70,16 +70,75 @@ function isClientRootIn(workspace: vscode.Uri, rootFsPath: string) {
     return rootFsPath.startsWith(wksRootN);
 }
 
-async function findP4ConfigFiles(wksFolder: vscode.WorkspaceFolder) {
+async function findP4ConfigFiles(
+    wksFolder: vscode.WorkspaceFolder
+): Promise<vscode.Uri[]> {
     const workspaceUri = wksFolder.uri;
 
     const configName = await PerforceService.getConfigFilename(workspaceUri);
+    const noConfig = !configName;
 
-    const pattern = new vscode.RelativePattern(wksFolder, `**/${configName}`);
+    const pattern = new vscode.RelativePattern(
+        wksFolder,
+        noConfig ? `**/.p4config` : `**/${configName}`
+    );
 
-    logInitProgress(workspaceUri, "Using pattern " + pattern.pattern);
+    if (noConfig) {
+        logInitProgress(
+            workspaceUri,
+            "Did NOT find a valid P4CONFIG setting.\n" +
+                "!!! IMPORTANT !!!\nPreviously, if no P4CONFIG setting was found, the extension would look for files name .p4config and parse them.\n" +
+                "This is no longer the case. If you use p4config files, Please set your P4CONFIG setting and restart,\n" +
+                "Either via environment variables or p4 set, e.g.:\n" +
+                "\t\tp4 set P4CONFIG=.p4config\n!!! IMPORTANT !!!\n"
+        );
+    } else {
+        logInitProgress(workspaceUri, "Using pattern " + pattern.pattern);
+    }
 
-    return await vscode.workspace.findFiles(pattern, "**/node_modules/**");
+    const files = await vscode.workspace.findFiles(pattern, "**/node_modules/**");
+    if (files.length > 0 && noConfig) {
+        logInitProgress(
+            workspaceUri,
+            "Found " + files.length + " .p4config files that are VERY UNLIKELY to work"
+        );
+        // DON'T AWAIT, will hold up activation
+        warnAboutP4Config(files.length);
+    }
+
+    return files;
+}
+
+async function warnAboutP4Config(numFiles: number) {
+    if (
+        !vscode.workspace
+            .getConfiguration("perforce")
+            .get<boolean>("warnOnMissingP4CONFIG")
+    ) {
+        return;
+    }
+
+    const ignore = "Don't show again in this workspace";
+    const moreDetails = "More Details...";
+    const result = await vscode.window.showWarningMessage(
+        "Perforce WARNING: Your workspace contains " +
+            numFiles +
+            " .p4config file(s), but your P4CONFIG setting is undefined. Please set P4CONFIG in your environment and restart VS Code to detect these perforce clients",
+        ignore,
+        moreDetails
+    );
+
+    if (result === ignore) {
+        await vscode.workspace
+            .getConfiguration("perforce")
+            .update("warnOnMissingP4CONFIG", false);
+    } else if (result === moreDetails) {
+        await vscode.env.openExternal(
+            vscode.Uri.parse(
+                "https://github.com/mjcrouch/vscode-perforce/blob/master/MIGRATION.md"
+            )
+        );
+    }
 }
 
 function clientRootLog(
@@ -245,7 +304,7 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
         );
     }
 
-    const allRoots = [workspaceClientRoot];
+    const allRoots: (ClientRoot | undefined)[] = [];
 
     if (overrideDir) {
         // if workspace is not in client root but p4dir is set, just use the client found.
@@ -269,6 +328,8 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
             allRoots.push(...foundRoots.filter(isTruthy));
         }
     }
+
+    allRoots.push(workspaceClientRoot);
 
     const filteredRoots = allRoots
         .filter(isTruthy)
@@ -311,11 +372,7 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
     } else {
         initClientRoots(workspaceUri, ...filteredRoots);
     }
-    // TODO - we should pass in the client root information including the dir we used
-    // to find the client. scm provider commands should be run **from this directory**
-    // to account for cases e.g. where the real client root directory is configured with a
-    // different perforce client to the one we found
-    // this could happen if the perforce.client setting specifies a different client in a specific folder
+    // TODO
     // probably the scm provider should accumulate all dirs used to find it, so that when
     // folders are files are removed we know if we still need the scm provider
 }
@@ -432,25 +489,16 @@ async function onDidChangeWorkspaceFolders({
     );
 
     try {
-        if (added !== undefined) {
-            if (added.length > 0) {
-                Display.channel.appendLine("Workspaces were added");
-            } else {
-                Display.channel.appendLine(
-                    "No new workspaces were added - nothing to initialise"
-                );
-            }
-            for (const workspace of added) {
-                await initWorkspace(workspace);
-                //await TryCreateP4(workspace.uri);
-            }
+        if (added.length > 0) {
+            Display.channel.appendLine("Workspaces were added");
         } else {
-            Display.channel.appendLine("No workspaces. Trying all open documents");
-            /*const promises = vscode.workspace.textDocuments.map((doc) =>
-                TryCreateP4(doc.uri)
+            Display.channel.appendLine(
+                "No new workspaces were added - nothing to initialise"
             );
-            await Promise.all(promises);*/
-            // TODO do something
+        }
+        for (const workspace of added) {
+            await initWorkspace(workspace);
+            //await TryCreateP4(workspace.uri);
         }
     } catch (err) {
         Display.channel.appendLine("Error: " + err);

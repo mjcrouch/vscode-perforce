@@ -229,6 +229,11 @@
                     "default": "true",
                     "description": "Whether to scan the workspace for perforce P4CONFIG files, in order to find perforce clients to show in the SCM Provider view. Disabling this setting is NOT generally recommeded, but if you have a very large workspace containing many directories, and you do NOT have P4CONFIG files outside of the workspace root, this can reduce startup time",
                     "scope": "resource"
+                },
+                "perforce.warnOnMissingP4CONFIG": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "When enabled, if a .p4config file is found in the workspace, but P4CONFIG is not set in the environment, a warning will be shown. This is due to a change in behaviour of handling these files in v4 which may break backward compatibility"
                 }
             }
         },
