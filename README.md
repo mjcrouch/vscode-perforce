@@ -109,6 +109,12 @@ This fork fixes many issues from the original extension and adds a variety of ot
 But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscode-perforce/issues)
  and [contributions](CONTRIBUTING.md) are welcome!
 
+## Requirements
+
+* Visual Studio Code v1.42
+* The perforce command line client must be installed on your computer
+* Access to a perforce server
+
 ## Installation
 
 1. Install *[Visual Studio Code](https://code.visualstudio.com/)*
@@ -133,16 +139,17 @@ The extension does not provide a way to *create* a perforce client. It only allo
 
 ## Setup
 
-You must properly configure a perforce depot area before the extension activates.
+You must properly configure a perforce depot area before the extension fully activates and creates a provider in the 'Source Control' area.
 
-If you try to run a command, and VS Code tells you **"command not found"** it means the extension has not found a valid perforce depot area. Don't forget, if you are tweaking settings, internally or externally, you probably need to restart VS code for the extension to perform this detection again.
+If you don't see an SCM provider, it means the extension has not found a valid perforce depot area.
 
+Don't forget, if you are tweaking settings, internally or externally, you probably need to restart VS code for the extension to perform this detection again.
 
 #### Having trouble? Output log to the rescue
 
 If you are having trouble, check the **output log** for Perforce. Here, you will be able to see what the extension is trying to do, and what it has found during initialisation
 
-To see the output log, you can run the command "Perforce: Show Output", or you can reach it from `View` -> `Output` and select Perforce in the dropdown
+To see the output log, you can run the command "Perforce: Show Output", or you can reach it from `View` -> `Output` and select Perforce in the dropdown. The output relating to initialisation will appear at the top, and will try to warn you of any obvious problems
 
 ### **The Best Way**
 
@@ -164,15 +171,17 @@ If necessary, restart VS Code and it should *just work*™.
 
 If you work across multiple different perforce client workspaces, you can use [P4CONFIG](https://www.perforce.com/perforce/r17.1/manuals/cmdref/index.html#CmdRef/P4CONFIG.html?Highlight=p4config) to set up the different client locations.
 
-Place a file with the right name in the root directory for each client. Normally the file name is as follows:
+Place a file with the right name in the root directory for each client. Typical filenames are as follows:
  * on **windows**: `p4config.txt`
  * on **linux / mac**: `.p4config`
 
-If you are still not sure of the right filename, run `p4 set` or check the "perforce output log", where it will be logged during startup. See the perforce docs linked above for more information.
+You **must** ensure that your `P4CONFIG` setting has the same filename as the files you are adding. To check, run `p4 set` and look for a line starting with `P4CONFIG=`
+
+If it is not set, you could run `p4 set P4CONFIG=.p4config`, or set the `P4CONFIG` environment variable, to give it the correct value.
 
 The file contents should look like this:
 
-```
+```ini
 P4USER=your_user
 P4CLIENT=your_client
 P4PORT=example.com:1666
@@ -342,10 +351,6 @@ In all cases, the command name and the context variable name are the same
 
 ## Common Questions
 
-#### **Q:** vscode reports that commands do not exist
-**A:** Make sure you have read [the setup section](#Setup). If all else fails, try setting
-`perforce.client`, `perforce.user` and `perforce.port` to the right values for your depot and workspace, and then reload the window. If that does not work, continue below:
-
 #### **Q:** Something is not working
 **A:** Here are a few steps you should try first:
 1. Make sure you have read [the setup section](#Setup)
@@ -385,14 +390,20 @@ It's generally not recommended to rebind your ctrl+s keyboard shortcut, due to t
 
 [Guide to contributing](CONTRIBUTING.md)
 
-## Requirements
-
-Visual Studio Code v1.42
-
-## Credits
+## Acknowledgements
 
 * [Visual Studio Code](https://code.visualstudio.com/)
-* [vscode-docs on GitHub](https://github.com/Microsoft/vscode-docs)
+* Stef Levesque, who created the original extension
+* [Contributors, past and present](https://github.com/mjcrouch/vscode-perforce/graphs/contributors)
+* [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) for general inspiration
+* All the useful tools used, such as
+  * [ESLint](https://eslint.org/)
+  * [Mocha](https://mochajs.org/)
+  * [Chai](https://www.chaijs.com/)
+  * [Sinon](https://sinonjs.org/)
+  * [Prettier](https://prettier.io/)
+  * [Webpack](https://webpack.js.org/)
+  * and more!
 
 ## License
 
