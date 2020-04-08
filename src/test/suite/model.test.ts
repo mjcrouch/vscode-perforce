@@ -209,7 +209,6 @@ describe("Model & ScmProvider modules (integration)", () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
         const doc = new PerforceContentProvider();
         outerSubs.push(doc);
-        Display.initialize(outerSubs);
     });
     after(() => {
         outerSubs.forEach((d) => d.dispose());
