@@ -79,7 +79,7 @@ And there's still lots of new features to implement to improve your experience, 
 
 See more context about each line, including the author and the changelist description.
 
-![Annotation example](images/annotate.png)
+![Annotation example](images/annotate.gif)
 
 The format of the annotations is customisable in the extension configuration if this is too much information.
 
@@ -93,7 +93,7 @@ Looking at a diff or annotation? Dive in to the depot with a single click to see
 * Using swarm for reviews? click through to the swarm review
 * ... more :)
 
-![Annotation example](images/quickpick.png)
+![Annotation example](images/quickpick.gif)
 
 ### Improved diff behaviour
 
