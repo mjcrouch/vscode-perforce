@@ -1,4 +1,3 @@
-import { IPerforceConfig } from "./../PerforceService";
 import {
     Uri,
     EventEmitter,
@@ -12,7 +11,6 @@ import {
     commands,
 } from "vscode";
 import { WorkspaceConfigAccessor } from "../ConfigService";
-import { Utils } from "../Utils";
 import * as PerforceUri from "../PerforceUri";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../Display";
 import { Resource } from "./Resource";
@@ -87,7 +85,7 @@ export class Model implements Disposable {
     }
 
     private get clientName(): string | undefined {
-        return this._infos.get("Client name") ?? this._config.p4Client;
+        return this._infos.get("Client name");
     }
 
     public get ResourceGroups(): ResourceGroup[] {
@@ -113,8 +111,7 @@ export class Model implements Disposable {
     }
 
     public constructor(
-        private _config: IPerforceConfig,
-        private _workspaceUri: Uri,
+        private _workspaceUri: vscode.Uri, // TODO better not to dupliate this with the scm provider
         private _workspaceConfig: WorkspaceConfigAccessor,
         public _sourceControl: SourceControl
     ) {
@@ -171,6 +168,17 @@ export class Model implements Disposable {
                 this._conflictsByPath.add(event.file.fsPath);
             }
         }
+    }
+
+    public async Login() {
+        const ok = await Display.doLoginFlow(this._workspaceUri);
+        if (ok) {
+            await this.Refresh();
+        }
+    }
+
+    public Logout() {
+        return Display.doLogoutFlow(this._workspaceUri);
     }
 
     public async Sync(): Promise<void> {
@@ -863,22 +871,8 @@ export class Model implements Disposable {
     }
 
     private async syncUpdate(): Promise<void> {
-        const trailingSlash = /^(.*)(\/)$/;
-        const config = this._config;
-        let pathToSync;
-        let p4Dir = config.p4Dir ? config.p4Dir : this._workspaceConfig.pwdOverride;
-        if (p4Dir && p4Dir !== "none") {
-            p4Dir = Utils.normalize(p4Dir);
-            if (!trailingSlash.exec(p4Dir)) {
-                p4Dir += "/";
-            }
-            pathToSync = vscode.Uri.file(p4Dir + "...");
-        }
-
         try {
-            const output = await p4.sync(this._workspaceUri, {
-                files: pathToSync ? [{ fsPath: pathToSync.fsPath }] : [],
-            });
+            const output = await p4.sync(this._workspaceUri, {});
             Display.channel.append(output);
             this.Refresh();
         } catch (reason) {
@@ -887,7 +881,7 @@ export class Model implements Disposable {
     }
 
     private async updateInfo(): Promise<void> {
-        this._infos = await p4.getInfo(Uri.file(this._config.localDir), {});
+        this._infos = await p4.getInfo(this._workspaceUri, {});
     }
 
     private async updateStatus(): Promise<void> {
