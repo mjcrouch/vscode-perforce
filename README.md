@@ -29,7 +29,7 @@ Built on the foundation of the most installed perforce extension on the market, 
 If your perforce server requires a password, you can log in from within VS Code
 
 ![Login Example](images/login.gif)
-*( Theme: [Night Owl](https://marketplace.visualstudio.com/items?itemName=sdras.night-owl), Font: [JetBrains Mono](https://www.jetbrains.com/lp/mono/) )*
+  *Theme: [Night Owl](https://marketplace.visualstudio.com/items?itemName=sdras.night-owl) - Font: [JetBrains Mono](https://www.jetbrains.com/lp/mono/)*
 
 ### Integration with VS Code's SCM View
 
@@ -73,7 +73,7 @@ The fork has a variety of new features to help you manage your changes and under
 
 We've borrowed ideas from popular extensions like [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) and... okay, mainly just GitLens, adapting them for the perforce workflow.
 
-And there's still lots of new features to implement to improve your experience, without getting in the way.
+And there's still lots of features yet to be implemented, to improve your experience, without getting in the way.
 
 ### Improved annotation view
 
@@ -83,7 +83,7 @@ See more context about each line, including the author and the changelist descri
 
 The format of the annotations is customisable in the extension configuration if this is too much information.
 
-### All new revision & changelist quick pick
+### New revision & changelist quick pick
 
 Looking at a diff or annotation? Dive in to the depot with a single click to see some context:
 
@@ -112,7 +112,8 @@ This fork fixes many issues from the original extension and adds a variety of ot
 
 * Adds support for attaching jobs to changelists
 * Improved support for shelved files & changelists
-* Works more reliably with [personal servers](https://github.com/stef-levesque/vscode-perforce/issues/169#issuecomment-592976290)
+* Supports multiple P4CONFIG files in the same workspace
+* Works more reliably with personal servers
 * Ability to move selected file from the default changelist to a new changelist
 
 [Head over to the changelog](CHANGELOG.md) to see everything that's changed
@@ -284,15 +285,23 @@ The configuration settings `perforce.user`, `perforce.client`, `perforce.port` a
 
 If you have multiple workspaces using different perforce clients, each perforce client will show as a different "Source Control Provider" in the SCM view. If they all use the same perforce client, only one "Source Control Provider" will be created.
 
-### Activation
+### Activation Mode
 You can specify how you want the extension to activate by setting the parameter `perforce.activationMode`
 
-* `autodetect` (default) - The extension will only activate if it detects a valid perforce client that contains the workspace root, or a `.p4config` file in the workspace. If one is not detected, perforce commands will not be registered with VSCode, but you will be able to view the perforce output log to see why the extension did not activate
-* `always` - Always try to activate the extension, even if a valid client was not found. This may be useful if you want to use perforce commands on files outside of the workspace, **and** you either:
-  * have perforce set up properly with .p4config files for that area, OR
-  * you have manually specified a user / client / port etc in your vscode configuration, OR
-  * those files are in your 'default' perforce client configured using environment variables
-* `off` - Don't try to activate the extension. No perforce log output will be produced
+* `autodetect` (default)
+  * The Source Control Provider and 'P4' status bar icon will only activate if it detects a valid perforce client that contains the workspace root, or a usable `.p4config` file in the workspace
+  * If one is not detected, you will be able to view the perforce output log to see why the extension did not activate
+  * You will still be able to run commands on files that *are* in a proper perforce client, but only via the command palette and not via the status bar
+* `always`
+  * Always tries to activate the SCM Provider if any perforce client is detected, even if it's in a totally different directory
+  * Always activates the 'P4' status bar icon
+  * This will allow you to manage changelists in your 'default' client, but is unlikely to be useful for files in the current VS Code workspace.
+  * This setting may be particularly useful if you work with files outside of the VS Code workspace, or without a VS Code workspace at-all
+* `off`
+  * Don't try to activate SCM Providers
+  * No perforce log output will be produced
+  * No commands will be registered
+  * Effectively, it just disables the extension
 
 ## Status bar icons
 
@@ -407,7 +416,7 @@ It's generally not recommended to rebind your ctrl+s keyboard shortcut, due to t
 * [Visual Studio Code](https://code.visualstudio.com/)
 * Stef Levesque, who created the original extension
 * [Contributors, past and present](https://github.com/mjcrouch/vscode-perforce/graphs/contributors)
-* [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) for general inspiration
+* [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) for general inspiration, and also because I use it every day :)
 * All the useful tools used, such as
   * [ESLint](https://eslint.org/)
   * [Mocha](https://mochajs.org/)
