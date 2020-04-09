@@ -29,6 +29,7 @@ Built on the foundation of the most installed perforce extension on the market, 
 If your perforce server requires a password, you can log in from within VS Code
 
 ![Login Example](images/login.gif)
+*( Theme: [Night Owl](https://marketplace.visualstudio.com/items?itemName=sdras.night-owl), Font: [JetBrains Mono](https://www.jetbrains.com/lp/mono/) )*
 
 ### Integration with VS Code's SCM View
 
@@ -37,6 +38,8 @@ If your perforce server requires a password, you can log in from within VS Code
 * Shelve and unshelve files
 * Move files between changelists
 * Click on an open file to see the diff
+
+![SCM Provider Example](images/scm.gif)
 
 ### Run common perforce operations on the open file
 
@@ -50,15 +53,19 @@ Click on the 'p4' in the status bar to perform an operation
 * `login`, `logout` - Login operations
 * ... and more!
 
+![Status Bar Example](images/statusbar.gif)
+
 ### Automatically open files for add and edit as you work
 
 * Enable the settings `perforce.editOnFileSave`, `perforce.addOnFileCreate` and `perforce.deleteOnFileDelete` to automatically perform depot operations without that pesky warning dialog
 
-### Diff files using VS Code's built in tools
+### Diff files in the editor
 
 * Diff the open file against the workspace file
 * Diff against any revision of a file
 * See diffs as you work with gutter decorations
+
+![Diff example](images/diffs.gif)
 
 ## What's new in the fork?
 
@@ -72,6 +79,8 @@ And there's still lots of new features to implement to improve your experience, 
 
 See more context about each line, including the author and the changelist description.
 
+![Annotation example](images/annotate.png)
+
 The format of the annotations is customisable in the extension configuration if this is too much information.
 
 ### All new revision & changelist quick pick
@@ -83,6 +92,8 @@ Looking at a diff or annotation? Dive in to the depot with a single click to see
 * See other files in the same changelist
 * Using swarm for reviews? click through to the swarm review
 * ... more :)
+
+![Annotation example](images/quickpick.png)
 
 ### Improved diff behaviour
 
@@ -141,7 +152,7 @@ The extension does not provide a way to *create* a perforce client. It only allo
 
 You must properly configure a perforce depot area before the extension fully activates and creates a provider in the 'Source Control' area.
 
-If you don't see an SCM provider, it means the extension has not found a valid perforce depot area.
+If you don't see a perforce SCM provider, it means the extension has not found a valid perforce depot area. A message will be displayed in the SCM view indicating that a perforce client could not be found (unless you have other SCM providers such as git in the same workspace)
 
 Don't forget, if you are tweaking settings, internally or externally, you probably need to restart VS code for the extension to perform this detection again.
 
@@ -308,6 +319,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.realpath`                |`boolean`  |**Experimental** Try to resolve real file path before executing command
 |&nbsp; 
 |`perforce.activationMode`          |`string`   |Controls when to activate the extension (`always`,`autodetect`,`off`)
+|`perforce.enableP4ConfigScanOnStartup` | `boolean` | When enabled (default), the extension scans the workspace for `P4CONFIG` files on startup. In large workspaces without `P4CONFIG` files this can be disabled to improve performance
 |`perforce.countBadge`              |`string`   |Controls the badge counter for Perforce (`all`,`off`)
 |`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actions when annotating a file
 |`perforce.annotate.gutterColumns`  |`object`   |**Experimental** Format for annotation summary messages
@@ -361,7 +373,7 @@ In all cases, the command name and the context variable name are the same
 #### **Q:** Does it work with Remote-SSH?
 **A:** Yes - you will need to install the extension on the remote instance of VSCode, using the normal extensions view
 
-#### **Q:** My perforce server is slow and shows an file write error even with `editOnFileSave` enabled
+#### **Q:** My perforce server is slow and VS Code shows a read-only file error even with `editOnFileSave` enabled
 
 When you enable `editOnFileSave`, we tell VS Code to delay saving the file until the edit is complete.
 
