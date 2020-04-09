@@ -22,7 +22,7 @@
         "theme": "dark"
     },
     "engines": {
-        "vscode": "^1.42.0"
+        "vscode": "^1.44.0"
     },
     "enableProposedApi": false,
     "keywords": [
@@ -37,6 +37,10 @@
         "*"
     ],
     "contributes": {
+        "viewsWelcome": [{
+            "view": "scm",
+            "contents": "\nPerforce\nNo perforce client detected\n[Read Setup Help](https://github.com/mjcrouch/vscode-perforce#setup)\n[Check Perforce Output Logs](command:perforce.showOutput)"
+        }],
         "configuration": {
             "type": "object",
             "title": "VS Code Perforce Configuration",
