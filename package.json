@@ -40,17 +40,17 @@
         "viewsWelcome": [
             {
                 "view": "scm",
-                "contents": "Perforce\nNo perforce client detected for the open folder(s)",
+                "contents": "Perforce\nNo perforce client workspace detected for the open folder(s)",
                 "when": "config.perforce.activationMode != off && perforce.activation.status == complete"
             },
             {
                 "view": "scm",
-                "contents": "Perforce\nLooking for perforce clients...",
+                "contents": "Perforce\nLooking for perforce client workspaces...",
                 "when": "config.perforce.activationMode != off && !perforce.activation.status"
             },
             {
                 "view": "scm",
-                "contents": "Perforce\nOpen a folder to detect perforce clients",
+                "contents": "Perforce\nOpen a folder to detect perforce client workspaces",
                 "when": "config.perforce.activationMode != off && perforce.activation.status == noworkspace"
             },
             {
@@ -60,11 +60,11 @@
             },
             {
                 "view": "scm",
-                "contents": "[Check Perforce Output Logs](command:perforce.showOutput)\nFor more help:\n[Read the Perforce Setup Guide](https://github.com/mjcrouch/vscode-perforce#setup)\n"
+                "contents": "[Check the Perforce Output Logs](command:perforce.showOutput)\nFor more help:\n[Read the Perforce Setup Guide](https://github.com/mjcrouch/vscode-perforce#setup)\n"
             },
             {
                 "view": "scm",
-                "contents": "Note: A possible client was detected, but the workspace is not within the client root, and vice versa. [Check the output log](command:perforce.showOutput) for client names and paths",
+                "contents": "Note: A possible perforce client was detected, but the open folder is not within the client root, and vice versa. [Check the output log](command:perforce.showOutput) for client names and paths",
                 "when": "perforce.activation.foundOutOfRoot"
             },
             {
