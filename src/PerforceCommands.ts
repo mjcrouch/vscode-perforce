@@ -497,7 +497,10 @@ export namespace PerforceCommands {
     export async function login() {
         const resource = guessWorkspaceUri();
 
-        await Display.doLoginFlow(resource);
+        const ok = await Display.doLoginFlow(resource);
+        if (ok) {
+            PerforceSCMProvider.RefreshAll();
+        }
     }
 
     export function menuFunctions() {

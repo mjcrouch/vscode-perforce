@@ -1,6 +1,5 @@
 import { workspace, Uri, FileType } from "vscode";
 
-import { Utils } from "./Utils";
 import * as PerforceUri from "./PerforceUri";
 import { Display } from "./Display";
 import { PerforceSCMProvider } from "./ScmProvider";
@@ -22,34 +21,11 @@ export namespace PerforceService {
 
     let debugModeSetup = false;
 
-    function addTrailingSlash(str: string) {
-        const trailingSlash = /^(.*)(\/)$/;
-
-        if (!trailingSlash.exec(str)) {
-            return str + "/";
-        }
-        return str;
-    }
-
     export function getOverrideDir(workspaceUri?: Uri) {
         const dir = workspace
             .getConfiguration("perforce", workspaceUri)
             .get<string>("dir");
         return dir === "none" ? undefined : dir;
-    }
-
-    export function convertToRel(path: string): string {
-        const wksFolder = workspace.getWorkspaceFolder(Uri.file(path));
-        const p4Dir = getOverrideDir(wksFolder?.uri);
-        if (!wksFolder || !p4Dir) {
-            return path;
-        }
-        const localDir = addTrailingSlash(Utils.normalize(wksFolder?.uri.fsPath));
-        const pathN = Utils.normalize(path);
-        if (pathN.startsWith(localDir)) {
-            path = pathN.slice(localDir.length);
-        }
-        return path;
     }
 
     function getPerforceCmdPath(): string {
@@ -166,20 +142,6 @@ export namespace PerforceService {
 
         const allArgs: string[] = getPerforceCmdParams(actualResource);
         allArgs.push(command);
-
-        if (args) {
-            const overrideDir = PerforceService.getOverrideDir();
-            if (overrideDir) {
-                const wksFolder = workspace.getWorkspaceFolder(actualResource);
-                if (wksFolder) {
-                    args = args.map((arg) =>
-                        arg.replace(addTrailingSlash(wksFolder.uri.fsPath), "")
-                    );
-                }
-            }
-            // NOTE - actual dir override happens with -d argument
-            // TODO tidy this up
-        }
 
         if (args) {
             allArgs.push(...args);

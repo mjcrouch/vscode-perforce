@@ -170,8 +170,11 @@ export class Model implements Disposable {
         }
     }
 
-    public Login() {
-        return Display.doLoginFlow(this._workspaceUri);
+    public async Login() {
+        const ok = await Display.doLoginFlow(this._workspaceUri);
+        if (ok) {
+            await this.Refresh();
+        }
     }
 
     public Logout() {

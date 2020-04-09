@@ -301,7 +301,7 @@
             },
             {
                 "command": "perforce.logoutScm",
-                "title": "Log in to Perforce",
+                "title": "Log out of Perforce",
                 "category": "Perforce"
             },
             {

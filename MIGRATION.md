@@ -39,7 +39,6 @@ Quite a few improvements have been made to the way workspaces are detected. Most
   * If you have a `P4CONFIG` file containing the undocumented the P4DIR setting
 * The following cases should be backward compatible, but they have had to be re-implemented, so there is a risk of accidental breaking changes if I have made any implementation errors
   * If you use `perforce.activationMode: "always"`
-  * If you use the `perforce.dir` setting
   * Generally, if you use more complicated workspaces with multiple perforce client roots, a multi-root VS Code workspace or both
 
 # Potential Breaking Changes
@@ -145,13 +144,3 @@ These settings override the client, user and port on all perforce commands run w
 There may be small differences in specific cases where a command is now run from a different working directory to before, meaning that these overrides may not be used when they were before, or they may be used when they weren't before.
 
 This should still result in the correct behaviour - as we attempt to run commands in the directory that has the best chance of working - but is included here for completeness. You can check where and how commands are being applied using the perforce output log.
-
-## `perforce.dir` Setting
-
-This setting overrides the working directory (PWD) for all perforce commands run within the workspace. It also attempts to remove the workspace directory from the beginning of any file paths passed in to the perforce commands.
-
-Note: If you set this item, the extension will never scan for P4CONFIG files in the workspace, because all perforce commands will effectively be run in a single working directory, so the P4CONFIG files outside of that exact working directory cannot have any effect.
-
-This setting only has quite specific use cases, typically where the perforce client is accessed via a filesystem link within your workspace.
-
-The behaviour of this setting *should* be the same as before, but the internal handling has changed slightly to accomodate other changes. If you do have it set, and it does not work as expected, please [create an issue](https://github.com/mjcrouch/vscode-perforce/issues) so we can understand your use-case better.

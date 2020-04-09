@@ -167,10 +167,14 @@ function clientRootLog(
         foundRoot.clientName +
         "\n\tClient root: " +
         foundRoot.clientRoot.fsPath +
-        "\n\t" +
+        "\n\tUser name: " +
+        foundRoot.userName +
+        "\n\tServer address: " +
+        foundRoot.serverAddress +
+        "\n" +
         (foundRoot.isInRoot || foundRoot.isAboveRoot
-            ? "Folder IS in or above client root"
-            : "Folder IS NOT in client root - " + ignoreMsg)
+            ? "\tFolder IS in or above client root"
+            : "!!\tFolder IS NOT in client root - " + ignoreMsg)
     );
 }
 
@@ -268,7 +272,7 @@ async function findClientRootsForP4Configs(wksFolder: vscode.WorkspaceFolder) {
         .join("\n");
     logInitProgress(
         workspaceUri,
-        "Found the following roots from " +
+        "Found the following roots from the location of " +
             p4ConfigFiles.length +
             " P4CONFIG file(s):\n" +
             foundRootsStr
@@ -286,7 +290,7 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
 
     logInitProgress(
         workspaceUri,
-        "Inititalising this workspace.\n\tNote: the following overrides apply in this workspace:\n" +
+        "Trying to initialise SCM Providers in this workspace.\n\tNote: the following overrides apply in this workspace:\n" +
             getOverrideInfo(workspaceUri) +
             "\n\tExplicit overrides may prevent auto-detection of other perforce client workspaces\n" +
             "Looking for a client root using the workspace root directory"
