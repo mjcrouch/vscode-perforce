@@ -84,10 +84,6 @@ export class Model implements Disposable {
         return this._workspaceUri;
     }
 
-    private get clientName(): string | undefined {
-        return this._infos.get("Client name");
-    }
-
     public get ResourceGroups(): ResourceGroup[] {
         const result: ResourceGroup[] = [];
 
@@ -112,6 +108,7 @@ export class Model implements Disposable {
 
     public constructor(
         private _workspaceUri: vscode.Uri, // TODO better not to dupliate this with the scm provider
+        private _clientName: string,
         private _workspaceConfig: WorkspaceConfigAccessor,
         public _sourceControl: SourceControl
     ) {
@@ -201,11 +198,11 @@ export class Model implements Disposable {
     }
 
     public async RefreshPolitely() {
-        await this._refresh(true);
+        await this._refresh();
     }
 
     public async RefreshImmediately() {
-        await this.RefreshImpl(true);
+        await this.RefreshImpl();
     }
 
     /**
@@ -233,7 +230,7 @@ export class Model implements Disposable {
         return ret;
     }
 
-    private async RefreshImpl(refreshClientInfo?: boolean): Promise<void> {
+    private async RefreshImpl(): Promise<void> {
         // don't clean the changelists now - this will be done by updateStatus
         // seeing an empty scm view and waiting for it to populate makes it feel slower.
         this._refreshInProgress = true;
@@ -243,15 +240,6 @@ export class Model implements Disposable {
             return;
         }
 
-        if (!this.clientName || refreshClientInfo) {
-            await window.withProgress(
-                {
-                    location: ProgressLocation.SourceControl,
-                    title: "Updating info...",
-                },
-                () => this.updateInfo()
-            );
-        }
         await window.withProgress(
             {
                 location: ProgressLocation.SourceControl,
@@ -983,7 +971,7 @@ export class Model implements Disposable {
     private async getChanges(): Promise<ChangeInfo[]> {
         const changes = this.filterIgnoredChangelists(
             await p4.getChangelists(this._workspaceUri, {
-                client: this.clientName,
+                client: this._clientName,
                 status: p4.ChangelistStatus.PENDING,
             })
         );
