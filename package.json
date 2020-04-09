@@ -37,10 +37,42 @@
         "*"
     ],
     "contributes": {
-        "viewsWelcome": [{
-            "view": "scm",
-            "contents": "\nPerforce\nNo perforce client detected\n[Read Setup Help](https://github.com/mjcrouch/vscode-perforce#setup)\n[Check Perforce Output Logs](command:perforce.showOutput)"
-        }],
+        "viewsWelcome": [
+            {
+                "view": "scm",
+                "contents": "Perforce\nNo perforce client detected for the open folder(s)",
+                "when": "config.perforce.activationMode != off && perforce.activation.status == complete"
+            },
+            {
+                "view": "scm",
+                "contents": "Perforce\nLooking for perforce clients...",
+                "when": "config.perforce.activationMode != off && !perforce.activation.status"
+            },
+            {
+                "view": "scm",
+                "contents": "Perforce\nOpen a folder to detect perforce clients",
+                "when": "config.perforce.activationMode != off && perforce.activation.status == noworkspace"
+            },
+            {
+                "view": "scm",
+                "contents": "Perforce\nperforce.activationMode is set to `off`",
+                "when": "config.perforce.activationMode == off"
+            },
+            {
+                "view": "scm",
+                "contents": "[Check Perforce Output Logs](command:perforce.showOutput)\nFor more help:\n[Read the Perforce Setup Guide](https://github.com/mjcrouch/vscode-perforce#setup)\n"
+            },
+            {
+                "view": "scm",
+                "contents": "Note: A possible client was detected, but the workspace is not within the client root, and vice versa. [Check the output log](command:perforce.showOutput) for client names and paths",
+                "when": "perforce.activation.foundOutOfRoot"
+            },
+            {
+                "view": "scm",
+                "contents": "Note: P4CONFIG is not set in your environment, so P4CONFIG files will not be detected",
+                "when": "perforce.activation.noP4Config"
+            }
+        ],
         "configuration": {
             "type": "object",
             "title": "VS Code Perforce Configuration",

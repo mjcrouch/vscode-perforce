@@ -60,6 +60,10 @@ async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> 
     return undefined;
 }
 
+function setActivationContext(key: string, reason: string | boolean) {
+    vscode.commands.executeCommand("setContext", "perforce.activation." + key, reason);
+}
+
 function isInClientRoot(testFile: vscode.Uri, rootFsPath: string) {
     const wksRootN = Utils.normalize(testFile.fsPath);
     return wksRootN.startsWith(rootFsPath);
@@ -84,6 +88,7 @@ async function findP4ConfigFiles(
     );
 
     if (noConfig) {
+        setActivationContext("noP4Config", true);
         logInitProgress(
             workspaceUri,
             "Did NOT find a valid P4CONFIG setting.\n" +
@@ -343,6 +348,9 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
         "    * you may need to set or unset them appropriately";
 
     if (filteredRoots.length < 1) {
+        if (allRoots.length > 0) {
+            setActivationContext("foundOutOfRoot", true);
+        }
         if (shouldAlwaysActivate) {
             if (workspaceClientRoot) {
                 logInitProgress(
@@ -368,10 +376,19 @@ async function initWorkspace(wksFolder: vscode.WorkspaceFolder) {
                 workspaceUri,
                 "NO valid perforce clients found in this directory.\n" + helpMsg
             );
+            if (workspaceClientRoot) {
+                logInitProgress(
+                    workspaceUri,
+                    "To FORCE activation for the client '" +
+                        workspaceClientRoot.clientName +
+                        "':\n\tset perforce.activationMode to always.\nThis should allow you to view and manage changelists in that client, but is unlikely to be useful for files in this workspace"
+                );
+            }
         }
     } else {
         initClientRoots(workspaceUri, ...filteredRoots);
     }
+    setActivationContext("status", "complete");
     // TODO
     // probably the scm provider should accumulate all dirs used to find it, so that when
     // folders are files are removed we know if we still need the scm provider
@@ -495,6 +512,7 @@ async function onDidChangeWorkspaceFolders({
             Display.channel.appendLine(
                 "No new workspaces were added - nothing to initialise"
             );
+            setActivationContext("status", "noworkspace");
         }
         for (const workspace of added) {
             await initWorkspace(workspace);
