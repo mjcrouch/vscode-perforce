@@ -8,15 +8,15 @@
 [![Dependency Status](https://img.shields.io/david/mjcrouch/vscode-perforce.svg)](https://david-dm.org/mjcrouch/vscode-perforce)
 [![Dev Dependency Status](https://img.shields.io/david/dev/mjcrouch/vscode-perforce.svg)](https://david-dm.org/mjcrouch/vscode-perforce?type=dev)  
 
-Perforce integration for Visual Studio Code
+Perforce integration for Visual Studio Code - Now with more features and fixes!
 
 This is a fork of the `slevesque.perforce` extension, published in 2020, as the original creator now appears to be inactive on GitHub.
 
-If you install this extension, please uninstall or disable `slevesque.perforce` to prevent issues with duplicate icons.
+If you install this extension, please **uninstall or disable** `slevesque.perforce` to prevent issues with duplicate icons.
 
 If you are installing for the first time, Proceed to [the setup section](#Setup) for setup instructions.
 
-If you have a working setup from the old extension, it will almost certainly continue to work. If for any reason your setup stops working after switching over, please check [the migration guide](MIGRATION.md) for more help.
+If you have a working setup from the old extension, it will almost certainly continue to work - There are some unlikely (but possible) breaking changes. If for any reason your setup stops working after switching over, please check [the migration guide](MIGRATION.md) for more help.
 
 ## What's included?
 
@@ -73,7 +73,7 @@ The fork has a variety of new features to help you manage your changes and under
 
 We've borrowed ideas from popular extensions like [GitLens](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) and... okay, mainly just GitLens, adapting them for the perforce workflow.
 
-And there's still lots of features yet to be implemented, to improve your experience, without getting in the way.
+And there's still lots of features yet to be implemented, to improve your development experience without getting in the way.
 
 ### Improved annotation view
 
