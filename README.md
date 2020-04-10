@@ -93,7 +93,11 @@ Looking at a diff or annotation? Dive in to the depot with a single click to see
 * Using swarm for reviews? click through to the swarm review
 * ... more :)
 
-![Annotation example](images/quickpick.gif)
+To open this view, ensure you have a depot revision open (if you are diffing against a local file, click the left hand editor to select the depot revision), then click on the 'commit' icon on the editor title bar:
+
+![Quick Pick example](images/quickpick.gif)
+
+Or, from an annotated file, hover over an annotation and click the three dots (...) or the changelist number in the message that pops up
 
 ### Improved diff behaviour
 
@@ -123,7 +127,7 @@ But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscod
 
 ## Requirements
 
-* Visual Studio Code v1.42
+* Visual Studio Code v1.44
 * The perforce command line client must be installed on your computer
 * Access to a perforce server
 
@@ -133,7 +137,7 @@ But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscod
 2. Launch *Code*
 3. From the command palette `ctrl+shift+p` (Windows, Linux) or `cmd+shift+p` (OS X)
 4. Select `Install Extensions`
-5. Choose the extension `Perforce for VS Code` by `mjcrouch`
+5. Search for the extension `Perforce for VS Code` by `mjcrouch` (**not** by slevesque)
 6. Reload *Visual Studio Code*
 
 Or [visit us on the marketplace](https://marketplace.visualstudio.com/items/mjcrouch.perforce)
