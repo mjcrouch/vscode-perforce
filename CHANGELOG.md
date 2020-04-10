@@ -1,6 +1,6 @@
 # Change log
 
-## [4.0.0] - 2020-04
+## [4.0.0] - 2020-04-10
 
 **Possible breaking changes in this release!** - this is the main reason for the major version update to v4. The possible breaking changes are mainly around the use of P4CONFIG files.
 
