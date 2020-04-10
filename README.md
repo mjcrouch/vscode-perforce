@@ -12,7 +12,7 @@ Perforce integration for Visual Studio Code - Now with more features and fixes!
 
 This is a fork of the `slevesque.perforce` extension, published in 2020, as the original creator now appears to be inactive on GitHub.
 
-If you install this extension, please **uninstall or disable** `slevesque.perforce` to prevent issues with duplicate icons.
+If you install this extension, please **uninstall or disable** `slevesque.perforce` to prevent issues with duplicate icons and failed commands.
 
 If you are installing for the first time, Proceed to [the setup section](#Setup) for setup instructions.
 
