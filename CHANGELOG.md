@@ -8,14 +8,14 @@ To mitigate this, the perforce output log has been improved with much more detai
 
 ### Activation Changes (#41)
 
-Initialisation of the SCM provider view has been mostly rewritten! Now, we rely more on perforce itself to tell us about your perforce client workspace, instead of building unecessary logic into the extension. This change was really needed - it resolves some common problems with finding your perforce client, and provides a base for future improvements.
+Initialisation of the SCM provider view has been mostly rewritten! Now, we rely more on perforce itself to tell us about your perforce client workspace, instead of building unnecessary logic into the extension. This change was really important - it resolves some common problems with finding your perforce client, and provides a better base for future improvements.
 
 However, this comes with a couple of small trade-offs:
 
-* **Breaking Change**: If your `P4CONFIG` environment setting is unset, but you previously used a `.p4config` file for your workspace, this file will no longer be detected. The extension should warn you on startup if this is the case and it is easy to work around by setting `P4CONFIG` to the correct value
+* **Breaking Change**: If your `P4CONFIG` variable is unset, but you previously used a `.p4config` file for your workspace, this SCM provider will no longer be created. The extension should warn you on startup if this is the case. If this occurs, it is easy to resolve by setting your perforce `P4CONFIG` variable to `.p4config` and restarting VS Code
 * **Removes support** for an undocumented feature, where `P4DIR` could be added to a p4config file as an instruction to the extension
 
-Otherwise, this version *should* be backward compatible. The following changes have been made in the activation area:
+Otherwise, this version *should* be backward compatible. The following changes have been made in the area of activation:
 
 * Support multiple P4CONFIG files in a single workspace, allowing you to work across multiple perforce client workspaces from a single VS Code folder
 * Properly support variable expansions such as `$home` in P4CONFIG files, e.g. as seen in the default 'personal' server setup
@@ -39,7 +39,7 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * You can also reach the new quick pick in annotation mode, from the hover message for a change
   * More ways are coming soon, after VS Code's timeline view is finalised!
 * We now use VS Code's built in 'codicons' for almost all icons. This provides a more consistent style with the editor. (further context menu improvements will be coming when context menu support is improved in a later VS code release)
-* Automatically refresh the SCM provider view when the user logs on
+* Automatically refresh the SCM provider view when the user logs on - saves a click!
 * Fix an issue where, when there were multiple SCM providers with different users or servers, the "login" command logged you in to the server for the editor file you had open, not the server you chose
 * The minimum VS Code version is now 1.44.0
 
