@@ -34,7 +34,7 @@ export class ConfigAccessor {
             if (val.startsWith("hide changelists")) {
                 return HideNonWorkspace.HIDE_CHANGELISTS;
             }
-            if (val.startsWith("hide all")) {
+            if (val.startsWith("show all changelists")) {
                 return HideNonWorkspace.HIDE_FILES;
             }
         }
