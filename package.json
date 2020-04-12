@@ -222,9 +222,14 @@
                     "description": "Specifies the prefix of the changelists to be ignored."
                 },
                 "perforce.hideNonWorkspaceFiles": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Don't show files that are not in the current opened workspace. Default changelist only submits files that are opened in current workspace.  Warning: If you submit other changelists than the default it will submit files that are not visible."
+                    "type": "string",
+                    "enum": [
+                        "show all files",
+                        "hide changelists that contain ONLY non-workspace files",
+                        "hide all non-workspace files, but show the changelists containing them (see WARNING)"
+                    ],
+                    "default": "show all files",
+                    "description": "Controls whether to show files that are not in the current opened workspace. WARNING: If you select `hide all non-workspace files`, and submit changelists other than the default, it will submit files that are not visible! It is recommeded to hide changelists instead"
                 },
                 "perforce.hideShelvedFiles": {
                     "type": "boolean",
