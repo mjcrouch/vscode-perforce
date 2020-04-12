@@ -92,19 +92,7 @@ export class Model implements Disposable {
             result.push(this._defaultGroup);
         }
 
-        this._pendingGroups.forEach((value) => {
-            const config = workspace.getConfiguration("perforce");
-            if (
-                config.get<boolean>("hideEmptyChangelists") &&
-                value.group.resourceStates.length === 0
-            ) {
-                value.group.dispose();
-            } else {
-                result.push(value.group);
-            }
-        });
-
-        return result;
+        return result.concat([...this._pendingGroups.values()].map((v) => v.group));
     }
 
     public constructor(
@@ -954,6 +942,12 @@ export class Model implements Disposable {
                 const resourceStates = resources.filter(
                     (resource) => resource.change === c.chnum.toString()
                 );
+                if (
+                    this._workspaceConfig.hideEmptyChangelists &&
+                    resourceStates.length < 1
+                ) {
+                    return;
+                }
                 if (
                     this._workspaceConfig.hideNonWorkspaceFiles ===
                     HideNonWorkspace.HIDE_CHANGELISTS

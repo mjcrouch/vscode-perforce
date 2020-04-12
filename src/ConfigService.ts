@@ -41,6 +41,10 @@ export class ConfigAccessor {
         return HideNonWorkspace.SHOW_ALL;
     }
 
+    public get hideEmptyChangelists(): boolean {
+        return this.getConfigItem("hideEmptyChangelists") ?? false;
+    }
+
     public get hideShelvedFiles(): boolean {
         return this.getConfigItem("hideShelvedFiles") ?? false;
     }
