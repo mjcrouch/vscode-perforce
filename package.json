@@ -91,7 +91,7 @@
                 },
                 "perforce.activationMode": {
                     "type": "string",
-                    "description": "Controls when to activate the extension. Requires a restart to take effect",
+                    "description": "Controls when to activate the SCM Provider and P4 status bar icon. Requires a restart to take effect",
                     "enum": [
                         "always",
                         "autodetect",
@@ -106,12 +106,12 @@
                 },
                 "perforce.scm.activateOnFileOpen": {
                     "type": "boolean",
-                    "description": "Controls whether the extension attempts to create an SCM provider each time a file outside of a known perforce client workspace is opened.",
+                    "description": "Controls whether the extension attempts to create an SCM provider each time a file outside of a known perforce client workspace is opened",
                     "default": "true"
                 },
                 "perforce.scm.deactivateOnFileClose": {
                     "type": "boolean",
-                    "description": "Controls whether an SCM provider is de-activated when there are no more related files or folders open in the editor.",
+                    "description": "Controls whether an SCM provider is de-activated when there are no more related files or folders open in the editor",
                     "default": "true"
                 },
                 "perforce.editOnFileSave": {
