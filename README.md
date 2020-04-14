@@ -114,6 +114,7 @@ Internally, almost every feature has been refactored, rewritten or touched in so
 
 This fork fixes many issues from the original extension and adds a variety of other new features. A few more examples:
 
+* Automatically creates an SCM provider to manage changelists when you open a file from a different perforce client
 * Adds support for attaching jobs to changelists
 * Improved support for shelved files & changelists
 * Supports multiple P4CONFIG files in the same workspace
