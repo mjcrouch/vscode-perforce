@@ -17,6 +17,7 @@ import * as ContextVars from "./ContextVars";
 import * as QuickPicks from "./quickPick/QuickPicks";
 import * as p4 from "./api/PerforceApi";
 import { isTruthy } from "./TsUtils";
+import { registerChangelistSearch } from "./search/ChangelistTreeView";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
@@ -207,6 +208,7 @@ function getOverrideInfo(workspaceUri: vscode.Uri) {
 }
 
 function initClientRoot(workspaceUri: vscode.Uri, client: ClientRoot): boolean {
+    setActivationContext("hasScmProvider", true);
     const existing = PerforceSCMProvider.GetInstanceByClient(client);
     if (existing) {
         logInitProgress(
@@ -488,6 +490,7 @@ function doOneTimeRegistration() {
         // todo: fix dependency / order of operations issues
         PerforceCommands.registerCommands();
         PerforceSCMProvider.registerCommands();
+        registerChangelistSearch();
     }
 }
 
@@ -566,6 +569,16 @@ function onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
     }
 }
 
+function disposeInstancesWithoutContributors() {
+    const removedScms = PerforceSCMProvider.disposeInstancesWithoutContributors();
+
+    if (PerforceSCMProvider.instanceCount < 1) {
+        setActivationContext("hasScmProvider", false);
+    }
+
+    return removedScms;
+}
+
 async function onDidChangeWorkspaceFolders(
     event: vscode.WorkspaceFoldersChangeEvent
 ): Promise<void> {
@@ -598,7 +611,8 @@ async function onDidChangeWorkspaceFolders(
             for (const workspace of removed) {
                 removeWorkspace(workspace);
             }
-            const removedScms = PerforceSCMProvider.disposeInstancesWithoutContributors();
+
+            const removedScms = disposeInstancesWithoutContributors();
 
             Display.channel.appendLine(
                 "\t>>> Removed " +

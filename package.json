@@ -288,6 +288,16 @@
                 }
             }
         },
+        "views": {
+            "scm": [
+                {
+                    "id": "perforce.searchChangelists",
+                    "name": "Search Changelists",
+                    "when": "perforce.activation.hasScmProvider"
+                }
+            ]
+        }
+        ,
         "commands": [
             {
                 "command": "perforce.menuFunctions",

@@ -10,6 +10,7 @@ import {
     workspace,
     TextDocument,
     env,
+    EventEmitter,
 } from "vscode";
 import { Model, ResourceGroup } from "./scm/Model";
 import { Resource } from "./scm/Resource";
@@ -62,6 +63,19 @@ export class PerforceSCMProvider {
 
     get onDidChange(): Event<this> {
         return mapEvent(this._model.onDidChange, () => this);
+    }
+
+    public get clientRoot() {
+        return this._clientRoot;
+    }
+
+    public static get clientRoots() {
+        return this.instances.map((i) => i.clientRoot);
+    }
+
+    private static _onDidChangeScmProviders = new EventEmitter<void>();
+    public static get onDidChangeScmProviders() {
+        return this._onDidChangeScmProviders.event;
     }
 
     public get resources(): ResourceGroup[] {
@@ -129,6 +143,7 @@ export class PerforceSCMProvider {
         this.disposables.push(this._model, sourceControl);
 
         PerforceSCMProvider.instances.push(this);
+        PerforceSCMProvider._onDidChangeScmProviders.fire();
         this._model._sourceControl.quickDiffProvider = this;
         this._model._sourceControl.acceptInputCommand = {
             command: "perforce.processChangelist",
@@ -238,7 +253,14 @@ export class PerforceSCMProvider {
         this.instances = this.instances.filter((instance) => instance.hasContributors());
 
         removed.forEach((r) => r.dispose());
+        if (removed.length > 0) {
+            this._onDidChangeScmProviders.fire();
+        }
         return removed;
+    }
+
+    public static get instanceCount() {
+        return this.instances.length;
     }
 
     public static registerCommands() {
