@@ -13,7 +13,7 @@ import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
-import { isTruthy, pluralise } from "../TsUtils";
+import { isTruthy, pluralise, isPositiveOrZero } from "../TsUtils";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem {
     private _selectedClient?: ClientRoot;
@@ -99,12 +99,16 @@ class GoToChangelist extends SelfExpandingTreeItem {
             );
             throw new Error("No context for changelist search");
         }
+
+        const clipValue = await vscode.env.clipboard.readText();
+        const value = isPositiveOrZero(clipValue) ? clipValue : undefined;
+
         const chnum = await vscode.window.showInputBox({
             placeHolder: "Changelist number",
             prompt: "Enter a changelist number",
+            value,
             validateInput: (value) => {
-                const num = parseInt(value);
-                if (isNaN(num) || num < 0) {
+                if (!isPositiveOrZero(value)) {
                     return "must be a positive number";
                 }
             },

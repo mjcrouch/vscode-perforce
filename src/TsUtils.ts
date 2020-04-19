@@ -34,3 +34,8 @@ export function parseDate(dateString: string) {
 export function pluralise(num: number, word: string) {
     return num + " " + (num === 1 ? word : word + "s");
 }
+
+export function isPositiveOrZero(str: string) {
+    const num = parseInt(str);
+    return !isNaN(num) && num >= 0;
+}
