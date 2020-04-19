@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ClientRoot } from "../extension";
 
-export class ProviderSelection {
+export class ProviderSelection implements vscode.Disposable {
     private _selectedProvider?: ClientRoot;
     private _onDidChangeProvider: vscode.EventEmitter<ClientRoot | undefined>;
 
@@ -16,6 +16,10 @@ export class ProviderSelection {
 
     get onDidChangeProvider() {
         return this._onDidChangeProvider.event;
+    }
+
+    dispose() {
+        this._onDidChangeProvider.dispose();
     }
 
     constructor() {

@@ -297,6 +297,7 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot {
     constructor() {
         super();
         this._providerSelection = new ProviderSelection();
+        this._subscriptions.push(this._providerSelection);
         this._chooseProvider = new ChooseProviderTreeItem(this._providerSelection);
         this._filterRoot = new FilterRootItem(this._providerSelection);
         this._allResults = new AllResultsTree();
