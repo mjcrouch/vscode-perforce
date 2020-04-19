@@ -547,6 +547,30 @@
                 "title": "Open changelist in review tool",
                 "category": "Perforce",
                 "icon": "$(eye)"
+            },
+            {
+                "command": "perforce.changeSearch.pin",
+                "title": "Pin results",
+                "category": "Perforce",
+                "icon": "$(pin)"
+            },
+            {
+                "command": "perforce.changeSearch.unpin",
+                "title": "Unpin results",
+                "category": "Perforce",
+                "icon": "$(pinned)"
+            },
+            {
+                "command": "perforce.changeSearch.delete",
+                "title": "Delete results",
+                "category": "Perforce",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "perforce.changeSearch.showInQuickPick",
+                "title": "Show in quick pick",
+                "category": "Perforce",
+                "icon": "$(link-external)"
             }
         ],
         "menus": {
@@ -645,6 +669,22 @@
                 },
                 {
                     "command": "perforce.openReviewTool",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.pin",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.unpin",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.delete",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.showInQuickPick",
                     "when": "0"
                 }
             ],
@@ -874,6 +914,28 @@
                     "command": "perforce.diffNext",
                     "group": "perforce@2",
                     "when": "perforce.currentFile.showDiffNext"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "perforce.changeSearch.pin",
+                    "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == results-unpinned"
+                },
+                {
+                    "command": "perforce.changeSearch.unpin",
+                    "group": "inline@2",
+                    "when": "view == perforce.searchChangelists && viewItem == results-pinned"
+                },
+                {
+                    "command": "perforce.changeSearch.delete",
+                    "group": "inline@3",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
+                },
+                {
+                    "command": "perforce.changeSearch.showInQuickPick",
+                    "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
                 }
             ]
         },

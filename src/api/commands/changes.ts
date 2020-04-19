@@ -1,5 +1,5 @@
 import { flagMapper, makeSimpleCommand, asyncOuputHandler } from "../CommandUtils";
-import { ChangeInfo } from "../CommonTypes";
+import { ChangeInfo, PerforceFile } from "../CommonTypes";
 import { isTruthy } from "../../TsUtils";
 
 export enum ChangelistStatus {
@@ -11,14 +11,22 @@ export enum ChangelistStatus {
 export interface ChangesOptions {
     client?: string;
     status?: ChangelistStatus;
+    user?: string;
+    maxChangelists?: number;
+    files?: PerforceFile;
 }
 
 const changes = makeSimpleCommand(
     "changes",
-    flagMapper<ChangesOptions>([
-        ["c", "client"],
-        ["s", "status"],
-    ])
+    flagMapper<ChangesOptions>(
+        [
+            ["c", "client"],
+            ["s", "status"],
+            ["u", "user"],
+            ["m", "maxChangelists"],
+        ],
+        "files"
+    )
 );
 
 function parseChangelistDescription(value: string): ChangeInfo | undefined {

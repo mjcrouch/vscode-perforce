@@ -2,10 +2,11 @@ import * as vscode from "vscode";
 import { ClientRoot } from "../extension";
 import { SelfExpandingTreeItem } from "../TreeView";
 import { isTruthy } from "../TsUtils";
+import { ChangelistStatus } from "../api/PerforceApi";
 
-type SearchFilterValue = {
+type SearchFilterValue<T> = {
     label: string;
-    value?: string;
+    value?: T;
 };
 
 type SearchFilter = {
@@ -14,10 +15,16 @@ type SearchFilter = {
     defaultText: string;
 };
 
-type PickWithValue = vscode.QuickPickItem & { value?: SearchFilterValue };
+export type Filters = {
+    user?: string;
+    client?: string;
+    status?: ChangelistStatus;
+};
 
-export abstract class FilterItem extends SelfExpandingTreeItem {
-    private _selected?: SearchFilterValue;
+type PickWithValue<T> = vscode.QuickPickItem & { value?: SearchFilterValue<T> };
+
+export abstract class FilterItem<T> extends SelfExpandingTreeItem {
+    private _selected?: SearchFilterValue<T>;
     private _client?: ClientRoot;
 
     protected get client() {
@@ -37,7 +44,7 @@ export abstract class FilterItem extends SelfExpandingTreeItem {
         };
     }
 
-    private setValue(value?: SearchFilterValue) {
+    private setValue(value?: SearchFilterValue<T>) {
         this._selected = value;
         if (value && value.value !== undefined) {
             this.description = this._selected?.label;
@@ -58,7 +65,7 @@ export abstract class FilterItem extends SelfExpandingTreeItem {
      * Prompt the user for a value and return the result
      * Return undefined for cancellation. Return a SearchFilterValue with an undefined value to clear
      */
-    abstract chooseValue(): Promise<SearchFilterValue | undefined>;
+    abstract chooseValue(): Promise<SearchFilterValue<T> | undefined>;
     changeProvider(client?: ClientRoot): void {
         this._client = client;
         this.onDidChangeProvider();
@@ -75,7 +82,7 @@ export abstract class FilterItem extends SelfExpandingTreeItem {
         return this._filter.placeHolder;
     }
 }
-class StatusFilter extends FilterItem {
+class StatusFilter extends FilterItem<ChangelistStatus> {
     constructor() {
         super({
             name: "Status",
@@ -85,13 +92,13 @@ class StatusFilter extends FilterItem {
     }
 
     async chooseValue() {
-        const items: PickWithValue[] = [
+        const items: PickWithValue<ChangelistStatus>[] = [
             {
                 label: "$(tools) Pending",
                 description: "Search for pending changelists",
                 value: {
                     label: "pending",
-                    value: "pending",
+                    value: ChangelistStatus.PENDING,
                 },
             },
             {
@@ -99,7 +106,7 @@ class StatusFilter extends FilterItem {
                 description: "Search for submitted changelists",
                 value: {
                     label: "submitted",
-                    value: "submitted",
+                    value: ChangelistStatus.SUBMITTED,
                 },
             },
             {
@@ -107,7 +114,7 @@ class StatusFilter extends FilterItem {
                 description: "Search for shelved changelists",
                 value: {
                     label: "shelved",
-                    value: "shelved",
+                    value: ChangelistStatus.SHELVED,
                 },
             },
             {
@@ -129,7 +136,7 @@ class StatusFilter extends FilterItem {
 async function showFilterTextInput(
     placeHolder: string,
     currentValue?: string
-): Promise<SearchFilterValue | undefined> {
+): Promise<SearchFilterValue<string> | undefined> {
     const value = await vscode.window.showInputBox({
         prompt: placeHolder,
         value: currentValue,
@@ -144,29 +151,30 @@ async function showFilterTextInput(
     };
 }
 
-async function pickFromProviderOrCustom(
+async function pickFromProviderOrCustom<T>(
     placeHolder: string,
     currentValue: string | undefined,
     client: ClientRoot | undefined,
-    clientValue: string | undefined,
-    readableKey: string
+    clientValue: T | undefined,
+    readableKey: string,
+    readableValue: string | undefined
 ) {
-    const current: PickWithValue | undefined =
+    const current: PickWithValue<T> | undefined =
         client && clientValue !== undefined
             ? {
                   label: "$(person) Current " + readableKey,
-                  description: clientValue,
+                  description: readableValue,
                   value: {
-                      label: clientValue,
+                      label: readableValue ?? "",
                       value: clientValue,
                   },
               }
             : undefined;
-    const custom: PickWithValue = {
+    const custom: PickWithValue<T> = {
         label: "$(edit) Enter a " + readableKey + "...",
         description: "Filter by a different " + readableKey,
     };
-    const items: PickWithValue[] = [
+    const items: PickWithValue<T>[] = [
         current,
         custom,
         {
@@ -187,7 +195,7 @@ async function pickFromProviderOrCustom(
     return chosen?.value;
 }
 
-class UserFilter extends FilterItem {
+class UserFilter extends FilterItem<string> {
     constructor() {
         super({
             name: "User",
@@ -196,18 +204,19 @@ class UserFilter extends FilterItem {
         });
     }
 
-    public async chooseValue(): Promise<SearchFilterValue | undefined> {
+    public async chooseValue(): Promise<SearchFilterValue<string> | undefined> {
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
             this.client,
             this.client?.userName,
-            "user"
+            "user",
+            this.client?.userName
         );
     }
 }
 
-class ClientFilter extends FilterItem {
+class ClientFilter extends FilterItem<string> {
     constructor() {
         super({
             name: "Client",
@@ -216,13 +225,14 @@ class ClientFilter extends FilterItem {
         });
     }
 
-    public async chooseValue(): Promise<SearchFilterValue | undefined> {
+    public async chooseValue(): Promise<SearchFilterValue<string> | undefined> {
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
             this.client,
             this.client?.clientName,
-            "perforce client"
+            "perforce client",
+            this.client?.clientName
         );
     }
 }
@@ -230,10 +240,12 @@ class ClientFilter extends FilterItem {
 export class FilterRootItem extends SelfExpandingTreeItem {
     private _userFilter: UserFilter;
     private _clientFilter: ClientFilter;
+    private _statusFilter: StatusFilter;
 
     constructor(private _client: ClientRoot | undefined) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
-        this.addChild(new StatusFilter());
+        this._statusFilter = new StatusFilter();
+        this.addChild(this._statusFilter);
         this._userFilter = new UserFilter();
         this.addChild(this._userFilter);
         this._clientFilter = new ClientFilter();
@@ -248,5 +260,13 @@ export class FilterRootItem extends SelfExpandingTreeItem {
             this._userFilter.changeProvider(client);
             this._clientFilter.changeProvider(client);
         }
+    }
+
+    public get currentFilters(): Filters {
+        return {
+            status: this._statusFilter.value,
+            client: this._clientFilter.value,
+            user: this._userFilter.value,
+        };
     }
 }

@@ -18,7 +18,10 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         chnum: string
     ): Promise<qp.ActionableQuickPick> => {
         const resource = qp.asUri(resourceOrStr);
-        const changes = await p4.describe(resource, { chnums: [chnum], omitDiffs: true });
+        const changes = await p4.describe(resource, {
+            chnums: [chnum],
+            omitDiffs: true,
+        });
 
         if (changes.length < 1) {
             Display.showImportantError("Unable to find change details");
@@ -26,10 +29,21 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         }
 
         const change = changes[0];
-        const actions = makeSwarmPick(changes[0]).concat(
-            makeClipboardPicks(resource, changes[0]),
-            makeJobPicks(resource, changes[0]),
-            makeFilePicks(resource, change)
+
+        const shelvedChanges = change.isPending
+            ? await p4.describe(resource, {
+                  omitDiffs: true,
+                  shelved: true,
+                  chnums: [chnum],
+              })
+            : [];
+
+        const shelvedChange = shelvedChanges[0];
+        const actions = makeSwarmPick(change).concat(
+            makeClipboardPicks(resource, change),
+            makeJobPicks(resource, change),
+            makeFilePicks(resource, change),
+            makeShelvedFilePicks(resource, shelvedChange)
         );
 
         return {
@@ -136,6 +150,40 @@ function makeFilePicks(
         },
     ].concat(
         change.affectedFiles.map<qp.ActionableQuickPickItem>((file) => {
+            return {
+                label:
+                    nbsp.repeat(3) +
+                    getOperationIcon(file.operation) +
+                    " " +
+                    file.depotPath +
+                    "#" +
+                    file.revision,
+                performAction: () => {
+                    const thisUri = PerforceUri.fromDepotPath(
+                        PerforceUri.getUsableWorkspace(uri) ?? uri,
+                        file.depotPath,
+                        file.revision
+                    );
+                    showQuickPickForFile(thisUri);
+                },
+            };
+        })
+    );
+}
+
+function makeShelvedFilePicks(
+    uri: vscode.Uri,
+    change?: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    if (!change || change.shelvedFiles.length < 1) {
+        return [];
+    }
+    return [
+        {
+            label: "Shelved files: " + change.shelvedFiles.length,
+        },
+    ].concat(
+        change.shelvedFiles.map<qp.ActionableQuickPickItem>((file) => {
             return {
                 label:
                     nbsp.repeat(3) +

@@ -30,3 +30,7 @@ export function parseDate(dateString: string) {
         );
     }
 }
+
+export function pluralise(num: number, word: string) {
+    return num + " " + (num === 1 ? word : word + "s");
+}

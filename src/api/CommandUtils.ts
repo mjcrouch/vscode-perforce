@@ -80,15 +80,20 @@ export function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined
 
 export type CmdlineArgs = (string | undefined)[];
 
-function makeFlag(flag: string, value: string | boolean | undefined): CmdlineArgs {
+function makeFlag(
+    flag: string,
+    value: string | boolean | number | undefined
+): CmdlineArgs {
     if (typeof value === "string") {
         return value ? ["-" + flag, value] : [];
+    } else if (typeof value === "number") {
+        return value ? ["-" + flag, value.toString()] : [];
     }
     return value ? ["-" + flag] : [];
 }
 
 export function makeFlags(
-    pairs: [string, string | boolean | undefined][],
+    pairs: [string, string | boolean | number | undefined][],
     lastArgs?: (string | undefined)[]
 ): CmdlineArgs {
     return pairs
@@ -96,7 +101,14 @@ export function makeFlags(
         .concat(...(lastArgs ?? []));
 }
 
-type FlagValue = string | boolean | PerforceFile | PerforceFile[] | string[] | undefined;
+type FlagValue =
+    | string
+    | boolean
+    | PerforceFile
+    | number
+    | PerforceFile[]
+    | string[]
+    | undefined;
 type FlagDefinition<T> = {
     [key in keyof T]: FlagValue;
 };
@@ -110,6 +122,9 @@ function lastArgAsStrings(
     }
     if (typeof lastArg === "string") {
         return [lastArg];
+    }
+    if (typeof lastArg === "number") {
+        return [lastArg.toString()];
     }
     if (isFileSpec(lastArg)) {
         return [fileSpecToArg(lastArg, options?.ignoreRevisionFragments)];
@@ -143,7 +158,10 @@ export function flagMapper<P extends FlagDefinition<P>>(
         return (fixedPrefix ?? []).concat(
             makeFlags(
                 flagNames.map((fn) => {
-                    return [fn[0], params[fn[1]] as string | boolean | undefined];
+                    return [
+                        fn[0],
+                        params[fn[1]] as string | boolean | number | undefined,
+                    ];
                 }),
                 lastArg
                     ? lastArgAsStrings(params[lastArg] as FlagValue, options)

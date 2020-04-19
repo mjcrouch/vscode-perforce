@@ -1,5 +1,9 @@
 import * as vscode from "vscode";
 
+export interface TreeNodeOptions {
+    reverseChildren?: boolean;
+}
+
 export abstract class SelfExpandingTreeItem extends vscode.TreeItem
     implements vscode.Disposable {
     protected _subscriptions: vscode.Disposable[];
@@ -19,7 +23,11 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
         this._onChanged.fire();
     }
 
-    constructor(label: string, collapsibleState?: vscode.TreeItemCollapsibleState) {
+    constructor(
+        label: string,
+        collapsibleState?: vscode.TreeItemCollapsibleState,
+        private _options?: TreeNodeOptions
+    ) {
         super(label, collapsibleState);
         this._onDisposed = new vscode.EventEmitter();
         this._onChanged = new vscode.EventEmitter();
@@ -47,7 +55,7 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
         for (const child of this._children.values()) {
             ret.push(child);
         }
-        return ret;
+        return this._options?.reverseChildren ? ret.reverse() : ret;
     }
 
     dispose() {
