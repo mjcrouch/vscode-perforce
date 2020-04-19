@@ -20,11 +20,10 @@ import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
 import { isTruthy, pluralise, isPositiveOrZero } from "../TsUtils";
+import { ProviderSelection } from "./ProviderSelection";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem {
-    private _selectedClient?: ClientRoot;
-
-    constructor() {
+    constructor(private _providerSelection: ProviderSelection) {
         super("Context:", vscode.TreeItemCollapsibleState.None);
 
         this._subscriptions.push(
@@ -37,11 +36,11 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
     }
 
     get selectedClient() {
-        return this._selectedClient;
+        return this._providerSelection.client;
     }
 
     private setClient(client?: ClientRoot) {
-        this._selectedClient = client;
+        this._providerSelection.client = client;
         if (client) {
             this.description = client.clientName + " / " + client.userName;
         } else {
@@ -51,12 +50,16 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
 
     private onDidChangeScmProviders() {
         if (
-            !this._selectedClient ||
-            !PerforceSCMProvider.GetInstanceByClient(this._selectedClient)
+            !this.selectedClient ||
+            !PerforceSCMProvider.GetInstanceByClient(this.selectedClient)
         ) {
             this.setClient(PerforceSCMProvider.clientRoots[0]);
             this.didChange();
         }
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon("account");
     }
 
     public get command(): vscode.Command {
@@ -83,7 +86,7 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
             placeHolder: "Choose a perforce instance to use as context for the search",
         });
 
-        if (chosen && chosen.client !== this._selectedClient) {
+        if (chosen && chosen.client !== this.selectedClient) {
             this.setClient(chosen.client);
             this.didChange();
         }
@@ -130,6 +133,10 @@ class GoToChangelist extends SelfExpandingTreeItem {
             arguments: [this],
             title: "Go to changelist",
         };
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon("rocket");
     }
 }
 
@@ -285,15 +292,13 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot {
     private _chooseProvider: ChooseProviderTreeItem;
     private _filterRoot: FilterRootItem;
     private _allResults: AllResultsTree;
+    private _providerSelection: ProviderSelection;
+
     constructor() {
         super();
-        this._chooseProvider = new ChooseProviderTreeItem();
-        this._filterRoot = new FilterRootItem(this._chooseProvider.selectedClient);
-        this._subscriptions.push(
-            this._chooseProvider.onChanged(() =>
-                this._filterRoot.onDidChangeProvider(this._chooseProvider.selectedClient)
-            )
-        );
+        this._providerSelection = new ProviderSelection();
+        this._chooseProvider = new ChooseProviderTreeItem(this._providerSelection);
+        this._filterRoot = new FilterRootItem(this._providerSelection);
         this._allResults = new AllResultsTree();
         this.addChild(this._chooseProvider);
         this.addChild(new GoToChangelist(this._chooseProvider));

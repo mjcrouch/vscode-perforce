@@ -6,7 +6,7 @@ import { ChangelistStatus } from "../api/PerforceApi";
 import { PerforceFile } from "../api/CommonTypes";
 import * as PerforceUri from "../PerforceUri";
 import * as Path from "path";
-import { pathToFileURL } from "url";
+import { ProviderSelection } from "./ProviderSelection";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -30,11 +30,6 @@ type PickWithValue<T> = vscode.QuickPickItem & { value?: T };
 
 export abstract class FilterItem<T> extends SelfExpandingTreeItem {
     private _selected?: SearchFilterValue<T>;
-    private _client?: ClientRoot;
-
-    protected get client() {
-        return this._client;
-    }
 
     constructor(protected readonly _filter: SearchFilter) {
         super(_filter.name + ":", vscode.TreeItemCollapsibleState.None);
@@ -71,13 +66,6 @@ export abstract class FilterItem<T> extends SelfExpandingTreeItem {
      * Return undefined for cancellation. Return a SearchFilterValue with an undefined value to clear
      */
     abstract chooseValue(): Promise<SearchFilterValue<T> | undefined>;
-    changeProvider(client?: ClientRoot): void {
-        this._client = client;
-        this.onDidChangeProvider();
-    }
-    protected onDidChangeProvider(_client?: ClientRoot) {
-        //
-    }
 
     get value() {
         return this._selected?.value;
@@ -201,7 +189,7 @@ async function pickFromProviderOrCustom<T>(
 }
 
 class UserFilter extends FilterItem<string> {
-    constructor() {
+    constructor(private _provider: ProviderSelection) {
         super({
             name: "User",
             placeHolder: "Filter by username",
@@ -213,16 +201,16 @@ class UserFilter extends FilterItem<string> {
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
-            this.client,
-            this.client?.userName,
+            this._provider.client,
+            this._provider.client?.userName,
             "user",
-            this.client?.userName
+            this._provider.client?.userName
         );
     }
 }
 
 class ClientFilter extends FilterItem<string> {
-    constructor() {
+    constructor(private _provider: ProviderSelection) {
         super({
             name: "Client",
             placeHolder: "Filter by perforce client",
@@ -234,10 +222,10 @@ class ClientFilter extends FilterItem<string> {
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
-            this.client,
-            this.client?.clientName,
+            this._provider.client,
+            this._provider.client?.clientName,
             "perforce client",
-            this.client?.clientName
+            this._provider.client?.clientName
         );
     }
 }
@@ -283,7 +271,7 @@ class FileFilterAdd extends SelfExpandingTreeItem {
 }
 
 export class FileFilterRoot extends SelfExpandingTreeItem {
-    constructor(private _client?: ClientRoot) {
+    constructor(private _provider: ProviderSelection) {
         super("Files", vscode.TreeItemCollapsibleState.Expanded, {
             reverseChildren: true,
         });
@@ -322,14 +310,14 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
     }
 
     private getClientRootPath() {
-        return this._client?.clientRoot.fsPath
-            ? Path.join(this._client.clientRoot.fsPath, "...")
+        return this._provider.client?.clientRoot.fsPath
+            ? Path.join(this._provider.client.clientRoot.fsPath, "...")
             : undefined;
     }
 
     private getClientConfigSourcePath() {
-        return this._client?.configSource.fsPath
-            ? Path.join(this._client.configSource.fsPath, "...")
+        return this._provider.client?.configSource.fsPath
+            ? Path.join(this._provider.client.configSource.fsPath, "...")
             : undefined;
     }
 
@@ -418,10 +406,6 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
         }
     }
 
-    changeProvider(client?: ClientRoot): void {
-        this._client = client;
-    }
-
     get value(): string[] {
         return this.getChildren()
             .filter((child) => child.contextValue === "fileFilter")
@@ -436,27 +420,18 @@ export class FilterRootItem extends SelfExpandingTreeItem {
     private _statusFilter: StatusFilter;
     private _fileFilter: FileFilterRoot;
 
-    constructor(private _client: ClientRoot | undefined) {
+    constructor(private _provider: ProviderSelection) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
         this._statusFilter = new StatusFilter();
         this.addChild(this._statusFilter);
-        this._userFilter = new UserFilter();
+        this._userFilter = new UserFilter(_provider);
         this.addChild(this._userFilter);
-        this._clientFilter = new ClientFilter();
+        this._clientFilter = new ClientFilter(_provider);
         this.addChild(this._clientFilter);
-        this._fileFilter = new FileFilterRoot(this._client);
+        this._fileFilter = new FileFilterRoot(_provider);
         this.addChild(this._fileFilter);
         //this.addChild(new FilterItem("User"));
         //this.addChild(new FilterItem("Paths"));
-    }
-
-    onDidChangeProvider(client?: ClientRoot) {
-        if (this._client !== client) {
-            this._client = client;
-            this._userFilter.changeProvider(client);
-            this._clientFilter.changeProvider(client);
-            this._fileFilter.changeProvider(client);
-        }
     }
 
     public get currentFilters(): Filters {
