@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 
-export class SelfExpandingTreeItem extends vscode.TreeItem implements vscode.Disposable {
+export abstract class SelfExpandingTreeItem extends vscode.TreeItem
+    implements vscode.Disposable {
     protected _subscriptions: vscode.Disposable[];
     private _children: Set<SelfExpandingTreeItem>;
 
