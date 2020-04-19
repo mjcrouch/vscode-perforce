@@ -275,7 +275,7 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
         super("Files", vscode.TreeItemCollapsibleState.Expanded, {
             reverseChildren: true,
         });
-        this.description = "Any of:";
+        this.description = "Any of the following paths:";
         this.addChild(
             new FileFilterAdd({
                 command: "perforce.changeSearch.addFileFilter",
