@@ -13,7 +13,7 @@ import * as PerforceUri from "../../PerforceUri";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
-import { WorkspaceConfigAccessor, HideNonWorkspace } from "../../ConfigService";
+import { HideNonWorkspace, configAccessor } from "../../ConfigService";
 import { StubPerforceModel, stubExecute, StubFile } from "../helpers/StubPerforceModel";
 
 import {
@@ -35,7 +35,6 @@ chai.use(chaiAsPromised);
 interface TestItems {
     stubModel: StubPerforceModel;
     instance: PerforceSCMProvider;
-    workspaceConfig: WorkspaceConfigAccessor;
     execute: sinon.SinonSpy;
     showMessage: sinon.SinonSpy<[string], void>;
     showModalMessage: sinon.SinonSpy<[string], void>;
@@ -225,7 +224,6 @@ describe("Model & ScmProvider modules (integration)", () => {
     describe("Refresh / Initialize", function () {
         let stubModel: StubPerforceModel;
         let instance: PerforceSCMProvider;
-        let workspaceConfig: WorkspaceConfigAccessor;
         let emitter: vscode.EventEmitter<ActiveStatusEvent>;
 
         this.beforeEach(function () {
@@ -239,10 +237,8 @@ describe("Model & ScmProvider modules (integration)", () => {
 
             stubModel = new StubPerforceModel();
 
-            workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
-
             // save time on refresh function calls
-            sinon.stub(workspaceConfig, "refreshDebounceTime").get(() => 100);
+            sinon.stub(configAccessor, "refreshDebounceTime").get(() => 100);
 
             const clientRoot: ClientRoot = {
                 clientName: "cli",
@@ -253,7 +249,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 serverAddress: "somewhere over the rainbow",
             };
 
-            instance = new PerforceSCMProvider(clientRoot, workspaceConfig);
+            instance = new PerforceSCMProvider(clientRoot);
             subscriptions.push(instance);
         });
         this.afterEach(async () => {
@@ -478,7 +474,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             );
         });
         it("Can sort changelists ascending", async () => {
-            sinon.stub(workspaceConfig, "changelistOrder").get(() => "ascending");
+            sinon.stub(configAccessor, "changelistOrder").get(() => "ascending");
             stubModel.changelists = [
                 {
                     chnum: "default",
@@ -589,7 +585,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
         });
         it("Handles more than the max files per command", async () => {
-            sinon.stub(workspaceConfig, "maxFilePerCommand").get(() => 1);
+            sinon.stub(configAccessor, "maxFilePerCommand").get(() => 1);
 
             stubModel.changelists = [
                 {
@@ -704,7 +700,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Can ignore shelved files", async () => {
-            sinon.stub(workspaceConfig, "hideShelvedFiles").get(() => true);
+            sinon.stub(configAccessor, "hideShelvedFiles").get(() => true);
 
             stubModel.changelists = [
                 {
@@ -730,7 +726,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Can hide non-workspace files", async () => {
             sinon
-                .stub(workspaceConfig, "hideNonWorkspaceFiles")
+                .stub(configAccessor, "hideNonWorkspaceFiles")
                 .get(() => HideNonWorkspace.HIDE_FILES);
 
             stubModel.changelists = [
@@ -769,7 +765,7 @@ describe("Model & ScmProvider modules (integration)", () => {
         });
         it("Can hide non-empty changelists with only non-workspace files", async () => {
             sinon
-                .stub(workspaceConfig, "hideNonWorkspaceFiles")
+                .stub(configAccessor, "hideNonWorkspaceFiles")
                 .get(() => HideNonWorkspace.HIDE_CHANGELISTS);
 
             stubModel.changelists = [
@@ -812,7 +808,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Can ignore changelists with a defined prefix", async () => {
-            sinon.stub(workspaceConfig, "ignoredChangelistPrefix").get(() => "ignore:");
+            sinon.stub(configAccessor, "ignoredChangelistPrefix").get(() => "ignore:");
 
             stubModel.changelists = [
                 {
@@ -841,7 +837,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             ]);
         });
         it("Counts open files but not shelved files", async () => {
-            sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
+            sinon.stub(configAccessor, "countBadge").get(() => "all-but-shelved");
             stubModel.changelists = [
                 {
                     chnum: "default",
@@ -866,7 +862,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.count).to.equal(5);
         });
         it("Can count shelved files", async () => {
-            sinon.stub(workspaceConfig, "countBadge").get(() => "all");
+            sinon.stub(configAccessor, "countBadge").get(() => "all");
             stubModel.changelists = [
                 {
                     chnum: "default",
@@ -891,7 +887,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.count).to.equal(7);
         });
         it("Can disable counting files", async () => {
-            sinon.stub(workspaceConfig, "countBadge").get(() => "off");
+            sinon.stub(configAccessor, "countBadge").get(() => "off");
             stubModel.changelists = [
                 {
                     chnum: "default",
@@ -911,7 +907,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             expect(instance.count).to.equal(0);
         });
         it("Updates the count after refresh", async () => {
-            sinon.stub(workspaceConfig, "countBadge").get(() => "all-but-shelved");
+            sinon.stub(configAccessor, "countBadge").get(() => "all-but-shelved");
 
             stubModel.changelists = [
                 {
@@ -1081,10 +1077,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                 },
             ];
             const execute = stubExecute();
-            const workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
-            sinon.stub(workspaceConfig, "refreshDebounceTime").get(() => 0);
+            sinon.stub(configAccessor, "refreshDebounceTime").get(() => 0);
 
-            const instance = new PerforceSCMProvider(clientRoot, workspaceConfig);
+            const instance = new PerforceSCMProvider(clientRoot);
             subscriptions.push(instance);
 
             if (!skipInitialise) {
@@ -1103,7 +1098,6 @@ describe("Model & ScmProvider modules (integration)", () => {
             items = {
                 stubModel,
                 instance,
-                workspaceConfig,
                 execute,
                 showMessage,
                 showModalMessage,
@@ -2048,7 +2042,7 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
             it("Excludes files not in the workspace when configured to hide them", async () => {
                 sinon
-                    .stub(items.workspaceConfig, "hideNonWorkspaceFiles")
+                    .stub(configAccessor, "hideNonWorkspaceFiles")
                     .get(() => HideNonWorkspace.HIDE_FILES);
 
                 sinon.stub(vscode.window, "showInputBox").resolves("my description");
@@ -2105,7 +2099,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 );
             });
             it("Prompts the user first when configured to do so", async () => {
-                sinon.stub(items.workspaceConfig, "promptBeforeSubmit").get(() => true);
+                sinon.stub(configAccessor, "promptBeforeSubmit").get(() => true);
                 const warn = sinon
                     .stub(vscode.window, "showWarningMessage")
                     .resolves(undefined);
@@ -2117,7 +2111,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.submitChangelist).not.to.have.been.called;
             });
             it("Submits on confirmation", async () => {
-                sinon.stub(items.workspaceConfig, "promptBeforeSubmit").get(() => true);
+                sinon.stub(configAccessor, "promptBeforeSubmit").get(() => true);
                 const warn = sinon
                     .stub(vscode.window, "showWarningMessage")
                     .resolvesArg(2);

@@ -17,7 +17,7 @@ import { Resource } from "./scm/Resource";
 import { Status } from "./scm/Status";
 import { mapEvent } from "./Utils";
 import { FileType } from "./scm/FileTypes";
-import { WorkspaceConfigAccessor, ConfigAccessor } from "./ConfigService";
+import { configAccessor } from "./ConfigService";
 import * as DiffProvider from "./DiffProvider";
 import * as PerforceUri from "./PerforceUri";
 import { ClientRoot } from "./extension";
@@ -56,7 +56,7 @@ export class PerforceSCMProvider {
      */
     private _contributingDocs: Set<TextDocument>;
 
-    private static _config: ConfigAccessor = new ConfigAccessor();
+    private static _config = configAccessor;
 
     private static instances: PerforceSCMProvider[] = [];
     private _model: Model;
@@ -88,7 +88,7 @@ export class PerforceSCMProvider {
         return "Perforce";
     }
     public get count(): number {
-        const countBadge = this._workspaceConfig.countBadge;
+        const countBadge = configAccessor.countBadge;
         const resources: Resource[] = this._model.ResourceGroups.flatMap(
             (g) => g.resourceStates as Resource[]
         );
@@ -119,10 +119,7 @@ export class PerforceSCMProvider {
         return "idle";
     }
 
-    constructor(
-        private _clientRoot: ClientRoot,
-        private _workspaceConfig: WorkspaceConfigAccessor
-    ) {
+    constructor(private _clientRoot: ClientRoot) {
         this._contributingDirs = new Set<string>();
         this._nonContributingDirs = new Set<string>();
         this._contributingDocs = new Set<TextDocument>();
@@ -136,7 +133,6 @@ export class PerforceSCMProvider {
         this._model = new Model(
             this._clientRoot.configSource,
             this._clientRoot.clientName,
-            this._workspaceConfig,
             sourceControl
         );
 

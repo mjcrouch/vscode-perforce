@@ -95,7 +95,13 @@ export class ConfigAccessor {
         }
         return host + "/changes/" + chnum;
     }
+
+    public get changelistSearchMaxResults(): number {
+        return this.getConfigItem("changelistSearch.maxResults") ?? 200;
+    }
 }
+
+export const configAccessor = new ConfigAccessor();
 
 export class WorkspaceConfigAccessor extends ConfigAccessor {
     constructor(private _workspaceUri: Uri) {

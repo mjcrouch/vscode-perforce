@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import sinon from "sinon";
 import p4Commands from "../helpers/p4Commands";
 import { PerforceCommands } from "../../PerforceCommands";
-import { WorkspaceConfigAccessor } from "../../ConfigService";
+import { ConfigAccessor, configAccessor } from "../../ConfigService";
 
 import { getLocalFile, getWorkspaceUri } from "../helpers/testUtils";
 import FileSystemActions from "../../FileSystemActions";
@@ -69,7 +69,7 @@ type WatcherConfig = {
     deleteOnFileDelete?: boolean;
 };
 
-function stubWatcherConfig(config: WorkspaceConfigAccessor, values: WatcherConfig) {
+function stubWatcherConfig(config: ConfigAccessor, values: WatcherConfig) {
     sinon.stub(config, "editOnFileSave").get(() => !!values.editOnFileSave);
     sinon.stub(config, "editOnFileModified").get(() => !!values.editOnFileModified);
     sinon.stub(config, "addOnFileCreate").get(() => !!values.addOnFileCreate);
@@ -87,18 +87,16 @@ function makeStubEvents() {
 
 describe("File System Actions", () => {
     let eventProvider: ReturnType<typeof makeStubEvents>;
-    let workspaceConfig: WorkspaceConfigAccessor;
     let actions: FileSystemActions | undefined;
     let revertAndDelete: sinon.SinonStub<any>;
     let add: sinon.SinonStub<any>;
     const assignActions = () => {
-        actions = new FileSystemActions(eventProvider, workspaceConfig);
+        actions = new FileSystemActions(eventProvider);
     };
     beforeEach(() => {
         revertAndDelete = sinon.stub(PerforceCommands, "p4revertAndDelete").resolves();
         add = sinon.stub(PerforceCommands, "p4add").resolves();
         eventProvider = makeStubEvents();
-        workspaceConfig = new WorkspaceConfigAccessor(workspaceUri);
     });
     afterEach(() => {
         FileSystemActions.disposeEvents();
@@ -120,19 +118,19 @@ describe("File System Actions", () => {
         };
 
         it("Does not register for deletions when disabled", () => {
-            stubWatcherConfig(workspaceConfig, {});
+            stubWatcherConfig(configAccessor, {});
             assignActions();
 
             expect(eventProvider.onWillDeleteFiles.attrs.registered).to.be.false;
         });
         it("Does register for deletions when configured", () => {
-            stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
+            stubWatcherConfig(configAccessor, { deleteOnFileDelete: true });
             assignActions();
 
             expect(eventProvider.onWillDeleteFiles.attrs.registered).to.be.true;
         });
         it("Reverts and deletes files", async () => {
-            stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
+            stubWatcherConfig(configAccessor, { deleteOnFileDelete: true });
             assignActions();
 
             const file = getFile("edit");
@@ -144,7 +142,7 @@ describe("File System Actions", () => {
             expect(revertAndDelete).to.have.been.calledWith(file2);
         });
         it("Reverts folders using a wildcard", async () => {
-            stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
+            stubWatcherConfig(configAccessor, { deleteOnFileDelete: true });
             assignActions();
 
             const folder = getFile("subFolder");
@@ -156,7 +154,7 @@ describe("File System Actions", () => {
             expect(revertAndDelete).to.have.been.calledWithMatch(folderMatch);
         });
         it("Ignores fstat errors", async () => {
-            stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
+            stubWatcherConfig(configAccessor, { deleteOnFileDelete: true });
             assignActions();
 
             const unknown = getFile("unknownFile");
@@ -166,7 +164,7 @@ describe("File System Actions", () => {
             expect(revertAndDelete).to.have.been.calledWithMatch(unknown);
         });
         it("Does not try to delete excluded files", async () => {
-            stubWatcherConfig(workspaceConfig, { deleteOnFileDelete: true });
+            stubWatcherConfig(configAccessor, { deleteOnFileDelete: true });
             assignActions();
 
             // files.exclude is specified in the workspace config as **/excluded
@@ -185,19 +183,19 @@ describe("File System Actions", () => {
         };
 
         it("Does not register for additions when disabled", () => {
-            stubWatcherConfig(workspaceConfig, {});
+            stubWatcherConfig(configAccessor, {});
             assignActions();
 
             expect(eventProvider.onWillDeleteFiles.attrs.registered).to.be.false;
         });
         it("Does register for additions when configured", () => {
-            stubWatcherConfig(workspaceConfig, { addOnFileCreate: true });
+            stubWatcherConfig(configAccessor, { addOnFileCreate: true });
             assignActions();
 
             expect(eventProvider.onDidCreateFiles.attrs.registered).to.be.true;
         });
         it("Adds new files", () => {
-            stubWatcherConfig(workspaceConfig, { addOnFileCreate: true });
+            stubWatcherConfig(configAccessor, { addOnFileCreate: true });
             assignActions();
 
             const file = getFile("unknownFile");

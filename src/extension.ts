@@ -11,7 +11,6 @@ import * as vscode from "vscode";
 import * as Path from "path";
 
 import { Disposable } from "vscode";
-import { WorkspaceConfigAccessor } from "./ConfigService";
 import { AnnotationProvider } from "./annotations/AnnotationProvider";
 import * as ContextVars from "./ContextVars";
 import * as QuickPicks from "./quickPick/QuickPicks";
@@ -243,12 +242,11 @@ function initClientRoot(workspaceUri: vscode.Uri, client: ClientRoot): boolean {
 }
 
 function initScmProvider(client: ClientRoot): PerforceSCMProvider {
-    const workspaceConfig = new WorkspaceConfigAccessor(client.configSource); // TODO doesn't make sense any more
-    const scm = new PerforceSCMProvider(client, workspaceConfig);
+    const scm = new PerforceSCMProvider(client);
 
     scm.Initialize();
     _disposable.push(scm);
-    _disposable.push(new FileSystemActions(vscode.workspace, workspaceConfig));
+    _disposable.push(new FileSystemActions(vscode.workspace));
 
     doOneTimeRegistration();
     Display.activateStatusBar();

@@ -5,9 +5,9 @@ import * as PerforceUri from "../PerforceUri";
 import * as DiffProvider from "../DiffProvider";
 import { isTruthy } from "../TsUtils";
 import { toReadableDateTime } from "../DateFormatter";
-import { ConfigAccessor } from "../ConfigService";
+import { configAccessor } from "../ConfigService";
 
-const _config = new ConfigAccessor();
+const _config = configAccessor;
 
 export function codicon(name: string) {
     return "$(" + name + ")";

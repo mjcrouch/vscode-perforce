@@ -18,7 +18,7 @@ import * as micromatch from "micromatch";
 import { Display } from "./Display";
 import { PerforceCommands } from "./PerforceCommands";
 import { PerforceSCMProvider } from "./ScmProvider";
-import { ConfigAccessor } from "./ConfigService";
+import { configAccessor } from "./ConfigService";
 import * as Path from "path";
 
 export interface FileSystemEventProvider {
@@ -36,20 +36,18 @@ export default class FileSystemActions {
     private _disposable: Disposable;
     private static _eventsDisposable: Disposable;
 
-    constructor(workspace: FileSystemEventProvider, config: ConfigAccessor) {
+    constructor(workspace: FileSystemEventProvider) {
         const subscriptions: Disposable[] = [];
 
         if (PerforceCommands.checkFolderOpened()) {
-            FileSystemActions.registerEvents(workspace, config);
+            FileSystemActions.registerEvents(workspace);
         }
 
         this._disposable = Disposable.from.apply(this, subscriptions);
     }
 
-    private static registerEvents(
-        workspace: FileSystemEventProvider,
-        config: ConfigAccessor
-    ) {
+    private static registerEvents(workspace: FileSystemEventProvider) {
+        const config = configAccessor;
         if (!FileSystemActions._eventRegistered) {
             FileSystemActions._eventsDisposable?.dispose();
 

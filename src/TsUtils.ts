@@ -31,8 +31,9 @@ export function parseDate(dateString: string) {
     }
 }
 
-export function pluralise(num: number, word: string) {
-    return num + " " + (num === 1 ? word : word + "s");
+export function pluralise(num: number, word: string, limit?: number) {
+    const isLimit = num === limit;
+    return num + (isLimit ? "+ " : " ") + (num === 1 && !isLimit ? word : word + "s");
 }
 
 export function isPositiveOrZero(str: string) {

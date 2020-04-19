@@ -21,6 +21,7 @@ import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
 import { isTruthy, pluralise, isPositiveOrZero } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
+import { configAccessor } from "../ConfigService";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem {
     constructor(private _providerSelection: ProviderSelection) {
@@ -221,7 +222,17 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
                 : undefined,
         ].filter(isTruthy);
         const filterText = parts.length > 0 ? parts.join("] [") : "no filters";
-        return "(" + pluralise(results.length, "result") + ") [" + filterText + "]";
+        return (
+            "(" +
+            pluralise(
+                results.length,
+                "result",
+                configAccessor.changelistSearchMaxResults
+            ) +
+            ") [" +
+            filterText +
+            "]"
+        );
     }
 
     pin() {
@@ -315,9 +326,14 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot {
             throw new Error("No context for changelist search");
         }
         const filters = this._filterRoot.currentFilters;
+        const maxChangelists = configAccessor.changelistSearchMaxResults;
         const results = await vscode.window.withProgress(
             { location: { viewId: "perforce.searchChangelists" } },
-            () => p4.getChangelists(selectedClient.configSource, filters)
+            () =>
+                p4.getChangelists(selectedClient.configSource, {
+                    ...filters,
+                    maxChangelists,
+                })
         );
 
         this._allResults.addResults(selectedClient, filters, results);

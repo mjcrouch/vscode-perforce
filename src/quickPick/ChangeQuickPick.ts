@@ -8,7 +8,7 @@ import { Display } from "../Display";
 import { DescribedChangelist } from "../api/PerforceApi";
 import { showQuickPickForFile } from "./FileQuickPick";
 import { toReadableDateTime } from "../DateFormatter";
-import { ConfigAccessor } from "../ConfigService";
+import { configAccessor } from "../ConfigService";
 
 const nbsp = "\xa0";
 
@@ -83,9 +83,7 @@ function getOperationIcon(operation: string) {
 }
 
 function makeSwarmPick(change: DescribedChangelist): qp.ActionableQuickPickItem[] {
-    const config = new ConfigAccessor();
-
-    const swarmAddr = config.getSwarmLink(change.chnum);
+    const swarmAddr = configAccessor.getSwarmLink(change.chnum);
     if (!swarmAddr) {
         return [];
     }

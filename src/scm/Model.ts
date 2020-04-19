@@ -10,7 +10,7 @@ import {
     workspace,
     commands,
 } from "vscode";
-import { WorkspaceConfigAccessor, HideNonWorkspace } from "../ConfigService";
+import { HideNonWorkspace, ConfigAccessor, configAccessor } from "../ConfigService";
 import * as PerforceUri from "../PerforceUri";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../Display";
 import { Resource } from "./Resource";
@@ -39,6 +39,7 @@ export interface ResourceGroup extends SourceControlResourceGroup {
 
 export class Model implements Disposable {
     private _disposables: Disposable[] = [];
+    private _config: ConfigAccessor;
 
     private _onDidChange = new EventEmitter<void>();
     public get onDidChange(): Event<void> {
@@ -54,8 +55,6 @@ export class Model implements Disposable {
             this._disposables = [];
         }
     }
-
-    private _infos = new Map<string, string>();
 
     private _defaultGroup?: ResourceGroup;
     private _pendingGroups = new Map<
@@ -98,12 +97,12 @@ export class Model implements Disposable {
     public constructor(
         private _workspaceUri: vscode.Uri, // TODO better not to dupliate this with the scm provider
         private _clientName: string,
-        private _workspaceConfig: WorkspaceConfigAccessor,
         public _sourceControl: SourceControl
     ) {
+        this._config = configAccessor;
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
             this.RefreshImpl.bind(this),
-            _workspaceConfig.refreshDebounceTime,
+            this._config.refreshDebounceTime,
             () => (this._refreshInProgress = true)
         );
         this._disposables.push(this._refresh);
@@ -268,7 +267,7 @@ export class Model implements Disposable {
         });
 
         if (
-            this._workspaceConfig.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES &&
+            this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES &&
             changeFields.files
         ) {
             const infos = await p4.getFstatInfo(this._workspaceUri, {
@@ -385,10 +384,7 @@ export class Model implements Disposable {
         }
 
         if (pick === "Submit") {
-            if (
-                this._workspaceConfig.hideNonWorkspaceFiles ===
-                HideNonWorkspace.HIDE_FILES
-            ) {
+            if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
                 // TODO - relies on state - i.e. that savetochangelist applies hideNonWorkspaceFiles
                 const changeListNr = await this.SaveToChangelist(descStr);
 
@@ -411,7 +407,7 @@ export class Model implements Disposable {
     public async Submit(input: ResourceGroup): Promise<void> {
         this.assertIsNotDefault(input);
 
-        if (this._workspaceConfig.promptBeforeSubmit) {
+        if (this._config.promptBeforeSubmit) {
             if (
                 !(await this.requestConfirmation(
                     "Are you sure you want to submit changelist " + input.chnum + "?",
@@ -867,10 +863,6 @@ export class Model implements Disposable {
         }
     }
 
-    private async updateInfo(): Promise<void> {
-        this._infos = await p4.getInfo(this._workspaceUri, {});
-    }
-
     private async updateStatus(): Promise<void> {
         const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
@@ -898,7 +890,7 @@ export class Model implements Disposable {
         const depotPath = Uri.file(fstatInfo["depotFile"]);
 
         const uri = Uri.file(clientFile);
-        if (this._workspaceConfig.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
+        if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
             if (!this.isUriInWorkspace(uri)) {
                 return;
             }
@@ -942,14 +934,11 @@ export class Model implements Disposable {
                 const resourceStates = resources.filter(
                     (resource) => resource.change === c.chnum.toString()
                 );
-                if (
-                    this._workspaceConfig.hideEmptyChangelists &&
-                    resourceStates.length < 1
-                ) {
+                if (this._config.hideEmptyChangelists && resourceStates.length < 1) {
                     return;
                 }
                 if (
-                    this._workspaceConfig.hideNonWorkspaceFiles ===
+                    this._config.hideNonWorkspaceFiles ===
                     HideNonWorkspace.HIDE_CHANGELISTS
                 ) {
                     const onlyHasNonWorkspace =
@@ -995,13 +984,11 @@ export class Model implements Disposable {
             })
         );
 
-        return this._workspaceConfig.changelistOrder === "ascending"
-            ? changes.reverse()
-            : changes;
+        return this._config.changelistOrder === "ascending" ? changes.reverse() : changes;
     }
 
     private filterIgnoredChangelists(changelists: ChangeInfo[]): ChangeInfo[] {
-        const prefix = this._workspaceConfig.ignoredChangelistPrefix;
+        const prefix = this._config.ignoredChangelistPrefix;
         if (prefix) {
             changelists = changelists.filter((c) => !c.description.startsWith(prefix));
         }
@@ -1009,7 +996,7 @@ export class Model implements Disposable {
     }
 
     private async getAllShelvedResources(changes: ChangeInfo[]): Promise<Resource[]> {
-        if (this._workspaceConfig.hideShelvedFiles || changes.length === 0) {
+        if (this._config.hideShelvedFiles || changes.length === 0) {
             return [];
         }
         const allFileInfo = await p4.getShelvedFiles(this._workspaceUri, {
@@ -1023,7 +1010,7 @@ export class Model implements Disposable {
             ? Uri.file(fstatInfo["clientFile"])
             : undefined;
 
-        if (this._workspaceConfig.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
+        if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
             if (!this.isUriInWorkspace(underlyingUri)) {
                 return;
             }

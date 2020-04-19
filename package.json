@@ -285,6 +285,12 @@
                     "type": "boolean",
                     "default": "true",
                     "description": "When enabled, if a .p4config file is found in the workspace, but P4CONFIG is not set in the environment, a warning will be shown. This is due to a change in behaviour of handling these files in v4 which may break backward compatibility"
+                },
+                "perforce.changelistSearch.maxResults": {
+                    "type": "number",
+                    "default": "200",
+                    "description": "The maximum number of results to return in the changelist search",
+                    "minimum": 1
                 }
             }
         },
