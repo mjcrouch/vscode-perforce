@@ -1,4 +1,11 @@
-import { flagMapper, makeSimpleCommand, asyncOuputHandler } from "../CommandUtils";
+import {
+    flagMapper,
+    makeSimpleCommand,
+    asyncOuputHandler,
+    splitIntoLines,
+    removeIndent,
+    sectionArrayBy,
+} from "../CommandUtils";
 import { ChangeInfo, PerforceFile } from "../CommonTypes";
 import { isTruthy } from "../../TsUtils";
 
@@ -25,28 +32,41 @@ const changes = makeSimpleCommand(
             ["u", "user"],
             ["m", "maxChangelists"],
         ],
-        "files"
+        "files",
+        ["-l"]
     )
 );
 
-function parseChangelistDescription(value: string): ChangeInfo | undefined {
+function parseChangelistHeader(
+    value: string
+): Omit<ChangeInfo, "description"> | undefined {
     // example:
     // Change 45 on 2020/02/15 by super@matto 'a new changelist with a much lo'
 
     // with -t flag
     // Change 45 on 2020/02/15 18:48:43 by super@matto 'a new changelist with a much lo'
-    const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(.+?)\s(?:\*(.+)\*\s)?\'(.*)\'/.exec(
-        value
-    );
+    const matches = /Change\s(\d+)\son\s(.+)\sby\s(.+)@(\S+)(?:\s\*(.+)\*)?/.exec(value);
 
     if (matches) {
-        const [, chnum, date, user, client, status, description] = matches;
-        return { chnum, date, user, client, status, description };
+        const [, chnum, date, user, client, status] = matches;
+        return { chnum, date, user, client, status };
     }
 }
 
+function parseChangelist(lines: string[]): ChangeInfo | undefined {
+    const [header, ...descLines] = lines;
+    const parsed = parseChangelistHeader(header);
+    if (!parsed) {
+        return;
+    }
+    const description = removeIndent(descLines.filter((line) => line.startsWith("\t")));
+    return { ...parsed, description };
+}
+
 function parseChangesOutput(output: string): ChangeInfo[] {
-    return output.split(/\r?\n/).map(parseChangelistDescription).filter(isTruthy);
+    const lines = splitIntoLines(output);
+    const changes = sectionArrayBy(lines, (line) => line.startsWith("Change"));
+    return changes.map(parseChangelist).filter(isTruthy);
 }
 
 export const getChangelists = asyncOuputHandler(changes, parseChangesOutput);

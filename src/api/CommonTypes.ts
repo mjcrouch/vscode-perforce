@@ -6,7 +6,7 @@ export type FixedJob = { id: string; description: string[] };
 
 export type ChangeInfo = {
     chnum: string;
-    description: string;
+    description: string[];
     date: string;
     user: string;
     client: string;

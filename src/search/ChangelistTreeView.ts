@@ -162,7 +162,7 @@ class RunSearch extends SelfExpandingTreeItem {
 class SearchResultItem extends SelfExpandingTreeItem {
     constructor(private _clientRoot: ClientRoot, private _change: ChangeInfo) {
         super(
-            _change.chnum + ": " + _change.description.slice(0, 32),
+            _change.chnum + ": " + _change.description.join(" ").slice(0, 32),
             vscode.TreeItemCollapsibleState.None
         );
         this.description = _change.user;
@@ -286,7 +286,12 @@ async function showResultsInQuickPick(resource: vscode.Uri, results: ChangeInfo[
         return {
             label: change.chnum,
             description:
-                "$(person) " + change.user + " " + statusIcon + " " + change.description,
+                "$(person) " +
+                change.user +
+                " " +
+                statusIcon +
+                " " +
+                change.description.join(" "),
         };
     });
     const chosen = await vscode.window.showQuickPick(items, {

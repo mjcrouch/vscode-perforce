@@ -952,7 +952,7 @@ export class Model implements Disposable {
                 }
                 const group = sc.createResourceGroup(
                     "pending:" + c.chnum,
-                    "#" + c.chnum + ": " + c.description
+                    "#" + c.chnum + ": " + c.description.join(" ")
                 ) as ResourceGroup;
                 group.model = this;
                 group.isDefault = false;
@@ -970,7 +970,7 @@ export class Model implements Disposable {
 
         groups.forEach((group, i) => {
             this._pendingGroups.set(parseInt(changelists[i].chnum), {
-                description: changelists[i].description,
+                description: changelists[i].description.join(" "),
                 group: group,
             });
         });
@@ -990,7 +990,7 @@ export class Model implements Disposable {
     private filterIgnoredChangelists(changelists: ChangeInfo[]): ChangeInfo[] {
         const prefix = this._config.ignoredChangelistPrefix;
         if (prefix) {
-            changelists = changelists.filter((c) => !c.description.startsWith(prefix));
+            changelists = changelists.filter((c) => !c.description[0].startsWith(prefix));
         }
         return changelists;
     }

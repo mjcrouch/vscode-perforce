@@ -174,7 +174,7 @@ export class StubPerforceModel {
                         date: "01/01/2020",
                         client: "cli",
                         user: "user",
-                        description: cl.description,
+                        description: cl.description.split("\n"),
                         status: "*pending*",
                     };
                 })
