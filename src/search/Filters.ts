@@ -3,6 +3,10 @@ import { ClientRoot } from "../extension";
 import { SelfExpandingTreeItem } from "../TreeView";
 import { isTruthy } from "../TsUtils";
 import { ChangelistStatus } from "../api/PerforceApi";
+import { PerforceFile } from "../api/CommonTypes";
+import * as PerforceUri from "../PerforceUri";
+import * as Path from "path";
+import { pathToFileURL } from "url";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -19,9 +23,10 @@ export type Filters = {
     user?: string;
     client?: string;
     status?: ChangelistStatus;
+    files?: PerforceFile[];
 };
 
-type PickWithValue<T> = vscode.QuickPickItem & { value?: SearchFilterValue<T> };
+type PickWithValue<T> = vscode.QuickPickItem & { value?: T };
 
 export abstract class FilterItem<T> extends SelfExpandingTreeItem {
     private _selected?: SearchFilterValue<T>;
@@ -92,7 +97,7 @@ class StatusFilter extends FilterItem<ChangelistStatus> {
     }
 
     async chooseValue() {
-        const items: PickWithValue<ChangelistStatus>[] = [
+        const items: PickWithValue<SearchFilterValue<ChangelistStatus>>[] = [
             {
                 label: "$(tools) Pending",
                 description: "Search for pending changelists",
@@ -159,7 +164,7 @@ async function pickFromProviderOrCustom<T>(
     readableKey: string,
     readableValue: string | undefined
 ) {
-    const current: PickWithValue<T> | undefined =
+    const current: PickWithValue<SearchFilterValue<T>> | undefined =
         client && clientValue !== undefined
             ? {
                   label: "$(person) Current " + readableKey,
@@ -170,11 +175,11 @@ async function pickFromProviderOrCustom<T>(
                   },
               }
             : undefined;
-    const custom: PickWithValue<T> = {
+    const custom: PickWithValue<SearchFilterValue<T>> = {
         label: "$(edit) Enter a " + readableKey + "...",
         description: "Filter by a different " + readableKey,
     };
-    const items: PickWithValue<T>[] = [
+    const items: PickWithValue<SearchFilterValue<T>>[] = [
         current,
         custom,
         {
@@ -237,10 +242,199 @@ class ClientFilter extends FilterItem<string> {
     }
 }
 
+export class FileFilterValue extends SelfExpandingTreeItem {
+    constructor(path: string) {
+        super(path);
+    }
+
+    get contextValue() {
+        return "fileFilter";
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon("file");
+    }
+
+    async edit() {
+        const value = await vscode.window.showInputBox({
+            prompt: "Enter a local file or depot path. Use '...' for wildcards",
+            validateInput: (val) => {
+                if (val.trim() === "") {
+                    return "Please enter a value";
+                }
+            },
+            value: this.label,
+        });
+        if (value) {
+            this.label = value;
+            this.didChange();
+        }
+    }
+}
+
+class FileFilterAdd extends SelfExpandingTreeItem {
+    constructor(private _command: vscode.Command) {
+        super("Add path...");
+    }
+
+    get command() {
+        return this._command;
+    }
+}
+
+export class FileFilterRoot extends SelfExpandingTreeItem {
+    constructor(private _client?: ClientRoot) {
+        super("Files", vscode.TreeItemCollapsibleState.Expanded, {
+            reverseChildren: true,
+        });
+        this.description = "Any of:";
+        this.addChild(
+            new FileFilterAdd({
+                command: "perforce.changeSearch.addFileFilter",
+                arguments: [this],
+                title: "Add file filter",
+            })
+        );
+    }
+
+    get contextValue() {
+        return "fileFilters";
+    }
+
+    private async getFilePathFromClipboard() {
+        const clipValue = (await vscode.env.clipboard.readText())?.split("\n")[0];
+        const clipValid =
+            clipValue?.includes("/") ||
+            clipValue?.includes("\\") ||
+            clipValue?.includes("...");
+        return clipValid ? clipValue : undefined;
+    }
+
+    private getOpenFilePath() {
+        const openUri = vscode.window.activeTextEditor?.document.uri;
+        if (!openUri || (openUri.scheme !== "perforce" && openUri.scheme !== "file")) {
+            return undefined;
+        }
+        const filePath = PerforceUri.isDepotUri(openUri)
+            ? PerforceUri.getDepotPathFromDepotUri(openUri)
+            : openUri.fsPath;
+        return filePath;
+    }
+
+    private getClientRootPath() {
+        return this._client?.clientRoot.fsPath
+            ? Path.join(this._client.clientRoot.fsPath, "...")
+            : undefined;
+    }
+
+    private getClientConfigSourcePath() {
+        return this._client?.configSource.fsPath
+            ? Path.join(this._client.configSource.fsPath, "...")
+            : undefined;
+    }
+
+    private async enterCustomValue() {
+        const clipPath = await this.getFilePathFromClipboard();
+        const value = await vscode.window.showInputBox({
+            prompt: "Enter a local file or depot path. Use '...' for wildcards",
+            validateInput: (val) => {
+                if (val.trim() === "") {
+                    return "Please enter a value";
+                }
+            },
+            value: clipPath ?? this.getOpenFilePath() ?? this.getClientConfigSourcePath(),
+        });
+        return value;
+    }
+
+    private makeOpenFilePicks(): PickWithValue<string>[] {
+        const filePath = this.getOpenFilePath();
+        if (!filePath) {
+            return [];
+        }
+        const fileWildcard =
+            Path.dirname(filePath) + (filePath.startsWith("/") ? "/" : Path.sep) + "...";
+        return [
+            {
+                label: "Open File",
+                description: filePath,
+                value: filePath,
+            },
+            {
+                label: "Open File's Directory",
+                description: fileWildcard,
+                value: fileWildcard,
+            },
+        ];
+    }
+
+    private async pickNewFilter() {
+        const custom: PickWithValue<string> = {
+            label: "Enter path...",
+            description: "Enter a file or depot path",
+        };
+        const rootPath = this.getClientRootPath();
+        const clientRoot: PickWithValue<string> | undefined = rootPath
+            ? {
+                  label: "Client Root",
+                  description: rootPath,
+                  value: rootPath,
+              }
+            : undefined;
+        const sourcePath = this.getClientConfigSourcePath();
+        const clientSource: PickWithValue<string> | undefined =
+            sourcePath && rootPath !== sourcePath
+                ? {
+                      label: "Workspace location",
+                      description: sourcePath,
+                      value: sourcePath,
+                  }
+                : undefined;
+
+        const options = [
+            clientRoot,
+            clientSource,
+            ...this.makeOpenFilePicks(),
+            custom,
+        ].filter(isTruthy);
+
+        const chosen = await vscode.window.showQuickPick(options, {
+            matchOnDescription: true,
+            placeHolder: "Filter by a depot or file path",
+        });
+
+        if (!chosen) {
+            return;
+        }
+
+        return chosen === custom ? await this.enterCustomValue() : chosen.value;
+    }
+
+    async addNewFilter() {
+        const value = await this.pickNewFilter();
+        if (value) {
+            this.addChild(new FileFilterValue(value));
+            this.didChange();
+        }
+    }
+
+    changeProvider(client?: ClientRoot): void {
+        this._client = client;
+    }
+
+    get value(): string[] {
+        return this.getChildren()
+            .filter((child) => child.contextValue === "fileFilter")
+            .map((file) => file.label)
+            .filter(isTruthy); // TODO bleh
+    }
+}
+
 export class FilterRootItem extends SelfExpandingTreeItem {
     private _userFilter: UserFilter;
     private _clientFilter: ClientFilter;
     private _statusFilter: StatusFilter;
+    private _fileFilter: FileFilterRoot;
 
     constructor(private _client: ClientRoot | undefined) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
@@ -250,6 +444,8 @@ export class FilterRootItem extends SelfExpandingTreeItem {
         this.addChild(this._userFilter);
         this._clientFilter = new ClientFilter();
         this.addChild(this._clientFilter);
+        this._fileFilter = new FileFilterRoot(this._client);
+        this.addChild(this._fileFilter);
         //this.addChild(new FilterItem("User"));
         //this.addChild(new FilterItem("Paths"));
     }
@@ -259,6 +455,7 @@ export class FilterRootItem extends SelfExpandingTreeItem {
             this._client = client;
             this._userFilter.changeProvider(client);
             this._clientFilter.changeProvider(client);
+            this._fileFilter.changeProvider(client);
         }
     }
 
@@ -267,6 +464,7 @@ export class FilterRootItem extends SelfExpandingTreeItem {
             status: this._statusFilter.value,
             client: this._clientFilter.value,
             user: this._userFilter.value,
+            files: this._fileFilter.value,
         };
     }
 }

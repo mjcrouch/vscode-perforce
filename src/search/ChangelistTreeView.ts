@@ -8,7 +8,13 @@ import {
 import { PerforceSCMProvider } from "../ScmProvider";
 import { ClientRoot } from "../extension";
 import * as Path from "path";
-import { FilterItem, FilterRootItem, Filters } from "./Filters";
+import {
+    FilterItem,
+    FilterRootItem,
+    Filters,
+    FileFilterRoot,
+    FileFilterValue,
+} from "./Filters";
 import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
@@ -200,12 +206,15 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
 
     static makeLabelText(filters: Filters, results: ChangeInfo[]) {
         const parts = [
-            filters.status,
+            filters.status ? filters.status : undefined,
             filters.user ? "User: " + filters.user : undefined,
             filters.client ? "Client: " + filters.client : undefined,
+            filters.files && filters.files.length > 0
+                ? pluralise(filters.files.length, "path")
+                : undefined,
         ].filter(isTruthy);
-        const filterText = parts.length > 0 ? parts.join(" / ") : "no filters";
-        return "(" + pluralise(results.length, "result") + ") " + filterText;
+        const filterText = parts.length > 0 ? parts.join("] [") : "no filters";
+        return "(" + pluralise(results.length, "result") + ") [" + filterText + "]";
     }
 
     pin() {
@@ -320,6 +329,21 @@ export function registerChangelistSearch() {
     vscode.commands.registerCommand(
         "perforce.changeSearch.setFilter",
         (arg: FilterItem<any>) => arg.requestNewValue()
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.addFileFilter",
+        (arg: FileFilterRoot) => arg.addNewFilter()
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.editFileFilter",
+        (arg: FileFilterValue) => arg.edit()
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.removeFileFilter",
+        (arg: FileFilterValue) => arg.dispose()
     );
 
     vscode.commands.registerCommand(

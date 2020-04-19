@@ -13,7 +13,7 @@ export interface ChangesOptions {
     status?: ChangelistStatus;
     user?: string;
     maxChangelists?: number;
-    files?: PerforceFile;
+    files?: PerforceFile[];
 }
 
 const changes = makeSimpleCommand(

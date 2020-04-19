@@ -549,6 +549,24 @@
                 "icon": "$(eye)"
             },
             {
+                "command": "perforce.changeSearch.addFileFilter",
+                "title": "Add file filter",
+                "category": "Perforce",
+                "icon": "$(plus)"
+            },
+            {
+                "command": "perforce.changeSearch.editFileFilter",
+                "title": "Edit file filter",
+                "category": "Perforce",
+                "icon": "$(edit)"
+            },
+            {
+                "command": "perforce.changeSearch.removeFileFilter",
+                "title": "Remove file filter",
+                "category": "Perforce",
+                "icon": "$(trash)"
+            },
+            {
                 "command": "perforce.changeSearch.pin",
                 "title": "Pin results",
                 "category": "Perforce",
@@ -669,6 +687,18 @@
                 },
                 {
                     "command": "perforce.openReviewTool",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.addFileFilter",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.editFileFilter",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.removeFileFilter",
                     "when": "0"
                 },
                 {
@@ -917,6 +947,21 @@
                 }
             ],
             "view/item/context": [
+                {
+                    "command": "perforce.changeSearch.addFileFilter",
+                    "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilters"
+                },
+                {
+                    "command": "perforce.changeSearch.editFileFilter",
+                    "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
+                {
+                    "command": "perforce.changeSearch.removeFileFilter",
+                    "group": "inline@2",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
                 {
                     "command": "perforce.changeSearch.pin",
                     "group": "inline@1",
