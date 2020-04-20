@@ -328,6 +328,11 @@ export function registerChangelistSearch() {
     );
 
     vscode.commands.registerCommand(
+        "perforce.changeSearch.resetFilters",
+        (arg: FilterRootItem) => arg.resetAllFilters()
+    );
+
+    vscode.commands.registerCommand(
         "perforce.changeSearch.setFilter",
         (arg: FilterItem<any>) => arg.requestNewValue()
     );

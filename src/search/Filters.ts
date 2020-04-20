@@ -75,6 +75,11 @@ export abstract class FilterItem<T> extends SelfExpandingTreeItem {
     get tooltip() {
         return this._filter.placeHolder;
     }
+
+    reset() {
+        this.setValue(undefined);
+        this.didChange();
+    }
 }
 class StatusFilter extends FilterItem<ChangelistStatus> {
     constructor() {
@@ -380,12 +385,13 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
                   }
                 : undefined;
 
-        const options = [
-            clientRoot,
-            clientSource,
-            ...this.makeOpenFilePicks(),
-            custom,
-        ].filter(isTruthy);
+        const existingChildren = this.getChildren();
+        const options = [clientRoot, clientSource, ...this.makeOpenFilePicks(), custom]
+            .filter(isTruthy)
+            .filter(
+                (opt) =>
+                    !existingChildren.some((existing) => existing.label === opt.value)
+            );
 
         const chosen = await vscode.window.showQuickPick(options, {
             matchOnDescription: true,
@@ -411,7 +417,13 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
         return this.getChildren()
             .filter((child) => child.contextValue === "fileFilter")
             .map((file) => file.label)
-            .filter(isTruthy); // TODO bleh
+            .filter(isTruthy);
+    }
+
+    reset() {
+        this.getChildren()
+            .filter((child) => child.contextValue === "fileFilter")
+            .forEach((child) => child.dispose());
     }
 }
 
@@ -443,6 +455,15 @@ export class FilterRootItem extends SelfExpandingTreeItem {
             files: this._fileFilter.value,
         };
     }
+
+    resetAllFilters() {
+        this._userFilter.reset();
+        this._clientFilter.reset();
+        this._statusFilter.reset();
+        this._fileFilter.reset();
+    }
+
+    public contextValue = "filterRoot";
 }
 
 export function makeFilterLabelText(filters: Filters, resultCount: number) {

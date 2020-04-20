@@ -555,6 +555,12 @@
                 "icon": "$(eye)"
             },
             {
+                "command": "perforce.changeSearch.resetFilters",
+                "title": "Reset all filters",
+                "category": "Perforce",
+                "icon": "$(trash)"
+            },
+            {
                 "command": "perforce.changeSearch.addFileFilter",
                 "title": "Add file filter",
                 "category": "Perforce",
@@ -693,6 +699,10 @@
                 },
                 {
                     "command": "perforce.openReviewTool",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.resetFilters",
                     "when": "0"
                 },
                 {
@@ -953,6 +963,11 @@
                 }
             ],
             "view/item/context": [
+                {
+                    "command": "perforce.changeSearch.resetFilters",
+                    "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == filterRoot"
+                },
                 {
                     "command": "perforce.changeSearch.addFileFilter",
                     "group": "inline@1",
