@@ -586,7 +586,7 @@
             },
             {
                 "command": "perforce.changeSearch.delete",
-                "title": "Delete results",
+                "title": "Discard results",
                 "category": "Perforce",
                 "icon": "$(trash)"
             },
@@ -594,7 +594,7 @@
                 "command": "perforce.changeSearch.showInQuickPick",
                 "title": "Show in quick pick",
                 "category": "Perforce",
-                "icon": "$(link-external)"
+                "icon": "$(list-unordered)"
             }
         ],
         "menus": {

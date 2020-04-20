@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
 import { ClientRoot } from "../extension";
 import { SelfExpandingTreeItem } from "../TreeView";
-import { isTruthy } from "../TsUtils";
+import { isTruthy, pluralise } from "../TsUtils";
 import { ChangelistStatus } from "../api/PerforceApi";
 import { PerforceFile } from "../api/CommonTypes";
 import * as PerforceUri from "../PerforceUri";
 import * as Path from "path";
 import { ProviderSelection } from "./ProviderSelection";
+import { configAccessor } from "../ConfigService";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -442,4 +443,23 @@ export class FilterRootItem extends SelfExpandingTreeItem {
             files: this._fileFilter.value,
         };
     }
+}
+
+export function makeFilterLabelText(filters: Filters, resultCount: number) {
+    const parts = [
+        filters.status ? filters.status : undefined,
+        filters.user ? "User: " + filters.user : undefined,
+        filters.client ? "Client: " + filters.client : undefined,
+        filters.files && filters.files.length > 0
+            ? pluralise(filters.files.length, "path")
+            : undefined,
+    ].filter(isTruthy);
+    const filterText = parts.length > 0 ? parts.join("] [") : "no filters";
+    return (
+        "(" +
+        pluralise(resultCount, "result", configAccessor.changelistSearchMaxResults) +
+        ") [" +
+        filterText +
+        "]"
+    );
 }

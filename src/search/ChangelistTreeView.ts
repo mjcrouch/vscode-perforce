@@ -14,6 +14,7 @@ import {
     Filters,
     FileFilterRoot,
     FileFilterValue,
+    makeFilterLabelText,
 } from "./Filters";
 import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
@@ -22,6 +23,7 @@ import { ChangeInfo } from "../api/CommonTypes";
 import { isTruthy, pluralise, isPositiveOrZero } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
+import { showQuickPickForChangeSearch } from "../quickPick/ChangeSearchQuickPick";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem {
     constructor(private _providerSelection: ProviderSelection) {
@@ -201,11 +203,11 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
     private _isPinned: boolean = false;
     constructor(
         private _clientRoot: ClientRoot,
-        filters: Filters,
+        private _filters: Filters,
         private _results: ChangeInfo[]
     ) {
         super(
-            SearchResultTree.makeLabelText(filters, _results),
+            SearchResultTree.makeLabelText(_filters, _results),
             vscode.TreeItemCollapsibleState.Expanded
         );
         const children = _results.map((r) => new SearchResultItem(_clientRoot, r));
@@ -213,26 +215,7 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
     }
 
     static makeLabelText(filters: Filters, results: ChangeInfo[]) {
-        const parts = [
-            filters.status ? filters.status : undefined,
-            filters.user ? "User: " + filters.user : undefined,
-            filters.client ? "Client: " + filters.client : undefined,
-            filters.files && filters.files.length > 0
-                ? pluralise(filters.files.length, "path")
-                : undefined,
-        ].filter(isTruthy);
-        const filterText = parts.length > 0 ? parts.join("] [") : "no filters";
-        return (
-            "(" +
-            pluralise(
-                results.length,
-                "result",
-                configAccessor.changelistSearchMaxResults
-            ) +
-            ") [" +
-            filterText +
-            "]"
-        );
+        return makeFilterLabelText(filters, results.length);
     }
 
     pin() {
@@ -254,7 +237,11 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
     }
 
     showInQuickPick() {
-        showResultsInQuickPick(this._clientRoot.configSource, this._results);
+        showResultsInQuickPick(
+            this._clientRoot.configSource,
+            this._filters,
+            this._results
+        );
     }
 }
 
@@ -280,28 +267,12 @@ class AllResultsTree extends SelfExpandingTreeItem {
     }
 }
 
-async function showResultsInQuickPick(resource: vscode.Uri, results: ChangeInfo[]) {
-    const items: vscode.QuickPickItem[] = results.map((change) => {
-        const statusIcon = change.status === "pending" ? "$(tools)" : "$(check)";
-        return {
-            label: change.chnum,
-            description:
-                "$(person) " +
-                change.user +
-                " " +
-                statusIcon +
-                " " +
-                change.description.join(" "),
-        };
-    });
-    const chosen = await vscode.window.showQuickPick(items, {
-        matchOnDescription: true,
-        placeHolder: "Search results",
-    });
-    if (!chosen) {
-        return;
-    }
-    showQuickPickForChangelist(resource, chosen.label);
+function showResultsInQuickPick(
+    resource: vscode.Uri,
+    filters: Filters,
+    results: ChangeInfo[]
+) {
+    return showQuickPickForChangeSearch(resource, filters, results);
 }
 
 class ChangelistTreeRoot extends SelfExpandingTreeRoot {
