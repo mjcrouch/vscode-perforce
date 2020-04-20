@@ -20,7 +20,7 @@ import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
-import { isTruthy, pluralise, isPositiveOrZero } from "../TsUtils";
+import { isPositiveOrZero } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
 import { showQuickPickForChangeSearch } from "../quickPick/ChangeSearchQuickPick";
@@ -34,6 +34,16 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
                 this.onDidChangeScmProviders.bind(this)
             )
         );
+        this._subscriptions.push(
+            _providerSelection.onDidChangeProvider((client) => {
+                if (client) {
+                    this.description = client.clientName + " / " + client.userName;
+                } else {
+                    this.description = "<choose a perforce instance>";
+                }
+                this.didChange();
+            })
+        );
 
         this.setClient(PerforceSCMProvider.clientRoots[0]);
     }
@@ -44,11 +54,6 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
 
     private setClient(client?: ClientRoot) {
         this._providerSelection.client = client;
-        if (client) {
-            this.description = client.clientName + " / " + client.userName;
-        } else {
-            this.description = "<choose a perforce instance>";
-        }
     }
 
     private onDidChangeScmProviders() {
@@ -57,7 +62,6 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
             !PerforceSCMProvider.GetInstanceByClient(this.selectedClient)
         ) {
             this.setClient(PerforceSCMProvider.clientRoots[0]);
-            this.didChange();
         }
     }
 
@@ -91,7 +95,6 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
 
         if (chosen && chosen.client !== this.selectedClient) {
             this.setClient(chosen.client);
-            this.didChange();
         }
     }
 

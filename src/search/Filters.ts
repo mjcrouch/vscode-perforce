@@ -421,15 +421,15 @@ export class FilterRootItem extends SelfExpandingTreeItem {
     private _statusFilter: StatusFilter;
     private _fileFilter: FileFilterRoot;
 
-    constructor(private _provider: ProviderSelection) {
+    constructor(provider: ProviderSelection) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
         this._statusFilter = new StatusFilter();
         this.addChild(this._statusFilter);
-        this._userFilter = new UserFilter(_provider);
+        this._userFilter = new UserFilter(provider);
         this.addChild(this._userFilter);
-        this._clientFilter = new ClientFilter(_provider);
+        this._clientFilter = new ClientFilter(provider);
         this.addChild(this._clientFilter);
-        this._fileFilter = new FileFilterRoot(_provider);
+        this._fileFilter = new FileFilterRoot(provider);
         this.addChild(this._fileFilter);
         //this.addChild(new FilterItem("User"));
         //this.addChild(new FilterItem("Paths"));

@@ -11,7 +11,7 @@ export class ProviderSelection implements vscode.Disposable {
 
     set client(client: ClientRoot | undefined) {
         this._selectedProvider = client;
-        this._onDidChangeProvider.fire();
+        this._onDidChangeProvider.fire(client);
     }
 
     get onDidChangeProvider() {
