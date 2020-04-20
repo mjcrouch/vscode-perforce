@@ -302,8 +302,7 @@
                     "when": "perforce.activation.hasScmProvider"
                 }
             ]
-        }
-        ,
+        },
         "commands": [
             {
                 "command": "perforce.menuFunctions",

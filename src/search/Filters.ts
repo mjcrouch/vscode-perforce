@@ -350,12 +350,12 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
             Path.dirname(filePath) + (filePath.startsWith("/") ? "/" : Path.sep) + "...";
         return [
             {
-                label: "Open File",
+                label: "Current Editor File",
                 description: filePath,
                 value: filePath,
             },
             {
-                label: "Open File's Directory",
+                label: "Current File's Folder",
                 description: fileWildcard,
                 value: fileWildcard,
             },
