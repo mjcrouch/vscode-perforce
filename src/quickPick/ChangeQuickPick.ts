@@ -9,6 +9,7 @@ import { DescribedChangelist } from "../api/PerforceApi";
 import { showQuickPickForFile } from "./FileQuickPick";
 import { toReadableDateTime } from "../DateFormatter";
 import { configAccessor } from "../ConfigService";
+import { focusChangelist } from "../search/ChangelistTreeView";
 
 const nbsp = "\xa0";
 
@@ -39,7 +40,8 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
             : [];
 
         const shelvedChange = shelvedChanges[0];
-        const actions = makeSwarmPick(change).concat(
+        const actions = makeFocusPick(resource, change).concat(
+            makeSwarmPick(change),
             makeClipboardPicks(resource, change),
             makeJobPicks(resource, change),
             makeFilePicks(resource, change),
@@ -80,6 +82,20 @@ export function getOperationIcon(operation: string) {
         default:
             return "diff-modified";
     }
+}
+
+function makeFocusPick(
+    resource: vscode.Uri,
+    change: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    return [
+        {
+            label: "$(multiple-windows) Focus in changelist search view",
+            performAction: () => {
+                focusChangelist(resource, change);
+            },
+        },
+    ];
 }
 
 function makeSwarmPick(change: DescribedChangelist): qp.ActionableQuickPickItem[] {

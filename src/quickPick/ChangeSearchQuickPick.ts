@@ -3,16 +3,15 @@ import * as vscode from "vscode";
 import * as qp from "./QuickPickProvider";
 import { ChangeInfo } from "../api/CommonTypes";
 import { showQuickPickForChangelist } from "./ChangeQuickPick";
-import { Filters, makeFilterLabelText } from "../search/Filters";
 
 export const changeSearchQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: (
         resource: vscode.Uri,
-        filters: Filters,
+        title: string,
         results: ChangeInfo[]
     ): Promise<qp.ActionableQuickPick> => {
         const items: vscode.QuickPickItem[] = results.map((change) => {
-            const statusIcon = change.status === "pending" ? "$(tools)" : "$(check)";
+            const statusIcon = change.isPending ? "$(tools)" : "$(check)";
             return {
                 label: change.chnum,
                 description:
@@ -28,8 +27,6 @@ export const changeSearchQuickPickProvider: qp.ActionableQuickPickProvider = {
             };
         });
 
-        const title = makeFilterLabelText(filters, results.length);
-
         return Promise.resolve({
             items,
             placeHolder: "Search Results: " + title,
@@ -39,8 +36,8 @@ export const changeSearchQuickPickProvider: qp.ActionableQuickPickProvider = {
 
 export async function showQuickPickForChangeSearch(
     resource: vscode.Uri,
-    filters: Filters,
+    title: string,
     results: ChangeInfo[]
 ) {
-    await qp.showQuickPick("changeResults", resource, filters, results);
+    await qp.showQuickPick("changeResults", resource, title, results);
 }

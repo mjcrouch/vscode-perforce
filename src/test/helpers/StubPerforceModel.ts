@@ -13,6 +13,7 @@ import { Status } from "../../scm/Status";
 import { PerforceService } from "../../PerforceService";
 import { getStatusText } from "./testUtils";
 import * as PerforceUri from "../../PerforceUri";
+import { parseDate } from "../../TsUtils";
 
 type PerforceResponseCallback = (
     err: Error | null,
@@ -171,11 +172,11 @@ export class StubPerforceModel {
                 .map<ChangeInfo>((cl) => {
                     return {
                         chnum: cl.chnum,
-                        date: "01/01/2020",
+                        date: parseDate("01/01/2020"),
                         client: "cli",
                         user: "user",
                         description: cl.description.split("\n"),
-                        status: "*pending*",
+                        isPending: true,
                     };
                 })
         );

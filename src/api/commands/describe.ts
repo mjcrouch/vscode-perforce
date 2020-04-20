@@ -7,7 +7,7 @@ import {
     asyncOuputHandler,
     removeIndent,
 } from "../CommandUtils";
-import { FixedJob } from "../CommonTypes";
+import { FixedJob, ChangeInfo } from "../CommonTypes";
 import { isTruthy, parseDate } from "../../TsUtils";
 
 export interface DescribeOptions {
@@ -34,13 +34,7 @@ export type DepotFileOperation = {
     operation: string;
 };
 
-export type DescribedChangelist = {
-    chnum: string;
-    user: string;
-    client: string;
-    date?: Date;
-    isPending: boolean;
-    description: string[];
+export type DescribedChangelist = ChangeInfo & {
     affectedFiles: DepotFileOperation[];
     shelvedFiles: DepotFileOperation[];
     fixedJobs: FixedJob[];

@@ -623,26 +623,26 @@ describe("Perforce API", () => {
             ).to.eventually.deep.equal([
                 {
                     chnum: "2148153",
-                    date: "2020/01/21",
+                    date: parseDate("2020/01/21"),
                     user: "user3",
                     client: "client",
-                    status: undefined,
+                    isPending: false,
                     description: ["Update things"],
                 },
                 {
                     chnum: "2148152",
-                    date: "2020/01/20",
+                    date: parseDate("2020/01/20"),
                     user: "user2",
                     client: "client",
-                    status: "pending",
+                    isPending: true,
                     description: ["Do some updates", "", "Over multiple lines"],
                 },
                 {
                     chnum: "2148150",
-                    date: "2020/01/12",
+                    date: parseDate("2020/01/12"),
                     user: "user1",
                     client: "client",
-                    status: "pending",
+                    isPending: true,
                     description: ["Update more things"],
                 },
             ] as ChangeInfo[]);

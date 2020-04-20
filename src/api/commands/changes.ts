@@ -7,7 +7,7 @@ import {
     sectionArrayBy,
 } from "../CommandUtils";
 import { ChangeInfo, PerforceFile } from "../CommonTypes";
-import { isTruthy } from "../../TsUtils";
+import { isTruthy, parseDate } from "../../TsUtils";
 
 export enum ChangelistStatus {
     PENDING = "pending",
@@ -49,7 +49,9 @@ function parseChangelistHeader(
 
     if (matches) {
         const [, chnum, date, user, client, status] = matches;
-        return { chnum, date, user, client, status };
+        const isPending = status === "pending";
+        const parsedDate = parseDate(date);
+        return { chnum, date: parsedDate, user, client, isPending };
     }
 }
 
