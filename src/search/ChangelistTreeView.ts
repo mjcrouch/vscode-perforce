@@ -228,6 +228,7 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
             (r) => new SearchResultItem(this._clientRoot, r)
         );
         children.forEach((child) => this.addChild(child));
+        this.reveal();
     }
 
     pin() {
@@ -266,7 +267,9 @@ class AllResultsTree extends SelfExpandingTreeItem {
 
     addResults(selectedClient: ClientRoot, filters: Filters, results: ChangeInfo[]) {
         this.removeUnpinned();
-        this.addChild(new SearchResultTree(selectedClient, filters, results));
+        const child = new SearchResultTree(selectedClient, filters, results);
+        this.addChild(child);
+        child.reveal({ expand: true });
     }
 
     removeUnpinned() {
@@ -332,7 +335,6 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot {
         const results = await executeSearch(selectedClient, filters);
 
         this._allResults.addResults(selectedClient, filters, results);
-
         this.didChange();
     }
 }
@@ -408,8 +410,11 @@ export function registerChangelistSearch() {
         (arg: SearchResultTree) => arg.showInQuickPick()
     );
 
-    vscode.window.registerTreeDataProvider(
-        "perforce.searchChangelists",
-        new SelfExpandingTreeProvider(new ChangelistTreeRoot())
-    );
+    const treeDataProvider = new SelfExpandingTreeProvider(new ChangelistTreeRoot());
+    const treeView = vscode.window.createTreeView("perforce.searchChangelists", {
+        treeDataProvider,
+        canSelectMany: false,
+        showCollapseAll: true,
+    });
+    treeDataProvider.treeView = treeView;
 }
