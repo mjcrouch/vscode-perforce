@@ -579,15 +579,15 @@
             },
             {
                 "command": "perforce.changeSearch.pin",
-                "title": "Pin results",
+                "title": "Pin results (keeps results until they are manually deleted)",
                 "category": "Perforce",
                 "icon": "$(pin)"
             },
             {
                 "command": "perforce.changeSearch.unpin",
-                "title": "Unpin results",
+                "title": "Unpin results (discard on next search)",
                 "category": "Perforce",
-                "icon": "$(pinned)"
+                "icon": "$(close)"
             },
             {
                 "command": "perforce.changeSearch.delete",
@@ -599,7 +599,7 @@
                 "command": "perforce.changeSearch.showInQuickPick",
                 "title": "Show in quick pick",
                 "category": "Perforce",
-                "icon": "$(list-unordered)"
+                "icon": "$(multiple-windows)"
             }
         ],
         "menus": {

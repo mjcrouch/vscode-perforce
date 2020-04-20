@@ -99,6 +99,14 @@ To open this view, ensure you have a depot revision open (if you are diffing aga
 
 Or, from an annotated file, hover over an annotation and click the three dots (...) or the changelist number in the message that pops up
 
+### Changelist Search
+
+Search for changelists from the SCM view, using the standard set of perforce filters:
+
+![Changelist Search example](images/changeSearch.png)
+
+All views can now be dragged to other locations in VS Code - so this can be placed anywhere you like
+
 ### Improved diff behaviour
 
 * Diffs against the have revision, not the latest revision
@@ -343,6 +351,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.countBadge`              |`string`   |Controls the badge counter for Perforce (`all`,`off`)
 |`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actions when annotating a file
 |`perforce.annotate.gutterColumns`  |`object`   |**Experimental** Format for annotation summary messages
+|`perforce.changelistSearch.maxResults` | `number` | The maximum number of results to show in the changelist search
 |`perforce.changelistOrder`         |`string`   |Specifies the direction of the chnagelist sorting (`descending`,`ascending`)
 |`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer
 |`perforce.ignoredChangelistPrefix` |`string`   |Specifies the prefix of the changelists to be ignored.
