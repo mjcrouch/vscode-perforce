@@ -29,7 +29,7 @@ export type Filters = {
 
 type PickWithValue<T> = vscode.QuickPickItem & { value?: T };
 
-export abstract class FilterItem<T> extends SelfExpandingTreeItem {
+export abstract class FilterItem<T> extends SelfExpandingTreeItem<any> {
     private _selected?: SearchFilterValue<T>;
 
     constructor(protected readonly _filter: SearchFilter) {
@@ -242,7 +242,7 @@ class ClientFilter extends FilterItem<string> {
     }
 }
 
-export class FileFilterValue extends SelfExpandingTreeItem {
+export class FileFilterValue extends SelfExpandingTreeItem<any> {
     constructor(path: string) {
         super(path);
     }
@@ -272,7 +272,7 @@ export class FileFilterValue extends SelfExpandingTreeItem {
     }
 }
 
-class FileFilterAdd extends SelfExpandingTreeItem {
+class FileFilterAdd extends SelfExpandingTreeItem<any> {
     constructor(private _command: vscode.Command) {
         super("Add path...");
     }
@@ -282,7 +282,9 @@ class FileFilterAdd extends SelfExpandingTreeItem {
     }
 }
 
-export class FileFilterRoot extends SelfExpandingTreeItem {
+export class FileFilterRoot extends SelfExpandingTreeItem<
+    FileFilterAdd | FileFilterValue
+> {
     constructor(private _provider: ProviderSelection) {
         super("Files", vscode.TreeItemCollapsibleState.Expanded, {
             reverseChildren: true,
@@ -435,7 +437,7 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
     }
 }
 
-export class FilterRootItem extends SelfExpandingTreeItem {
+export class FilterRootItem extends SelfExpandingTreeItem<any> {
     private _userFilter: UserFilter;
     private _clientFilter: ClientFilter;
     private _statusFilter: StatusFilter;

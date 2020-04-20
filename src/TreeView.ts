@@ -6,17 +6,18 @@ export interface TreeNodeOptions {
 
 type TreeRevealOptions = { select?: boolean; focus?: boolean; expand?: boolean | number };
 
-export abstract class SelfExpandingTreeItem extends vscode.TreeItem
+export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>>
+    extends vscode.TreeItem
     implements vscode.Disposable {
     protected _subscriptions: vscode.Disposable[];
-    private _children: Set<SelfExpandingTreeItem>;
+    private _children: Set<T>;
 
     private _onDisposed: vscode.EventEmitter<void>;
-    private _onChanged: vscode.EventEmitter<SelfExpandingTreeItem>;
+    private _onChanged: vscode.EventEmitter<SelfExpandingTreeItem<any>>;
     private _onRevealRequested: vscode.EventEmitter<
-        [SelfExpandingTreeItem, TreeRevealOptions | undefined]
+        [SelfExpandingTreeItem<any>, TreeRevealOptions | undefined]
     >;
-    private _parent?: SelfExpandingTreeItem;
+    private _parent?: SelfExpandingTreeItem<any>;
 
     public get onDisposed() {
         return this._onDisposed.event;
@@ -32,7 +33,7 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
         this._onChanged.fire();
     }
 
-    private setParent(parent: SelfExpandingTreeItem) {
+    private setParent(parent: SelfExpandingTreeItem<any>) {
         this._parent = parent;
     }
 
@@ -54,7 +55,7 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
         this._children = new Set();
     }
 
-    public addChild(item: SelfExpandingTreeItem) {
+    public addChild(item: T) {
         if (this._children.add(item)) {
             item.setParent(this);
             this._subscriptions.push(
@@ -74,12 +75,18 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
         }
     }
 
+    public clearChildren() {
+        this._children.forEach((c) => {
+            c.dispose(); // TODO - could be lots of events
+        });
+    }
+
     public reveal(options?: TreeRevealOptions) {
         this._onRevealRequested.fire([this, options]);
     }
 
-    getChildren(): SelfExpandingTreeItem[] {
-        const ret: SelfExpandingTreeItem[] = [];
+    getChildren(): T[] {
+        const ret: T[] = [];
         for (const child of this._children.values()) {
             ret.push(child);
         }
@@ -99,23 +106,27 @@ export abstract class SelfExpandingTreeItem extends vscode.TreeItem
  * Used to provide the root elements for a list, that don't need a label
  * - a bit of an inheritance hack, maybe a better way to do this
  */
-export class SelfExpandingTreeRoot extends SelfExpandingTreeItem {
+export class SelfExpandingTreeRoot<
+    T extends SelfExpandingTreeItem<any>
+> extends SelfExpandingTreeItem<T> {
     constructor() {
         super("n/a");
     }
 }
 
-export class SelfExpandingTreeView<R extends SelfExpandingTreeItem>
-    implements vscode.TreeDataProvider<SelfExpandingTreeItem> {
-    private _changeEmitter: vscode.EventEmitter<SelfExpandingTreeItem | undefined>;
+export class SelfExpandingTreeView<R extends SelfExpandingTreeItem<any>>
+    implements vscode.TreeDataProvider<SelfExpandingTreeItem<any>> {
+    private _changeEmitter: vscode.EventEmitter<SelfExpandingTreeItem<any> | undefined>;
     private _subscriptions: vscode.Disposable[];
-    private _treeView: vscode.TreeView<SelfExpandingTreeItem> | undefined;
+    private _treeView: vscode.TreeView<SelfExpandingTreeItem<any>> | undefined;
 
     public get onDidChangeTreeData() {
         return this._changeEmitter.event;
     }
 
-    public set treeView(treeView: vscode.TreeView<SelfExpandingTreeItem> | undefined) {
+    public set treeView(
+        treeView: vscode.TreeView<SelfExpandingTreeItem<any>> | undefined
+    ) {
         this._treeView = treeView;
     }
 
@@ -137,13 +148,13 @@ export class SelfExpandingTreeView<R extends SelfExpandingTreeItem>
         this._subscriptions.forEach((sub) => sub.dispose());
     }
 
-    getTreeItem(element: SelfExpandingTreeItem) {
+    getTreeItem(element: SelfExpandingTreeItem<any>) {
         return element;
     }
 
     getChildren(
-        element?: SelfExpandingTreeItem
-    ): vscode.ProviderResult<SelfExpandingTreeItem[]> {
+        element?: SelfExpandingTreeItem<any>
+    ): vscode.ProviderResult<SelfExpandingTreeItem<any>[]> {
         if (element) {
             return element.getChildren();
         } else {
@@ -152,12 +163,12 @@ export class SelfExpandingTreeView<R extends SelfExpandingTreeItem>
     }
 
     getParent(
-        element: SelfExpandingTreeItem
-    ): vscode.ProviderResult<SelfExpandingTreeItem> {
+        element: SelfExpandingTreeItem<any>
+    ): vscode.ProviderResult<SelfExpandingTreeItem<any>> {
         return element.parent;
     }
 
-    private getRootElements(): SelfExpandingTreeItem[] {
+    private getRootElements(): SelfExpandingTreeItem<any>[] {
         return this._root.getChildren();
     }
 }

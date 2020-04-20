@@ -16,7 +16,10 @@ import {
     FileFilterValue,
     makeFilterLabelText,
 } from "./Filters";
-import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
+import {
+    showQuickPickForChangelist,
+    getOperationIcon,
+} from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
@@ -24,8 +27,10 @@ import { isPositiveOrZero } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
 import { showQuickPickForChangeSearch } from "../quickPick/ChangeSearchQuickPick";
+import { DescribedChangelist } from "../api/PerforceApi";
+import * as PerforceUri from "../PerforceUri";
 
-class ChooseProviderTreeItem extends SelfExpandingTreeItem {
+class ChooseProviderTreeItem extends SelfExpandingTreeItem<any> {
     constructor(private _providerSelection: ProviderSelection) {
         super("Context:", vscode.TreeItemCollapsibleState.None);
 
@@ -101,7 +106,7 @@ class ChooseProviderTreeItem extends SelfExpandingTreeItem {
     public tooltip = "Choose a perforce instance to use as context for the search";
 }
 
-class GoToChangelist extends SelfExpandingTreeItem {
+class GoToChangelist extends SelfExpandingTreeItem<any> {
     constructor(private _chooseProvider: ChooseProviderTreeItem) {
         super("Go to changelist...");
     }
@@ -146,7 +151,7 @@ class GoToChangelist extends SelfExpandingTreeItem {
     }
 }
 
-class RunSearch extends SelfExpandingTreeItem {
+class RunSearch extends SelfExpandingTreeItem<any> {
     constructor(private _root: ChangelistTreeRoot) {
         super("Search Now");
     }
@@ -164,13 +169,56 @@ class RunSearch extends SelfExpandingTreeItem {
     }
 }
 
-class SearchResultItem extends SelfExpandingTreeItem {
+class SearchResultFile extends SelfExpandingTreeItem<any> {
+    constructor(private _clientRoot: ClientRoot, private _file: p4.DepotFileOperation) {
+        super(_file.depotPath + "#" + _file.revision);
+        this.description = _file.operation;
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon(getOperationIcon(this._file.operation));
+    }
+
+    get command() {
+        return {
+            command: "perforce.showQuickPick",
+            arguments: [
+                "file",
+                PerforceUri.fromDepotPath(
+                    this._clientRoot.configSource,
+                    this._file.depotPath,
+                    this._file.revision
+                ).toString(),
+            ],
+            title: "Show file quick pick",
+        };
+    }
+}
+
+class SearchResultItem extends SelfExpandingTreeItem<SearchResultFile> {
     constructor(private _clientRoot: ClientRoot, private _change: ChangeInfo) {
         super(
             _change.chnum + ": " + _change.description.join(" ").slice(0, 32),
             vscode.TreeItemCollapsibleState.None
         );
         this.description = _change.user;
+    }
+
+    get chnum() {
+        return this._change.chnum;
+    }
+
+    addDetails(detail: DescribedChangelist) {
+        this.clearChildren();
+        const files = detail.affectedFiles.map(
+            (file) => new SearchResultFile(this._clientRoot, file)
+        );
+        files.forEach((file) => this.addChild(file));
+        const curState = this.collapsibleState;
+        this.collapsibleState =
+            curState === vscode.TreeItemCollapsibleState.Expanded
+                ? curState
+                : vscode.TreeItemCollapsibleState.Collapsed;
     }
 
     get iconPath() {
@@ -202,7 +250,8 @@ function isPinnable(obj: any): obj is Pinnable {
     return obj && obj.pin && obj.unpin;
 }
 
-class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
+class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem>
+    implements Pinnable {
     private _isPinned: boolean = false;
     constructor(
         private _clientRoot: ClientRoot,
@@ -215,20 +264,36 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
         );
         const children = _results.map((r) => new SearchResultItem(_clientRoot, r));
         children.forEach((child) => this.addChild(child));
+        this.populateChangeDetails();
     }
 
     static makeLabelText(filters: Filters, results: ChangeInfo[]) {
         return makeFilterLabelText(filters, results.length);
     }
 
+    async populateChangeDetails() {
+        const allChanges = this._results.map((r) => r.chnum);
+        const descriptions = await p4.describe(this._clientRoot.configSource, {
+            omitDiffs: true,
+            chnums: allChanges,
+        });
+        const curChildren = this.getChildren();
+        descriptions.forEach((d) => {
+            const child = curChildren.find((c) => c.chnum === d.chnum);
+            child?.addDetails(d);
+        });
+        this.didChange();
+    }
+
     async refresh() {
         this._results = await executeSearch(this._clientRoot, this._filters);
-        this.getChildren().forEach((child) => child.dispose()); // TODO - could be lots of events
+        this.clearChildren();
         const children = this._results.map(
             (r) => new SearchResultItem(this._clientRoot, r)
         );
         children.forEach((child) => this.addChild(child));
         this.reveal();
+        this.populateChangeDetails();
     }
 
     pin() {
@@ -258,7 +323,7 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
     }
 }
 
-class AllResultsTree extends SelfExpandingTreeItem {
+class AllResultsTree extends SelfExpandingTreeItem<SearchResultTree> {
     constructor() {
         super("Results", vscode.TreeItemCollapsibleState.Expanded, {
             reverseChildren: true,
@@ -305,7 +370,7 @@ async function executeSearch(
     );
 }
 
-class ChangelistTreeRoot extends SelfExpandingTreeRoot {
+class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
     private _chooseProvider: ChooseProviderTreeItem;
     private _filterRoot: FilterRootItem;
     private _allResults: AllResultsTree;

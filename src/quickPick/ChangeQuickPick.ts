@@ -65,20 +65,20 @@ export async function showQuickPickForChangelist(resource: vscode.Uri, chnum: st
     await qp.showQuickPick("change", resource, chnum);
 }
 
-function getOperationIcon(operation: string) {
+export function getOperationIcon(operation: string) {
     switch (operation) {
         case "add":
-            return "$(diff-added)";
+            return "diff-added";
         case "delete":
         case "move/delete":
         case "purge":
-            return "$(diff-removed)";
+            return "diff-removed";
         case "move/add":
         case "integrate":
         case "branch":
-            return "$(diff-renamed)";
+            return "diff-renamed";
         default:
-            return "$(diff-modified)";
+            return "diff-modified";
     }
 }
 
@@ -151,7 +151,9 @@ function makeFilePicks(
             return {
                 label:
                     nbsp.repeat(3) +
+                    "$(" +
                     getOperationIcon(file.operation) +
+                    ")" +
                     " " +
                     file.depotPath +
                     "#" +
@@ -185,7 +187,9 @@ function makeShelvedFilePicks(
             return {
                 label:
                     nbsp.repeat(3) +
+                    "$(" +
                     getOperationIcon(file.operation) +
+                    ")" +
                     " " +
                     file.depotPath +
                     "#" +
