@@ -414,8 +414,10 @@ export class FileFilterRoot extends SelfExpandingTreeItem {
     async addNewFilter() {
         const value = await this.pickNewFilter();
         if (value) {
-            this.addChild(new FileFilterValue(value));
+            const val = new FileFilterValue(value);
+            this.addChild(val);
             this.didChange();
+            val.reveal();
         }
     }
 
