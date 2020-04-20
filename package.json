@@ -584,6 +584,12 @@
                 "icon": "$(trash)"
             },
             {
+                "command": "perforce.changeSearch.refresh",
+                "title": "Refresh search",
+                "category": "Perforce",
+                "icon": "$(refresh)"
+            },
+            {
                 "command": "perforce.changeSearch.pin",
                 "title": "Pin results (keeps results until they are manually deleted)",
                 "category": "Perforce",
@@ -724,6 +730,10 @@
                 },
                 {
                     "command": "perforce.changeSearch.removeFileFilter",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.refresh",
                     "when": "0"
                 },
                 {
@@ -996,6 +1006,11 @@
                     "command": "perforce.changeSearch.removeFileFilter",
                     "group": "inline@2",
                     "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
+                {
+                    "command": "perforce.changeSearch.refresh",
+                    "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
                 },
                 {
                     "command": "perforce.changeSearch.pin",

@@ -221,6 +221,15 @@ class SearchResultTree extends SelfExpandingTreeItem implements Pinnable {
         return makeFilterLabelText(filters, results.length);
     }
 
+    async refresh() {
+        this._results = await executeSearch(this._clientRoot, this._filters);
+        this.getChildren().forEach((child) => child.dispose()); // TODO - could be lots of events
+        const children = this._results.map(
+            (r) => new SearchResultItem(this._clientRoot, r)
+        );
+        children.forEach((child) => this.addChild(child));
+    }
+
     pin() {
         this._isPinned = true;
         this.didChange();
@@ -278,6 +287,21 @@ function showResultsInQuickPick(
     return showQuickPickForChangeSearch(resource, filters, results);
 }
 
+async function executeSearch(
+    selectedClient: ClientRoot,
+    filters: Filters
+): Promise<ChangeInfo[]> {
+    const maxChangelists = configAccessor.changelistSearchMaxResults;
+    return await vscode.window.withProgress(
+        { location: { viewId: "perforce.searchChangelists" } },
+        () =>
+            p4.getChangelists(selectedClient.configSource, {
+                ...filters,
+                maxChangelists,
+            })
+    );
+}
+
 class ChangelistTreeRoot extends SelfExpandingTreeRoot {
     private _chooseProvider: ChooseProviderTreeItem;
     private _filterRoot: FilterRootItem;
@@ -305,15 +329,7 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot {
             throw new Error("No context for changelist search");
         }
         const filters = this._filterRoot.currentFilters;
-        const maxChangelists = configAccessor.changelistSearchMaxResults;
-        const results = await vscode.window.withProgress(
-            { location: { viewId: "perforce.searchChangelists" } },
-            () =>
-                p4.getChangelists(selectedClient.configSource, {
-                    ...filters,
-                    maxChangelists,
-                })
-        );
+        const results = await executeSearch(selectedClient, filters);
 
         this._allResults.addResults(selectedClient, filters, results);
 
@@ -365,6 +381,11 @@ export function registerChangelistSearch() {
     vscode.commands.registerCommand(
         "perforce.changeSearch.run",
         (arg: ChangelistTreeRoot) => arg.executeSearch()
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.refresh",
+        (arg: SearchResultTree) => arg.refresh()
     );
 
     vscode.commands.registerCommand(
