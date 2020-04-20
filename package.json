@@ -560,6 +560,12 @@
                 "icon": "$(trash)"
             },
             {
+                "command": "perforce.changeSearch.resetFilter",
+                "title": "Reset filter",
+                "category": "Perforce",
+                "icon": "$(close)"
+            },
+            {
                 "command": "perforce.changeSearch.addFileFilter",
                 "title": "Add file filter",
                 "category": "Perforce",
@@ -702,6 +708,10 @@
                 },
                 {
                     "command": "perforce.changeSearch.resetFilters",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.resetFilter",
                     "when": "0"
                 },
                 {
@@ -966,6 +976,11 @@
                     "command": "perforce.changeSearch.resetFilters",
                     "group": "inline@1",
                     "when": "view == perforce.searchChangelists && viewItem == filterRoot"
+                },
+                {
+                    "command": "perforce.changeSearch.resetFilter",
+                    "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == filterItem-val"
                 },
                 {
                     "command": "perforce.changeSearch.addFileFilter",

@@ -76,6 +76,12 @@ export abstract class FilterItem<T> extends SelfExpandingTreeItem {
         return this._filter.placeHolder;
     }
 
+    get contextValue() {
+        return this._selected?.value !== undefined
+            ? "filterItem-val"
+            : "filterItem-empty";
+    }
+
     reset() {
         this.setValue(undefined);
         this.didChange();
