@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { Display } from "./Display";
 
 export type UriArguments = {
     workspace?: string;
@@ -16,27 +15,6 @@ export type UriArguments = {
 type AnyUriArguments = {
     [key: string]: string | boolean | undefined;
 };
-
-export function isSameAsOpenFile(uri: vscode.Uri) {
-    const open = vscode.window.activeTextEditor?.document.uri;
-    if (!open) {
-        return false;
-    }
-
-    if (isSameFileOrDepotPath(uri, open)) {
-        return true;
-    }
-
-    if (isDepotUri(uri)) {
-        const path = Display.getLastActiveFileStatus()?.details?.depotPath;
-        if (!path) {
-            return false;
-        }
-        return path === getDepotPathFromDepotUri(uri);
-    }
-
-    return false;
-}
 
 export function isSameFileOrDepotPath(a: vscode.Uri, b: vscode.Uri) {
     if (isDepotUri(a) && isDepotUri(b)) {

@@ -82,11 +82,16 @@ export class AnnotationProvider {
             .filter(isTruthy);
     }
 
+    private async getOpenFileRangesIfSameFile() {
+        try {
+            const isSame = await Display.isSameAsOpenFile(this._doc);
+            return isSame ? vscode.window.activeTextEditor?.visibleRanges : undefined;
+        } catch {}
+    }
+
     private async loadEditor() {
         AnnotationProvider._onWillLoadEditor.fire(this._p4Uri);
-        const ranges = PerforceUri.isSameAsOpenFile(this._doc)
-            ? vscode.window.activeTextEditor?.visibleRanges
-            : undefined;
+        const ranges = await this.getOpenFileRangesIfSameFile();
         this._editor = await vscode.window.showTextDocument(this._p4Uri);
 
         if (ranges) {

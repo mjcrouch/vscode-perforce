@@ -9,6 +9,7 @@ import {
 
 import { debounce } from "./Debounce";
 import * as p4 from "./api/PerforceApi";
+import * as PerforceUri from "./PerforceUri";
 
 let _statusBarItem: StatusBarItem;
 
@@ -138,6 +139,41 @@ export namespace Display {
         } else {
             _statusBarItem.hide();
         }
+    }
+
+    async function isSameAsOpenHaveFile(uri: Uri) {
+        const open = window.activeTextEditor?.document.uri;
+        if (!open || !PerforceUri.isDepotUri(uri)) {
+            return false;
+        }
+        const have = await p4.have(open, { file: open });
+        if (have) {
+            return have.depotPath === PerforceUri.getDepotPathFromDepotUri(uri);
+        }
+        return false;
+    }
+
+    function isSameAsOpenFileByStatus(uri: Uri) {
+        const open = window.activeTextEditor?.document.uri;
+        if (!open || !PerforceUri.isDepotUri(uri)) {
+            return false;
+        }
+
+        const path = Display.getLastActiveFileStatus()?.details?.depotPath;
+        return path && path === PerforceUri.getDepotPathFromDepotUri(uri);
+    }
+
+    export async function isSameAsOpenFile(uri: Uri) {
+        const open = window.activeTextEditor?.document.uri;
+        if (!open) {
+            return false;
+        }
+
+        return (
+            PerforceUri.isSameFileOrDepotPath(uri, open) ||
+            isSameAsOpenFileByStatus(uri) ||
+            (await isSameAsOpenHaveFile(uri))
+        );
     }
 
     export function showMessage(message: string) {
