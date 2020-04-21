@@ -288,7 +288,7 @@
                 },
                 "perforce.changelistSearch.maxResults": {
                     "type": "number",
-                    "default": "200",
+                    "default": 200,
                     "description": "The maximum number of results to return in the changelist search",
                     "minimum": 1
                 }
