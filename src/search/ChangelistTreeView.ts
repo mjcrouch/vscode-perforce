@@ -23,7 +23,7 @@ import {
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
-import { isPositiveOrZero } from "../TsUtils";
+import { isPositiveOrZero, dedupe } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
 import { showQuickPickForChangeSearch } from "../quickPick/ChangeSearchQuickPick";
@@ -188,6 +188,8 @@ class RunSearch extends SelfExpandingTreeItem<any> {
     get contextValue() {
         return this._autoRefresh ? "searchNow-auto" : "searchNow-manual";
     }
+
+    tooltip = "Apply current filters";
 }
 
 class SearchResultFile extends SelfExpandingTreeItem<any> {
@@ -253,6 +255,10 @@ class SearchResultItem extends SelfExpandingTreeItem<SearchResultFile> {
             title: "Show changelist quick pick",
         };
     }
+
+    get tooltip() {
+        return this._change.description.join(" ");
+    }
 }
 
 interface Pinnable extends vscode.Disposable {
@@ -267,13 +273,11 @@ function isPinnable(obj: any): obj is Pinnable {
 
 abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> {
     private _isPinned: boolean = false;
+    private _results: ChangeInfo[];
 
-    constructor(
-        private _resource: vscode.Uri,
-        private _results: ChangeInfo[],
-        label: string
-    ) {
+    constructor(private _resource: vscode.Uri, results: ChangeInfo[], label: string) {
         super(label, vscode.TreeItemCollapsibleState.Expanded);
+        this._results = dedupe(results, "chnum"); // with multiple file paths, p4 returns duplicates
         const children = this._results.map((r) => new SearchResultItem(this.resource, r));
         children.forEach((child) => this.addChild(child));
         this.populateChangeDetails();
@@ -302,7 +306,7 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
     }
 
     public async refresh() {
-        this._results = await this.getNewResults();
+        this._results = dedupe(await this.getNewResults(), "chnum");
         this.clearChildren();
         const children = this._results.map(
             (r) => new SearchResultItem(this._resource, r)
@@ -447,6 +451,13 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
         this._runSearch = new RunSearch(this);
         this._subscriptions.push(
             this._filterRoot.onDidChangeFilters(() => {
+                if (this._runSearch.autoRefresh) {
+                    this.executeSearch();
+                }
+            })
+        );
+        this._subscriptions.push(
+            this._runSearch.onChanged(() => {
                 if (this._runSearch.autoRefresh) {
                     this.executeSearch();
                 }

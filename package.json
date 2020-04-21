@@ -585,13 +585,13 @@
             },
             {
                 "command": "perforce.changeSearch.refresh",
-                "title": "Refresh search",
+                "title": "Refresh this search without changing filters",
                 "category": "Perforce",
                 "icon": "$(refresh)"
             },
             {
                 "command": "perforce.changeSearch.pin",
-                "title": "Pin results (keeps results until they are manually deleted)",
+                "title": "Pin results (keep until they are manually deleted)",
                 "category": "Perforce",
                 "icon": "$(pin)"
             },
