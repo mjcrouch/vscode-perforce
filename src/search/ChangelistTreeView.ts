@@ -323,6 +323,7 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
 class SingleChangeResultTree extends SearchResultTree {
     constructor(resource: vscode.Uri, private _result: DescribedChangelist) {
         super(resource, [_result], "Focused changelist " + _result.chnum);
+        this.pin();
     }
 
     async getNewResults() {
