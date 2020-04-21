@@ -105,7 +105,7 @@ Search for changelists from the SCM view, using the standard set of perforce fil
 
 ![Changelist Search example](images/changeSearch.png)
 
-Enter the set of filters and click "Search Now" to see or update results
+Enter the set of filters and click "Search Now" to see or update results. Use auto search to automatically update results when you change the filters
 
 All views can now be dragged to other locations in VS Code - so this can be placed anywhere you like
 
