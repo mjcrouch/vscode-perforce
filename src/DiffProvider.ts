@@ -47,13 +47,14 @@ export function diffTitleForDepotPaths(
 
 function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
     if (!PerforceUri.isDepotUri(rightFile)) {
+        const rightRev = PerforceUri.getRevOrAtLabel(rightFile);
         return (
             Path.basename(leftFile.fsPath) +
             "#" +
-            leftFile.fragment +
+            PerforceUri.getRevOrAtLabel(leftFile) +
             " ⟷ " +
             Path.basename(rightFile.fsPath) +
-            (rightFile.fragment ? "#" + rightFile.fragment : " (workspace)")
+            (rightRev ? "#" + rightRev : " (workspace)")
         );
     }
     const leftPath = PerforceUri.getDepotPathFromDepotUri(leftFile);
@@ -61,9 +62,9 @@ function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
 
     return diffTitleForDepotPaths(
         leftPath,
-        leftFile.fragment,
+        PerforceUri.getRevOrAtLabel(leftFile),
         rightPath,
-        rightFile.fragment
+        PerforceUri.getRevOrAtLabel(rightFile)
     );
 }
 
@@ -92,17 +93,14 @@ export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
 }
 
 function getPreviousUri(fromUri: Uri) {
-    if (!fromUri.fragment) {
-        return undefined;
-    }
-    const rightRev = parseInt(fromUri.fragment);
+    const rightRev = parseInt(PerforceUri.getRevOrAtLabel(fromUri));
     if (isNaN(rightRev)) {
         return undefined;
     }
     if (rightRev <= 1) {
         return undefined;
     }
-    return fromUri.with({ fragment: (rightRev - 1).toString() });
+    return PerforceUri.fromUriWithRevision(fromUri, (rightRev - 1).toString());
 }
 
 /**
@@ -131,9 +129,10 @@ async function diffPreviousFromWorking(fromDoc: Uri) {
         Display.showImportantError("No previous revision available");
         return;
     }
+    const leftRev = PerforceUri.getRevOrAtLabel(leftUri);
     await diffFiles(
-        PerforceUri.withArgs(leftUri, { haveRev: leftUri.fragment }),
-        PerforceUri.withArgs(fromDoc, { haveRev: leftUri.fragment })
+        PerforceUri.withArgs(leftUri, { haveRev: leftRev }),
+        PerforceUri.withArgs(fromDoc, { haveRev: leftRev })
     );
 }
 
@@ -158,7 +157,7 @@ function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
 }
 
 async function diffPreviousUsingRevision(fromDoc: Uri) {
-    const rev = parseInt(fromDoc.fragment);
+    const rev = parseInt(PerforceUri.getRevOrAtLabel(fromDoc));
     if (isNaN(rev)) {
         await diffPreviousFromWorking(fromDoc);
     } else {
@@ -185,7 +184,7 @@ export async function diffPrevious(fromDoc: Uri) {
 }
 
 export async function diffNext(fromDoc: Uri) {
-    const rev = parseInt(fromDoc.fragment);
+    const rev = parseInt(PerforceUri.getRevOrAtLabel(fromDoc));
     if (isNaN(rev)) {
         Display.showImportantError("No more revisions available");
         return;
@@ -198,7 +197,7 @@ export async function diffNext(fromDoc: Uri) {
     const rightUri =
         atHaveRev && args.diffStartFile
             ? Uri.parse(args.diffStartFile)
-            : fromDoc.with({ fragment: (rev + 1).toString() });
+            : PerforceUri.fromUriWithRevision(fromDoc, (rev + 1).toString());
 
     await diffFiles(leftUri, rightUri);
 }

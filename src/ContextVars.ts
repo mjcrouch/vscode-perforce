@@ -52,7 +52,7 @@ function getRevision(file?: vscode.Uri) {
     if (!file) {
         return -1;
     }
-    const fileRev = parseInt(file.fragment);
+    const fileRev = parseInt(PerforceUri.getRevOrAtLabel(file));
     if (isNaN(fileRev)) {
         return -1;
     }

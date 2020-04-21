@@ -187,7 +187,10 @@ function fileSpecToArg(fileSpec: FileSpec, ignoreRevisionFragments?: boolean) {
     if (isUri(fileSpec) && PerforceUri.isDepotUri(fileSpec)) {
         return (
             PerforceUri.getDepotPathFromDepotUri(fileSpec) +
-            fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
+            fragmentAsSuffix(
+                PerforceUri.getRevOrAtLabel(fileSpec),
+                ignoreRevisionFragments
+            )
         );
     }
     return (

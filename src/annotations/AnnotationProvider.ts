@@ -84,7 +84,15 @@ export class AnnotationProvider {
 
     private async loadEditor() {
         AnnotationProvider._onWillLoadEditor.fire(this._p4Uri);
+        const ranges = PerforceUri.isSameAsOpenFile(this._doc)
+            ? vscode.window.activeTextEditor?.visibleRanges
+            : undefined;
         this._editor = await vscode.window.showTextDocument(this._p4Uri);
+
+        if (ranges) {
+            this._editor.revealRange(ranges[0]);
+        }
+
         this.applyBaseDecorations();
         // don't apply highlights until a line is selected
     }
@@ -182,7 +190,7 @@ export class AnnotationProvider {
         const decorations = getDecorations(underlying, annotations, log);
 
         // try to use the depot URI to open the document, so that we can perform revision actions on it
-        if (!uri.fragment && !PerforceUri.isDepotUri(uri) && log[0]) {
+        if (!PerforceUri.getRevOrAtLabel(uri) && !PerforceUri.isDepotUri(uri) && log[0]) {
             uri = PerforceUri.fromDepotPath(uri, log[0].file, log[0].revision);
         }
 

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { Display } from "./Display";
 
 export type UriArguments = {
     workspace?: string;
@@ -9,11 +10,45 @@ export type UriArguments = {
     haveRev?: string;
     diffStartFile?: string;
     depotName?: string;
+    rev?: string;
 };
 
 type AnyUriArguments = {
     [key: string]: string | boolean | undefined;
 };
+
+export function isSameAsOpenFile(uri: vscode.Uri) {
+    const open = vscode.window.activeTextEditor?.document.uri;
+    if (!open) {
+        return false;
+    }
+
+    if (isSameFileOrDepotPath(uri, open)) {
+        return true;
+    }
+
+    if (isDepotUri(uri)) {
+        const path = Display.getLastActiveFileStatus()?.details?.depotPath;
+        if (!path) {
+            return false;
+        }
+        return path === getDepotPathFromDepotUri(uri);
+    }
+
+    return false;
+}
+
+export function isSameFileOrDepotPath(a: vscode.Uri, b: vscode.Uri) {
+    if (isDepotUri(a) && isDepotUri(b)) {
+        return getDepotPathFromDepotUri(a) === getDepotPathFromDepotUri(b);
+    } else {
+        return a.fsPath === b.fsPath;
+    }
+}
+
+export function getRevOrAtLabel(uri: vscode.Uri) {
+    return uri.fragment;
+}
 
 export function getDepotPathFromDepotUri(uri: vscode.Uri): string {
     const args = decodeUriQuery(uri.query);
@@ -52,6 +87,7 @@ export function fromDepotPath(
         depot: true,
         workspace: workspace.fsPath,
         depotName,
+        rev: revisionOrAtLabel,
     });
 }
 
@@ -102,7 +138,9 @@ export function fromUri(uri: vscode.Uri, otherArgs?: UriArguments) {
 }
 
 export function fromUriWithRevision(perforceUri: vscode.Uri, revisionOrAtLabel: string) {
-    return fromUri(perforceUri.with({ fragment: revisionOrAtLabel }));
+    return fromUri(perforceUri.with({ fragment: revisionOrAtLabel }), {
+        rev: revisionOrAtLabel,
+    });
 }
 
 /**
@@ -116,10 +154,17 @@ export function withArgs(
     revisionOrAtLabel?: string
 ) {
     const curArgs = decodeUriQuery(uri.query);
-    const newQuery = encodeQuery({
-        ...curArgs,
-        ...args,
-    });
+    const newQuery =
+        revisionOrAtLabel !== undefined
+            ? encodeQuery({
+                  ...curArgs,
+                  ...args,
+                  rev: revisionOrAtLabel,
+              })
+            : encodeQuery({
+                  ...curArgs,
+                  ...args,
+              });
     return revisionOrAtLabel !== undefined
         ? uri.with({ query: newQuery, fragment: revisionOrAtLabel })
         : uri.with({ query: newQuery });

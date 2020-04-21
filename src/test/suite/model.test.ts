@@ -1125,7 +1125,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     basicFiles.add().localFile.with({
                         scheme: "perforce",
                         fragment: "have",
-                        query: "command=print&p4Args=-q",
+                        query: "command=print&p4Args=-q&rev=have",
                     })
                 );
             });
@@ -1146,7 +1146,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         query:
                             "command=print&p4Args=-q&depot&workspace=" +
                             encodeURIComponent(basicFiles.moveAdd().localFile.fsPath) +
-                            "&depotName=depot",
+                            "&depotName=depot&rev=4",
                     })
                 );
             });
