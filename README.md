@@ -99,6 +99,8 @@ To open this view, ensure you have a depot revision open (if you are diffing aga
 
 Or, from an annotated file, hover over an annotation and click the three dots (...) or the changelist number in the message that pops up
 
+[Ideas for improvement? Post feedback here](https://github.com/mjcrouch/vscode-perforce/issues/104)
+
 ### Changelist Search
 
 Search for changelists from the SCM view, using the standard set of perforce filters:
@@ -108,6 +110,8 @@ Search for changelists from the SCM view, using the standard set of perforce fil
 Enter the set of filters and click "Search Now" to see or update results. Use auto search to automatically update results when you change the filters
 
 All views can now be dragged to other locations in VS Code - so this can be placed anywhere you like
+
+[Ideas for improvement? Post feedback here](https://github.com/mjcrouch/vscode-perforce/issues/104)
 
 ### Improved diff behaviour
 
