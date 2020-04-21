@@ -152,8 +152,25 @@ class GoToChangelist extends SelfExpandingTreeItem<any> {
 }
 
 class RunSearch extends SelfExpandingTreeItem<any> {
+    private _autoRefresh: boolean;
+
     constructor(private _root: ChangelistTreeRoot) {
-        super("Search Now");
+        super(RunSearch.makeLabel(false));
+        this._autoRefresh = false;
+    }
+
+    private static makeLabel(autoRefresh: boolean) {
+        return "Search Now\t(Auto: " + (autoRefresh ? "on" : "off") + ")";
+    }
+
+    get autoRefresh() {
+        return this._autoRefresh;
+    }
+
+    set autoRefresh(autoRefresh: boolean) {
+        this._autoRefresh = autoRefresh;
+        this.label = RunSearch.makeLabel(this._autoRefresh);
+        this.didChange();
     }
 
     get command(): vscode.Command {
@@ -166,6 +183,10 @@ class RunSearch extends SelfExpandingTreeItem<any> {
 
     get iconPath() {
         return new vscode.ThemeIcon("search");
+    }
+
+    get contextValue() {
+        return this._autoRefresh ? "searchNow-auto" : "searchNow-manual";
     }
 }
 
@@ -414,6 +435,7 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
     private _filterRoot: FilterRootItem;
     private _allResults: AllResultsTree;
     private _providerSelection: ProviderSelection;
+    private _runSearch: RunSearch;
 
     constructor() {
         super();
@@ -422,10 +444,18 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
         this._chooseProvider = new ChooseProviderTreeItem(this._providerSelection);
         this._filterRoot = new FilterRootItem(this._providerSelection);
         this._allResults = new AllResultsTree();
+        this._runSearch = new RunSearch(this);
+        this._subscriptions.push(
+            this._filterRoot.onDidChangeFilters(() => {
+                if (this._runSearch.autoRefresh) {
+                    this.executeSearch();
+                }
+            })
+        );
         this.addChild(this._chooseProvider);
         this.addChild(new GoToChangelist(this._chooseProvider));
         this.addChild(this._filterRoot);
-        this.addChild(new RunSearch(this));
+        this.addChild(this._runSearch);
         this.addChild(this._allResults);
     }
 
@@ -523,6 +553,16 @@ export function registerChangelistSearch() {
     vscode.commands.registerCommand(
         "perforce.changeSearch.showInQuickPick",
         (arg: SearchResultTree) => arg.showInQuickPick()
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.enableAutoRefresh",
+        (arg: RunSearch) => (arg.autoRefresh = true)
+    );
+
+    vscode.commands.registerCommand(
+        "perforce.changeSearch.disableAutoRefresh",
+        (arg: RunSearch) => (arg.autoRefresh = false)
     );
 
     changelistTree = new ChangelistTreeRoot();

@@ -612,6 +612,18 @@
                 "title": "Show in quick pick",
                 "category": "Perforce",
                 "icon": "$(multiple-windows)"
+            },
+            {
+                "command": "perforce.changeSearch.enableAutoRefresh",
+                "title": "Enable auto search",
+                "category": "Perforce",
+                "icon": "$(sync-ignored)"
+            },
+            {
+                "command": "perforce.changeSearch.disableAutoRefresh",
+                "title": "Disable auto search",
+                "category": "Perforce",
+                "icon": "$(sync)"
             }
         ],
         "menus": {
@@ -750,6 +762,14 @@
                 },
                 {
                     "command": "perforce.changeSearch.showInQuickPick",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.enableAutoRefresh",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.disableAutoRefresh",
                     "when": "0"
                 }
             ],
@@ -1006,6 +1026,16 @@
                     "command": "perforce.changeSearch.removeFileFilter",
                     "group": "inline@2",
                     "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
+                {
+                    "command": "perforce.changeSearch.enableAutoRefresh",
+                    "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem == searchNow-manual"
+                },
+                {
+                    "command": "perforce.changeSearch.disableAutoRefresh",
+                    "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem == searchNow-auto"
                 },
                 {
                     "command": "perforce.changeSearch.refresh",

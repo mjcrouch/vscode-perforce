@@ -31,9 +31,15 @@ type PickWithValue<T> = vscode.QuickPickItem & { value?: T };
 
 export abstract class FilterItem<T> extends SelfExpandingTreeItem<any> {
     private _selected?: SearchFilterValue<T>;
+    private _didChangeFilter: vscode.EventEmitter<void>;
+    get onDidChangeFilter() {
+        return this._didChangeFilter.event;
+    }
 
     constructor(protected readonly _filter: SearchFilter) {
         super(_filter.name + ":", vscode.TreeItemCollapsibleState.None);
+        this._didChangeFilter = new vscode.EventEmitter();
+        this._subscriptions.push(this._didChangeFilter);
         this.setValue(undefined);
     }
 
@@ -46,11 +52,17 @@ export abstract class FilterItem<T> extends SelfExpandingTreeItem<any> {
     }
 
     private setValue(value?: SearchFilterValue<T>) {
+        const didChange = this._selected !== value;
+
         this._selected = value;
         if (value && value.value !== undefined) {
             this.description = this._selected?.label;
         } else {
             this.description = "<" + this._filter.defaultText + ">";
+        }
+
+        if (didChange) {
+            this._didChangeFilter.fire();
         }
     }
 
@@ -82,9 +94,12 @@ export abstract class FilterItem<T> extends SelfExpandingTreeItem<any> {
             : "filterItem-empty";
     }
 
-    reset() {
+    reset(fireFilterUpdate = true) {
         this.setValue(undefined);
         this.didChange();
+        if (fireFilterUpdate) {
+            this._didChangeFilter.fire();
+        }
     }
 }
 class StatusFilter extends FilterItem<ChangelistStatus> {
@@ -285,6 +300,11 @@ class FileFilterAdd extends SelfExpandingTreeItem<any> {
 export class FileFilterRoot extends SelfExpandingTreeItem<
     FileFilterAdd | FileFilterValue
 > {
+    private _didChangeFilter: vscode.EventEmitter<void>;
+    get onDidChangeFilter() {
+        return this._didChangeFilter.event;
+    }
+
     constructor(private _provider: ProviderSelection) {
         super("Files", vscode.TreeItemCollapsibleState.Expanded, {
             reverseChildren: true,
@@ -297,6 +317,8 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
                 title: "Add file filter",
             })
         );
+        this._didChangeFilter = new vscode.EventEmitter();
+        this._subscriptions.push(this._didChangeFilter);
     }
 
     get contextValue() {
@@ -419,6 +441,12 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
             const val = new FileFilterValue(value);
             this.addChild(val);
             this.didChange();
+            this._didChangeFilter.fire();
+            this._subscriptions.push(
+                val.onDisposed(() => {
+                    this._didChangeFilter.fire();
+                })
+            );
             val.reveal();
         }
     }
@@ -430,10 +458,15 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
             .filter(isTruthy);
     }
 
-    reset() {
+    reset(fireFilterUpdate = true) {
         this.getChildren()
             .filter((child) => child.contextValue === "fileFilter")
             .forEach((child) => child.dispose());
+
+        if (fireFilterUpdate) {
+            this._didChangeFilter.fire();
+        }
+        this.didChange();
     }
 }
 
@@ -442,6 +475,11 @@ export class FilterRootItem extends SelfExpandingTreeItem<any> {
     private _clientFilter: ClientFilter;
     private _statusFilter: StatusFilter;
     private _fileFilter: FileFilterRoot;
+
+    private _didChangeFilters: vscode.EventEmitter<void>;
+    get onDidChangeFilters() {
+        return this._didChangeFilters.event;
+    }
 
     constructor(provider: ProviderSelection) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
@@ -453,8 +491,26 @@ export class FilterRootItem extends SelfExpandingTreeItem<any> {
         this.addChild(this._clientFilter);
         this._fileFilter = new FileFilterRoot(provider);
         this.addChild(this._fileFilter);
+        this._didChangeFilters = new vscode.EventEmitter();
+
+        this.subscribeToChanges([
+            this._statusFilter,
+            this._userFilter,
+            this._clientFilter,
+            this._fileFilter,
+        ]);
+
+        this._subscriptions.push(this._didChangeFilters);
         //this.addChild(new FilterItem("User"));
         //this.addChild(new FilterItem("Paths"));
+    }
+
+    subscribeToChanges(filters: (FilterItem<any> | FileFilterRoot)[]) {
+        filters.forEach((f) =>
+            this._subscriptions.push(
+                f.onDidChangeFilter(() => this._didChangeFilters.fire())
+            )
+        );
     }
 
     public get currentFilters(): Filters {
@@ -467,10 +523,11 @@ export class FilterRootItem extends SelfExpandingTreeItem<any> {
     }
 
     resetAllFilters() {
-        this._userFilter.reset();
-        this._clientFilter.reset();
-        this._statusFilter.reset();
-        this._fileFilter.reset();
+        this._userFilter.reset(false);
+        this._clientFilter.reset(false);
+        this._statusFilter.reset(false);
+        this._fileFilter.reset(false);
+        this._didChangeFilters.fire();
     }
 
     public contextValue = "filterRoot";

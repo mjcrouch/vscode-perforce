@@ -11,6 +11,7 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
     implements vscode.Disposable {
     protected _subscriptions: vscode.Disposable[];
     private _children: Set<T>;
+    private _isDisposed: boolean;
 
     private _onDisposed: vscode.EventEmitter<void>;
     private _onChanged: vscode.EventEmitter<SelfExpandingTreeItem<any>>;
@@ -47,11 +48,16 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
         private _options?: TreeNodeOptions
     ) {
         super(label, collapsibleState);
+        this._isDisposed = false;
         this._onDisposed = new vscode.EventEmitter();
         this._onChanged = new vscode.EventEmitter();
         this._onRevealRequested = new vscode.EventEmitter();
         this._subscriptions = [];
-        this._subscriptions.push(this._onChanged, this._onDisposed);
+        this._subscriptions.push(
+            this._onChanged,
+            this._onDisposed,
+            this._onRevealRequested
+        );
         this._children = new Set();
     }
 
@@ -94,11 +100,14 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
     }
 
     dispose() {
-        this._onDisposed.fire();
-        this._subscriptions.forEach((s) => s.dispose());
-        // dipose children after the listeners, so we don't get lots of noisy events
-        this._children.forEach((child) => child.dispose());
-        this._parent = undefined;
+        if (!this._isDisposed) {
+            this._isDisposed = true;
+            this._onDisposed.fire();
+            this._subscriptions.forEach((s) => s.dispose());
+            // dipose children after the listeners, so we don't get lots of noisy events
+            this._children.forEach((child) => child.dispose());
+            this._parent = undefined;
+        }
     }
 }
 
