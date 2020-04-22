@@ -393,8 +393,7 @@ export class PerforceSCMProvider {
         return (
             a.clientName === b.clientName &&
             a.clientRoot.fsPath === b.clientRoot.fsPath &&
-            a.userName === b.userName &&
-            a.serverAddress === b.serverAddress
+            a.userName === b.userName
         );
     }
 
