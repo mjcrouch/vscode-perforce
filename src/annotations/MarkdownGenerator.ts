@@ -106,10 +106,9 @@ export function makeAllLinks(
                   makeDiffURI(underlying, change, latestChange)
               )
             : undefined;
-    const annotateLink =
-        change !== latestChange
-            ? makeMarkdownLink("Annotate", makeAnnotateURI(underlying, change))
-            : undefined;
+    const annotateLink = prevChange
+        ? makeMarkdownLink("Annotate Previous", makeAnnotateURI(underlying, prevChange))
+        : undefined;
     const swarmLink = _config.swarmHost
         ? makeMarkdownLink(codicon("eye"), makeSwarmHostURL(change), true)
         : undefined;
