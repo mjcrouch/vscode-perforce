@@ -427,7 +427,7 @@ async function checkForSlevesque(ctx: vscode.ExtensionContext) {
         const ignore = "Don't show again";
         const showExts = "Show installed extensions";
         const chosen = await vscode.window.showWarningMessage(
-            "You have both slevesque.perforce and mjcrouch.perforce installed. These extensions *cannot* be used together. Please uninstall or disable slevesque.perforce",
+            "You have both slevesque.perforce and mjcrouch.perforce installed. These extensions *cannot* be used together. Please uninstall or disable slevesque.perforce in order to use the fork",
             showExts,
             ignore
         );
