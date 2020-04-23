@@ -418,6 +418,30 @@ function removeWorkspace(wksFolder: vscode.WorkspaceFolder) {
     PerforceSCMProvider.removeContributingDirsUnder(wksFolder.uri);
 }
 
+async function checkForSlevesque(ctx: vscode.ExtensionContext) {
+    if (ctx.globalState.get<boolean>("ignoreSlevesque")) {
+        return;
+    }
+    const ext = vscode.extensions.getExtension("slevesque.perforce");
+    if (ext) {
+        const ignore = "Don't show again";
+        const showExts = "Show installed extensions";
+        const chosen = await vscode.window.showWarningMessage(
+            "You have both slevesque.perforce and mjcrouch.perforce installed. These extensions *cannot* be used together. Please uninstall or disable slevesque.perforce",
+            showExts,
+            ignore
+        );
+
+        if (chosen === ignore) {
+            ctx.globalState.update("ignoreSlevesque", true);
+        } else if (chosen === showExts) {
+            vscode.commands.executeCommand(
+                "workbench.extensions.action.showInstalledExtensions"
+            );
+        }
+    }
+}
+
 export async function activate(ctx: vscode.ExtensionContext) {
     // ALWAYS register the edit and save command
     PerforceCommands.registerImportantCommands(_disposable);
@@ -425,6 +449,8 @@ export async function activate(ctx: vscode.ExtensionContext) {
     ctx.subscriptions.push(
         new vscode.Disposable(() => Disposable.from(..._disposable).dispose())
     );
+
+    checkForSlevesque(ctx);
 
     const activationMode = vscode.workspace
         .getConfiguration("perforce")
