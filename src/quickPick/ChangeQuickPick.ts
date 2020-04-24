@@ -76,7 +76,9 @@ async function unshelveAndRefresh(resource: vscode.Uri, options: p4.UnshelveOpti
                     " file(s) need resolving"
             );
         }
-    } catch (err) {}
+    } catch (err) {
+        Display.showImportantError(err);
+    }
     PerforceSCMProvider.RefreshAll();
 }
 
