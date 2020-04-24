@@ -24,6 +24,10 @@ export function registerQuickPicks() {
         ChangeQuickPick.changeQuickPickProvider
     );
     QuickPickProvider.registerQuickPickProvider(
+        "unshelveChange",
+        ChangeQuickPick.unshelveChangeQuickPickProvider
+    );
+    QuickPickProvider.registerQuickPickProvider(
         "changeResults",
         ChangeSearchQuickPick.changeSearchQuickPickProvider
     );

@@ -19,7 +19,7 @@ export interface ActionableQuickPickProvider {
 }
 
 export interface ActionableQuickPickItem extends vscode.QuickPickItem {
-    performAction?: () => void | Promise<any>;
+    performAction?: (reopen: () => void) => void | Promise<any>;
 }
 
 const registeredQuickPickProviders = new Map<string, ActionableQuickPickProvider>();
@@ -91,11 +91,18 @@ export async function showQuickPick(type: string, ...args: any[]) {
             return;
         }
 
-        if (backLabel !== picked?.label && !actions.excludeFromHistory) {
+        const addToStack = backLabel !== picked?.label && !actions.excludeFromHistory;
+        if (addToStack) {
             quickPickStack.push({ type, args, description: actions.placeHolder });
         }
 
-        await picked?.performAction?.();
+        const reopen = () => {
+            if (addToStack) {
+                quickPickStack.pop();
+            }
+            showQuickPick(type, ...args);
+        };
+        await picked?.performAction?.(reopen);
     } else {
         throw new Error("No registered quick pick provider for type " + type);
     }

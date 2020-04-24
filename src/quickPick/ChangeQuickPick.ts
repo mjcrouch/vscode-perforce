@@ -10,6 +10,7 @@ import { showQuickPickForFile } from "./FileQuickPick";
 import { toReadableDateTime } from "../DateFormatter";
 import { configAccessor } from "../ConfigService";
 import { focusChangelist } from "../search/ChangelistTreeView";
+import { PerforceSCMProvider } from "../ScmProvider";
 
 const nbsp = "\xa0";
 
@@ -43,6 +44,7 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         const actions = makeFocusPick(resource, change).concat(
             makeSwarmPick(change),
             makeClipboardPicks(resource, change),
+            makeUnshelvePicks(resource, shelvedChange),
             makeJobPicks(resource, change),
             makeFilePicks(resource, change),
             makeShelvedFilePicks(resource, shelvedChange)
@@ -62,6 +64,114 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         };
     },
 };
+
+async function unshelveAndRefresh(resource: vscode.Uri, options: p4.UnshelveOptions) {
+    try {
+        const output = await p4.unshelve(resource, options);
+        Display.showMessage("Changelist unshelved");
+        if (output.warnings.length > 0) {
+            Display.showImportantError(
+                "The changelist was unshelved, but " +
+                    output.warnings.length +
+                    " file(s) need resolving"
+            );
+        }
+    } catch (err) {}
+    PerforceSCMProvider.RefreshAll();
+}
+
+export const unshelveChangeQuickPickProvider: qp.ActionableQuickPickProvider = {
+    provideActions: async (
+        resourceOrStr: vscode.Uri | string,
+        chnum: string,
+        clobber: boolean = true,
+        branchMapping?: string
+    ): Promise<qp.ActionableQuickPick> => {
+        const resource = qp.asUri(resourceOrStr);
+        const defaultChangelistAction: qp.ActionableQuickPickItem = {
+            label: "Default changelist",
+            description:
+                "Unshelve into the default changelist, or the current changelist if already unshelved",
+            performAction: () =>
+                unshelveAndRefresh(resource, {
+                    shelvedChnum: chnum,
+                    branchMapping,
+                    force: clobber,
+                }),
+        };
+        const newChangelistAction: qp.ActionableQuickPickItem = {
+            label: "New changelist",
+            description: "Unshelve into a new changelist",
+            performAction: async () => {
+                const spec = await p4.getChangeSpec(resource, {});
+                spec.description = "Unshelved from change #" + chnum;
+                spec.files = [];
+                const newChange = await p4.inputChangeSpec(resource, { spec });
+                await unshelveAndRefresh(resource, {
+                    shelvedChnum: chnum,
+                    toChnum: newChange.chnum,
+                    branchMapping,
+                    force: clobber,
+                });
+            },
+        };
+        const changelistActions = await getUnshelveChangelistPicks(
+            resource,
+            chnum,
+            clobber,
+            branchMapping
+        );
+        return {
+            items: [defaultChangelistAction, newChangelistAction, ...changelistActions],
+            excludeFromHistory: true,
+            placeHolder:
+                "Unshelve changelist " +
+                chnum +
+                (branchMapping ? " through branch " + branchMapping : "") +
+                (clobber ? " (WILL CLOBBER WRITABLE FILES)" : ""),
+        };
+    },
+};
+
+async function getUnshelveChangelistPicks(
+    resource: vscode.Uri,
+    chnum: string,
+    clobber: boolean,
+    branchMapping?: string
+) {
+    const info = await p4.getInfo(resource, {});
+    const user = info.get("User name");
+
+    if (!user) {
+        return [];
+    }
+
+    const changelists = await p4.getChangelists(resource, {
+        user,
+        status: p4.ChangelistStatus.PENDING,
+    });
+    return changelists.map<qp.ActionableQuickPickItem>((c) => {
+        return {
+            label: c.chnum,
+            description: c.description.join(" "),
+            performAction: () =>
+                unshelveAndRefresh(resource, {
+                    shelvedChnum: chnum,
+                    toChnum: c.chnum,
+                    branchMapping,
+                    force: clobber,
+                }),
+        };
+    });
+}
+
+export async function showUnshelveQuickPick(
+    resource: vscode.Uri,
+    chnum: string,
+    branchMapping?: string
+) {
+    return qp.showQuickPick("unshelveChange", resource, chnum, true, branchMapping);
+}
 
 export async function showQuickPickForChangelist(resource: vscode.Uri, chnum: string) {
     await qp.showQuickPick("change", resource, chnum);
@@ -185,6 +295,42 @@ function makeFilePicks(
             };
         })
     );
+}
+
+function makeUnshelvePicks(
+    uri: vscode.Uri,
+    change?: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    if (!change || change.shelvedFiles.length < 1) {
+        return [];
+    }
+    return [
+        {
+            label: "$(cloud-download) Unshelve changelist...",
+            description: "Unshelve into a selected changelist",
+            performAction: () => {
+                showUnshelveQuickPick(uri, change.chnum);
+            },
+        },
+        {
+            label: "$(cloud-download) Unshelve via branch mapping...",
+            description: "Unshelve, mapping through a branch spec",
+            performAction: async (reopen) => {
+                const branch = await vscode.window.showInputBox({
+                    prompt:
+                        "Enter branch name to unshelve changelist " +
+                        change.chnum +
+                        " through",
+                    ignoreFocusOut: true,
+                });
+                if (branch === undefined) {
+                    reopen();
+                } else {
+                    showUnshelveQuickPick(uri, change.chnum, branch);
+                }
+            },
+        },
+    ];
 }
 
 function makeShelvedFilePicks(

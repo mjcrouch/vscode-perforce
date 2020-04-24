@@ -1,4 +1,9 @@
-import { flagMapper, makeSimpleCommand, asyncOuputHandler } from "../CommandUtils";
+import {
+    flagMapper,
+    makeSimpleCommand,
+    asyncOuputHandler,
+    splitIntoLines,
+} from "../CommandUtils";
 import { PerforceFile, NoOpts } from "../CommonTypes";
 import * as vscode from "vscode";
 import * as PerforceUri from "../../PerforceUri";
@@ -90,6 +95,7 @@ export interface UnshelveOptions {
     shelvedChnum: string;
     toChnum?: string;
     force?: boolean;
+    branchMapping?: string;
     paths?: PerforceFile[];
 }
 
@@ -98,11 +104,74 @@ const unshelveFlags = flagMapper<UnshelveOptions>(
         ["f", "force"],
         ["s", "shelvedChnum"],
         ["c", "toChnum"],
+        ["b", "branchMapping"],
     ],
     "paths"
 );
 
-export const unshelve = makeSimpleCommand("unshelve", unshelveFlags);
+export type UnshelvedFiles = {
+    files: UnshelvedFile[];
+    warnings: ResolveWarning[];
+};
+
+type ResolveWarning = {
+    depotPath: string;
+    resolvePath: string;
+};
+
+type UnshelvedFile = {
+    depotPath: string;
+    operation: string;
+};
+
+function isUnshelvedFile(obj: any): obj is UnshelvedFile {
+    return obj && obj.depotPath !== undefined && obj.operation !== undefined;
+}
+
+function isResolveWarning(obj: any): obj is ResolveWarning {
+    return obj && obj.depotPath !== undefined && obj.resolvePath !== undefined;
+}
+
+function parseResolveMessage(line: string): ResolveWarning | undefined {
+    const matches = /\.{3} (.*?) - must resolve (.*?) before submitting/.exec(line);
+    if (matches) {
+        const [, depotPath, resolvePath] = matches;
+        return {
+            depotPath,
+            resolvePath,
+        };
+    }
+}
+
+function parseUnshelveMessage(line: string): UnshelvedFile | undefined {
+    const matches = /(.*?) - unshelved, opened for (.*)/.exec(line);
+    if (matches) {
+        const [, depotPath, operation] = matches;
+        return {
+            depotPath,
+            operation,
+        };
+    }
+}
+
+function parseUnshelveLine(line: string) {
+    return line.startsWith("...")
+        ? parseResolveMessage(line)
+        : parseUnshelveMessage(line);
+}
+
+function parseUnshelveOutput(output: string): UnshelvedFiles {
+    const lines = splitIntoLines(output);
+    const parsed = lines.map((line) => parseUnshelveLine(line)).filter(isTruthy);
+    return {
+        files: parsed.filter(isUnshelvedFile),
+        warnings: parsed.filter(isResolveWarning),
+    };
+}
+
+const unshelveCommand = makeSimpleCommand("unshelve", unshelveFlags);
+
+export const unshelve = asyncOuputHandler(unshelveCommand, parseUnshelveOutput);
 
 //#endregion
 
