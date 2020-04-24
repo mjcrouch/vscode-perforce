@@ -436,7 +436,8 @@ async function checkForSlevesque(ctx: vscode.ExtensionContext) {
             ctx.globalState.update("ignoreSlevesque", true);
         } else if (chosen === showExts) {
             vscode.commands.executeCommand(
-                "workbench.extensions.action.showInstalledExtensions"
+                "workbench.extensions.action.showExtensionsWithIds",
+                ["slevesque.perforce", "mjcrouch.perforce"]
             );
         }
     }
