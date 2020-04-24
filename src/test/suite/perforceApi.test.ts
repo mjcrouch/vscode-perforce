@@ -555,7 +555,14 @@ describe("Perforce API", () => {
         });
     });
     describe("unshelve", () => {
-        it("uses the correct arguments", async () => {
+        it("Returns the list of unshelved files and resolve warnings", async () => {
+            const output = [
+                "//depot/Project_X/main/README.md#8 - unshelved, opened for edit",
+                "... //depot/Project_X/main/README.md - also opened by Matt@default",
+                "//depot/Project_X/main/src/alphabet.txt#1 - unshelved, opened for edit",
+                "... //depot/Project_X/main/src/alphabet.txt - must resolve //depot/Project_X/main/src/alphabet.txt@=14 before submitting",
+            ].join("\n");
+            execute.callsFake(execWithStdOut(output));
             await expect(
                 p4.unshelve(ws, {
                     shelvedChnum: "99",
@@ -563,7 +570,33 @@ describe("Perforce API", () => {
                     force: true,
                     paths: ["myfile.txt"],
                 })
-            ).to.eventually.equal("unshelve -f -s 99 -c 1 myfile.txt");
+            ).to.eventually.deep.equal({
+                files: [
+                    {
+                        depotPath: "//depot/Project_X/main/README.md#8",
+                        operation: "edit",
+                    },
+                    {
+                        depotPath: "//depot/Project_X/main/src/alphabet.txt#1",
+                        operation: "edit",
+                    },
+                ],
+                warnings: [
+                    {
+                        depotPath: "//depot/Project_X/main/src/alphabet.txt",
+                        resolvePath: "//depot/Project_X/main/src/alphabet.txt@=14",
+                    },
+                ],
+            });
+
+            expect(execute).to.have.been.calledWith(ws, "unshelve", sinon.match.any, [
+                "-f",
+                "-s",
+                "99",
+                "-c",
+                "1",
+                "myfile.txt",
+            ]);
         });
     });
     describe("fix job", () => {

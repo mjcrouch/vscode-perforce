@@ -132,7 +132,10 @@ export class StubPerforceModel {
             chnum: "250",
         });
         this.sync = sinon.stub(p4, "sync").resolves("synced");
-        this.unshelve = sinon.stub(p4, "unshelve").resolves("unshelved");
+        this.unshelve = sinon.stub(p4, "unshelve").resolves({
+            files: [{ depotPath: "//depot/dummy", operation: "edit" }],
+            warnings: [],
+        });
         this.inputChangeSpec = sinon
             .stub(p4, "inputChangeSpec")
             .resolves({ chnum: "99", rawOutput: "Change 99 created" });
