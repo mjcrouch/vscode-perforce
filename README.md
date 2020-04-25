@@ -131,6 +131,7 @@ This fork fixes many issues from the original extension and adds a variety of ot
 * Automatically creates an SCM provider to manage changelists when you open a file from a different perforce client
 * Adds support for attaching jobs to changelists
 * Improved support for shelved files & changelists
+* Basic support for resolving and re-resolving changelists
 * Supports multiple P4CONFIG files in the same workspace
 * Works more reliably with personal servers
 * Ability to move selected file from the default changelist to a new changelist
@@ -367,6 +368,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.hideEmptyChangelists`    |`boolean`  |Hide changelists with no file in the SCM Explorer.
 |`perforce.hideSubmitIcon`          |`boolean`  |Don't show the submit icon next to the changelist description.
 |`perforce.promptBeforeSubmit`      |`boolean`  |Whether to prompt for confirmation before submitting a saved changelist.
+|`perforce.resolve.p4editor`        |`string`   |Overrides P4EDITOR when running resolve commands
 |`perforce.editorButtons.diffPrevAndNext`      |`enum`  |Controls when to show buttons on the editor title menu for diffing next / previous
 |&nbsp;
 |`perforce.bottleneck.maxConcurrent` |`number`  |Limit the maximum number of perforce commands running at any given time.
