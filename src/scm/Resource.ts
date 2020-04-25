@@ -27,7 +27,7 @@ export class Resource implements SourceControlResourceState {
     private _resourceUri: Uri;
     private _fromFile?: Uri;
     private _fromEndRev?: string;
-    private _isUnresolved?: boolean;
+    private _isUnresolved: boolean;
 
     /**
      * The working revision of the file if open (it should be)
