@@ -191,7 +191,7 @@
                 "perforce.resolve.p4editor": {
                     "type": "string",
                     "default": "",
-                    "description": "Overrides P4EDITOR when running resolve commands. Use an empty value to not override. Use `code --wait` to resolve files in vscode. When editing a merge file in vscode, save the file and close it to continue the resolve"
+                    "description": "Overrides P4EDITOR when running resolve commands, allowing you to use a different editor to edit the merge file. Use an empty value to not override.\n\nUse `code --wait` to resolve files in vscode. When editing a merge file in vscode, save the file and close it to continue the resolve.\n\nIMPORTANT: `code --wait` DOES NOT APPEAR TO WORK AS A P4EDITOR ON WINDOWS"
                 },
                 "perforce.countBadge": {
                     "type": "string",
