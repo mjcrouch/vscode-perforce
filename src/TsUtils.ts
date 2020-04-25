@@ -31,9 +31,16 @@ export function parseDate(dateString: string) {
     }
 }
 
-export function pluralise(num: number, word: string, limit?: number) {
+export function pluralise(
+    num: number,
+    word: string,
+    limit?: number,
+    fullPlural?: string
+) {
     const isLimit = num === limit;
-    return num + (isLimit ? "+ " : " ") + (num === 1 && !isLimit ? word : word + "s");
+    const pluralWord = fullPlural || word + "s";
+    const pluralised = num === 1 && !isLimit ? word : pluralWord;
+    return num + (isLimit ? "+ " : " ") + pluralised;
 }
 
 export function isPositiveOrZero(str: string) {

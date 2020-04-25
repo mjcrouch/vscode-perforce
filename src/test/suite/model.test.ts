@@ -27,6 +27,7 @@ import {
 import { ChangeSpec } from "../../api/CommonTypes";
 import { SubmitChangelistOptions } from "../../api/PerforceApi";
 import { ClientRoot } from "../../extension";
+import { basename } from "path";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -1240,6 +1241,29 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
+            it("Displays a warning if files need resolving", async () => {
+                items.stubModel.unshelve.resolves({
+                    files: [
+                        { depotPath: basicFiles.edit().depotPath, operation: "edit" },
+                        ,
+                    ],
+                    warnings: [
+                        {
+                            depotPath: basicFiles.edit().depotPath,
+                            resolvePath: basicFiles.edit().depotPath + "@=1",
+                        },
+                    ],
+                });
+                await PerforceSCMProvider.UnshelveChangelist(items.instance.resources[1]);
+                expect(items.showMessage).to.have.been.calledOnceWith(
+                    "Changelist unshelved"
+                );
+                expect(items.showImportantError).to.have.been.calledOnceWith(
+                    sinon.match("needs resolving")
+                );
+                expect(items.refresh).to.have.been.calledOnce;
+            });
+
             it("Cannot unshelve default changelist", async () => {
                 await expect(
                     PerforceSCMProvider.UnshelveChangelist(items.instance.resources[0])
@@ -1493,6 +1517,32 @@ describe("Model & ScmProvider modules (integration)", () => {
                     delete: true,
                     paths: [basicFiles.shelveEdit().depotPath],
                 });
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Does not delete the shelved file if a resolve is needed", async () => {
+                const resource = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit()
+                );
+                items.stubModel.unshelve.resolves({
+                    files: [
+                        { depotPath: basicFiles.edit().depotPath, operation: "edit" },
+                        ,
+                    ],
+                    warnings: [
+                        {
+                            depotPath: basicFiles.edit().depotPath,
+                            resolvePath: basicFiles.edit().depotPath + "@=1",
+                        },
+                    ],
+                });
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.shelve).not.to.have.been.called;
+                expect(items.showImportantError).to.have.been.calledWithMatch(
+                    "needs resolving"
+                );
                 expect(items.refresh).to.have.been.called;
             });
             it("Does not delete the shelved file if the unshelve fails", async () => {

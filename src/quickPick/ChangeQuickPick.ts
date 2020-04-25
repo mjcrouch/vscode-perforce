@@ -11,6 +11,7 @@ import { toReadableDateTime } from "../DateFormatter";
 import { configAccessor } from "../ConfigService";
 import { focusChangelist } from "../search/ChangelistTreeView";
 import { PerforceSCMProvider } from "../ScmProvider";
+import { pluralise } from "../TsUtils";
 
 const nbsp = "\xa0";
 
@@ -72,8 +73,8 @@ async function unshelveAndRefresh(resource: vscode.Uri, options: p4.UnshelveOpti
         if (output.warnings.length > 0) {
             Display.showImportantError(
                 "The changelist was unshelved, but " +
-                    output.warnings.length +
-                    " file(s) need resolving"
+                    pluralise(output.warnings.length, "file needs", 0, "files need") +
+                    " resolving"
             );
         }
     } catch (err) {

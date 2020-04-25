@@ -20,7 +20,7 @@ import * as vscode from "vscode";
 import { DebouncedFunction, debounce } from "../Debounce";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo, ChangeSpec } from "../api/CommonTypes";
-import { isTruthy } from "../TsUtils";
+import { isTruthy, pluralise } from "../TsUtils";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -567,12 +567,26 @@ export class Model implements Disposable {
         }
 
         try {
-            await p4.unshelve(this._workspaceUri, {
+            const unshelved = await p4.unshelve(this._workspaceUri, {
                 shelvedChnum: input.chnum,
                 toChnum: input.chnum,
                 force: true,
             });
             this.Refresh();
+            if (unshelved.warnings.length > 0) {
+                Display.showImportantError(
+                    "Changelist " +
+                        input.chnum +
+                        " was unshelved, but " +
+                        pluralise(
+                            unshelved.warnings.length,
+                            "file needs",
+                            0,
+                            "files need"
+                        ) +
+                        " resolving"
+                );
+            }
             Display.showMessage("Changelist unshelved");
         } catch (err) {
             Display.showImportantError(err.toString());
@@ -608,18 +622,24 @@ export class Model implements Disposable {
     public async ShelveOrUnshelve(input: Resource): Promise<void> {
         if (input.isShelved) {
             try {
-                await p4.unshelve(this._workspaceUri, {
+                const unshelveOutput = await p4.unshelve(this._workspaceUri, {
                     toChnum: input.change,
                     shelvedChnum: input.change,
                     paths: [input.depotPath],
                 });
-                const output = await p4.shelve(this._workspaceUri, {
-                    chnum: input.change,
-                    delete: true,
-                    paths: [input.depotPath],
-                });
+                if (unshelveOutput.warnings.length > 0) {
+                    Display.showImportantError(
+                        "The file was unshelved, but needs resolving"
+                    );
+                } else {
+                    const output = await p4.shelve(this._workspaceUri, {
+                        chnum: input.change,
+                        delete: true,
+                        paths: [input.depotPath],
+                    });
+                    Display.channel.append(output);
+                }
                 Display.updateEditor();
-                Display.channel.append(output);
             } catch (reason) {
                 Display.showImportantError(reason.toString());
             }
