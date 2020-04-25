@@ -188,6 +188,11 @@
                     "default": "none",
                     "description": "Configure a path to p4 or an alternate command if needed"
                 },
+                "perforce.resolve.p4editor": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Overrides P4EDITOR when running resolve commands. Use an empty value to not override. Use `code --wait` to resolve files in vscode. When editing a merge file in vscode, save the file and close it to continue the resolve"
+                },
                 "perforce.countBadge": {
                     "type": "string",
                     "description": "Controls the badge counter for Perforce",

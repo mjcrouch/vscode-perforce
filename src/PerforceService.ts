@@ -16,6 +16,7 @@ import * as CP from "child_process";
 import spawn from "cross-spawn";
 import { CommandLimiter } from "./CommandLimiter";
 import * as Path from "path";
+import { configAccessor } from "./ConfigService";
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace PerforceService {
@@ -236,7 +237,12 @@ export namespace PerforceService {
         spawnArgs: CP.SpawnOptions,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void
     ) {
-        const exec = new ShellExecution(cmd, allArgs, { cwd: spawnArgs.cwd });
+        const editor = configAccessor.resolveP4EDITOR;
+        const env = editor ? { P4EDITOR: editor } : undefined;
+        const exec = new ShellExecution(cmd, allArgs, {
+            cwd: spawnArgs.cwd,
+            env,
+        });
         try {
             const myTask = new Task(
                 { type: "perforce" },

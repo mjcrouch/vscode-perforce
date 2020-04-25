@@ -81,6 +81,10 @@ export class ConfigAccessor {
         return this.getConfigItem("deleteOnFileDelete") ?? false;
     }
 
+    public get resolveP4EDITOR(): string | undefined {
+        return this.getConfigItem("resolve.p4editor");
+    }
+
     public get swarmHost(): string | undefined {
         return this.getConfigItem("swarmHost");
     }
