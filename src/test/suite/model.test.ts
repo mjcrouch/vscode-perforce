@@ -27,7 +27,6 @@ import {
 import { ChangeSpec } from "../../api/CommonTypes";
 import { SubmitChangelistOptions } from "../../api/PerforceApi";
 import { ClientRoot } from "../../extension";
-import { basename } from "path";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
