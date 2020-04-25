@@ -1,4 +1,12 @@
-import { workspace, Uri, FileType } from "vscode";
+import {
+    workspace,
+    Uri,
+    FileType,
+    Task,
+    tasks,
+    ShellExecution,
+    Disposable,
+} from "vscode";
 
 import * as PerforceUri from "./PerforceUri";
 import { Display } from "./Display";
@@ -84,7 +92,8 @@ export namespace PerforceService {
         command: string,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
         args?: string[],
-        input?: string
+        input?: string,
+        useTerminal?: boolean
     ): void {
         if (debugModeActive && !debugModeSetup) {
             limiter.debugMode = true;
@@ -100,7 +109,8 @@ export namespace PerforceService {
                     responseCallback(...rest);
                 },
                 args,
-                input
+                input,
+                useTerminal
             );
         }, `<JOB_ID:${++id}:${command}>`);
     }
@@ -142,7 +152,8 @@ export namespace PerforceService {
         command: string,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
         args?: string[],
-        input?: string
+        input?: string,
+        useTerminal?: boolean
     ) {
         const actualResource = PerforceUri.getUsableWorkspace(resource) ?? resource;
         const cmd = getPerforceCmdPath();
@@ -160,7 +171,14 @@ export namespace PerforceService {
 
         const env = { ...process.env, PWD: cwd };
         const spawnArgs: CP.SpawnOptions = { cwd, env };
-        spawnPerforceCommand(cmd, allArgs, spawnArgs, responseCallback, input);
+        spawnPerforceCommand(
+            cmd,
+            allArgs,
+            spawnArgs,
+            responseCallback,
+            input,
+            useTerminal
+        );
     }
 
     function spawnPerforceCommand(
@@ -168,9 +186,24 @@ export namespace PerforceService {
         allArgs: string[],
         spawnArgs: CP.SpawnOptions,
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
-        input?: string
+        input?: string,
+        useTerminal?: boolean
     ) {
         logExecutedCommand(cmd, allArgs, input, spawnArgs);
+        if (useTerminal) {
+            spawnInTerminal(cmd, allArgs, spawnArgs, responseCallback);
+        } else {
+            spawnNormally(cmd, allArgs, spawnArgs, responseCallback, input);
+        }
+    }
+
+    function spawnNormally(
+        cmd: string,
+        allArgs: string[],
+        spawnArgs: CP.SpawnOptions,
+        responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
+        input?: string
+    ) {
         const child = spawn(cmd, allArgs, spawnArgs);
 
         let called = false;
@@ -195,6 +228,38 @@ export namespace PerforceService {
         });
     }
 
+    let taskId = 0;
+
+    async function spawnInTerminal(
+        cmd: string,
+        allArgs: string[],
+        spawnArgs: CP.SpawnOptions,
+        responseCallback: (err: Error | null, stdout: string, stderr: string) => void
+    ) {
+        const exec = new ShellExecution(cmd, allArgs, { cwd: spawnArgs.cwd });
+        try {
+            const myTask = new Task(
+                { type: "perforce" },
+                "Perforce #" + ++taskId,
+                "perforce",
+                exec
+            );
+            await tasks.executeTask(myTask);
+            const disposable: Disposable = tasks.onDidEndTask((task) => {
+                if (task.execution.task.name === myTask.name) {
+                    responseCallback(null, "", "");
+                    disposable.dispose();
+                }
+            });
+        } catch (err) {
+            responseCallback(err, "", "");
+        }
+    }
+
+    function escapeCommand(args: string[]) {
+        return args.map((arg) => `'${arg.replace(/'/g, `'\\''`)}'`);
+    }
+
     function logExecutedCommand(
         cmd: string,
         args: string[],
@@ -204,7 +269,7 @@ export namespace PerforceService {
         // not necessarily using these escaped values, because cross-spawn does its own escaping,
         // but no sensible way of logging the unescaped array for a user. The output command line
         // should at least be copy-pastable and work
-        const escapedArgs = args.map((arg) => `'${arg.replace(/'/g, `'\\''`)}'`);
+        const escapedArgs = escapeCommand(args);
         const loggedCommand = [cmd].concat(escapedArgs);
         const censoredInput = args[0].includes("login") ? "***" : input;
         const loggedInput = input ? " < " + censoredInput : "";

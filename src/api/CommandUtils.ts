@@ -215,6 +215,7 @@ type CommandParams = {
     input?: string;
     hideStdErr?: boolean;
     stdErrIsOk?: boolean;
+    useTerminal?: boolean;
 };
 
 export function runPerforceCommandIgnoringStdErr(
@@ -244,14 +245,15 @@ export async function runPerforceCommand(
     args: string[],
     params: CommandParams
 ): Promise<string> {
-    const { input, hideStdErr, stdErrIsOk } = params;
+    const { input, hideStdErr, stdErrIsOk, useTerminal } = params;
 
     try {
         const [stdout, stderr] = await runPerforceCommandRaw(
             resource,
             command,
             args,
-            input
+            input,
+            useTerminal
         );
         if (stderr) {
             if (hideStdErr) {
@@ -281,7 +283,8 @@ function runPerforceCommandRaw(
     resource: vscode.Uri,
     command: string,
     args: string[],
-    input?: string
+    input?: string,
+    useTerminal?: boolean
 ): Promise<[string, string]> {
     return new Promise((resolve, reject) =>
         PerforceService.execute(
@@ -295,7 +298,8 @@ function runPerforceCommandRaw(
                 }
             },
             args,
-            input
+            input,
+            useTerminal
         )
     );
 }

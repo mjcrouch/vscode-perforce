@@ -544,6 +544,20 @@ export class Model implements Disposable {
         Display.channel.append(output);
     }
 
+    public async ResolveChangelist(input: ResourceGroup) {
+        this.assertIsNotDefault(input);
+
+        await p4.resolve(this._workspaceUri, { chnum: input.chnum });
+        this.Refresh();
+    }
+
+    public async ReResolveChangelist(input: ResourceGroup) {
+        this.assertIsNotDefault(input);
+
+        await p4.resolve(this._workspaceUri, { chnum: input.chnum, reresolve: true });
+        this.Refresh();
+    }
+
     public async ShelveChangelist(input: ResourceGroup, revert?: boolean): Promise<void> {
         if (input.isDefault) {
             throw new Error("Cannot shelve the default changelist");
@@ -929,6 +943,15 @@ export class Model implements Disposable {
         return resource;
     }
 
+    private static makeGroupId(resources: Resource[], change: ChangeInfo) {
+        const items = [
+            "pending",
+            resources.some((r) => r.isUnresolved) ? "unres" : undefined,
+            resources.some((r) => r.isReresolvable) ? "reres" : undefined,
+        ].filter(isTruthy);
+        return items.join("_") + ":" + change.chnum;
+    }
+
     private createResourceGroups(changelists: ChangeInfo[], resources: Resource[]) {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
@@ -970,8 +993,9 @@ export class Model implements Disposable {
                         return;
                     }
                 }
+                const groupId = Model.makeGroupId(resourceStates, c);
                 const group = sc.createResourceGroup(
-                    "pending:" + c.chnum,
+                    groupId,
                     "#" + c.chnum + ": " + c.description.join(" ")
                 ) as ResourceGroup;
                 group.model = this;

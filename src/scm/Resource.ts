@@ -28,6 +28,7 @@ export class Resource implements SourceControlResourceState {
     private _fromFile?: Uri;
     private _fromEndRev?: string;
     private _isUnresolved: boolean;
+    private _isReresolvable: boolean;
 
     /**
      * The working revision of the file if open (it should be)
@@ -114,6 +115,14 @@ export class Resource implements SourceControlResourceState {
         return this._workingRevision;
     }
 
+    get isUnresolved() {
+        return this._isUnresolved;
+    }
+
+    get isReresolvable() {
+        return this._isReresolvable;
+    }
+
     constructor(
         public model: Model,
         private _uri: Uri,
@@ -131,6 +140,7 @@ export class Resource implements SourceControlResourceState {
             // force a depot-like path as the resource URI, to sort them together in the tree
             this._resourceUri = PerforceUri.fromUriWithRevision(_uri, "@=" + this.change);
             this._isUnresolved = false;
+            this._isReresolvable = false;
         } else {
             if (!_underlyingUri) {
                 throw new Error(
@@ -139,6 +149,7 @@ export class Resource implements SourceControlResourceState {
             }
             this._resourceUri = _underlyingUri;
             this._isUnresolved = !!fstatInfo["unresolved"];
+            this._isReresolvable = !!fstatInfo["reresolvable"];
             // TODO - do we need the one with the working revision - can't use a perforce: scheme here as it should be a local file
             //PerforceUri.fromUriWithRevision(_underlyingUri, this._workingRevision);
         }

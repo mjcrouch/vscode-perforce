@@ -356,6 +356,14 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.UnfixJob.bind(this)
         );
         commands.registerCommand(
+            "perforce.resolveChangelist",
+            PerforceSCMProvider.ResolveChangelist.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.reresolveChangelist",
+            PerforceSCMProvider.ReResolveChangelist.bind(this)
+        );
+        commands.registerCommand(
             "perforce.loginScm",
             PerforceSCMProvider.Login.bind(this)
         );
@@ -546,6 +554,20 @@ export class PerforceSCMProvider {
             const group = arg;
             const model: Model = group.model;
             await model.Revert(group, true);
+        }
+    }
+
+    public static async ResolveChangelist(input: ResourceGroup) {
+        const model = input.model;
+        if (model) {
+            await model.ResolveChangelist(input);
+        }
+    }
+
+    public static async ReResolveChangelist(input: ResourceGroup) {
+        const model = input.model;
+        if (model) {
+            await model.ReResolveChangelist(input);
         }
     }
 

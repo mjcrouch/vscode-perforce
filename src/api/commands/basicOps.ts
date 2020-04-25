@@ -298,3 +298,25 @@ export async function isLoggedIn(resource: vscode.Uri): Promise<boolean> {
 }
 
 export const logout = makeSimpleCommand<NoOpts>("logout", () => []);
+
+export type ResolveOptions = {
+    chnum?: string;
+    reresolve?: boolean;
+    files?: PerforceFile[];
+};
+
+const resolveFlags = flagMapper<ResolveOptions>(
+    [
+        ["c", "chnum"],
+        ["f", "reresolve"],
+    ],
+    "files",
+    [],
+    {
+        ignoreRevisionFragments: true,
+    }
+);
+
+export const resolve = makeSimpleCommand("resolve", resolveFlags, () => {
+    return { useTerminal: true };
+});

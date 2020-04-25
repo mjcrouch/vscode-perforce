@@ -21,7 +21,8 @@ function basicExecuteStub(
     command: string,
     responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
     args?: string[],
-    _input?: string
+    _input?: string,
+    _useTerminal?: boolean
 ) {
     let out = command;
     if (args && args.length > 0) {
