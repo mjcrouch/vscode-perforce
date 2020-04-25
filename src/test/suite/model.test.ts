@@ -39,7 +39,7 @@ interface TestItems {
     showMessage: sinon.SinonSpy<[string], void>;
     showModalMessage: sinon.SinonSpy<[string], void>;
     showError: sinon.SinonSpy<[string], void>;
-    showImportantError: sinon.SinonSpy<[string], void>;
+    showImportantError: sinon.SinonSpy<[string, ...string[]], void>;
     refresh: sinon.SinonSpy;
 }
 
@@ -1241,6 +1241,9 @@ describe("Model & ScmProvider modules (integration)", () => {
             });
 
             it("Displays a warning if files need resolving", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolves(undefined);
                 items.stubModel.unshelve.resolves({
                     files: [
                         { depotPath: basicFiles.edit().depotPath, operation: "edit" },
@@ -1257,9 +1260,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showMessage).to.have.been.calledOnceWith(
                     "Changelist unshelved"
                 );
-                expect(items.showImportantError).to.have.been.calledOnceWith(
-                    sinon.match("needs resolving")
-                );
+                expect(warn).to.have.been.calledOnceWith(sinon.match("needs resolving"));
                 expect(items.refresh).to.have.been.calledOnce;
             });
 
@@ -1519,6 +1520,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.refresh).to.have.been.called;
             });
             it("Does not delete the shelved file if a resolve is needed", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolves(undefined);
                 const resource = findResourceForShelvedFile(
                     items.instance.resources[1],
                     basicFiles.shelveEdit()
@@ -1539,9 +1543,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.ShelveOrUnshelve(resource);
 
                 expect(items.stubModel.shelve).not.to.have.been.called;
-                expect(items.showImportantError).to.have.been.calledWithMatch(
-                    "needs resolving"
-                );
+                expect(warn).to.have.been.calledWithMatch("needs resolving");
                 expect(items.refresh).to.have.been.called;
             });
             it("Does not delete the shelved file if the unshelve fails", async () => {

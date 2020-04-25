@@ -588,7 +588,8 @@ export class Model implements Disposable {
             });
             this.Refresh();
             if (unshelved.warnings.length > 0) {
-                Display.showImportantError(
+                const resolveButton = "Resolve changelist";
+                const chosen = await vscode.window.showWarningMessage(
                     "Changelist " +
                         input.chnum +
                         " was unshelved, but " +
@@ -598,8 +599,13 @@ export class Model implements Disposable {
                             0,
                             "files need"
                         ) +
-                        " resolving"
+                        " resolving",
+                    resolveButton
                 );
+                if (chosen === resolveButton) {
+                    await p4.resolve(this._workspaceUri, { chnum: input.chnum });
+                    this.Refresh();
+                }
             }
             Display.showMessage("Changelist unshelved");
         } catch (err) {
@@ -642,9 +648,18 @@ export class Model implements Disposable {
                     paths: [input.depotPath],
                 });
                 if (unshelveOutput.warnings.length > 0) {
-                    Display.showImportantError(
-                        "The file was unshelved, but needs resolving"
+                    this.Refresh();
+                    const resolveButton = "Resolve file";
+                    const chosen = await vscode.window.showWarningMessage(
+                        Path.basename(input.resourceUri.fsPath) +
+                            " was unshelved, but needs resolving",
+                        resolveButton
                     );
+                    if (chosen === resolveButton) {
+                        await p4.resolve(this._workspaceUri, {
+                            files: [input.resourceUri],
+                        });
+                    }
                 } else {
                     const output = await p4.shelve(this._workspaceUri, {
                         chnum: input.change,

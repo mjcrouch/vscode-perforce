@@ -71,11 +71,19 @@ async function unshelveAndRefresh(resource: vscode.Uri, options: p4.UnshelveOpti
         const output = await p4.unshelve(resource, options);
         Display.showMessage("Changelist unshelved");
         if (output.warnings.length > 0) {
-            Display.showImportantError(
-                "The changelist was unshelved, but " +
+            const resolveButton = "Resolve changelist";
+            const chosen = await vscode.window.showWarningMessage(
+                "Changelist #" +
+                    options.shelvedChnum +
+                    " was unshelved, but " +
                     pluralise(output.warnings.length, "file needs", 0, "files need") +
-                    " resolving"
+                    " resolving",
+                resolveButton
             );
+            if (chosen === resolveButton) {
+                await p4.resolve(resource, { chnum: options.shelvedChnum });
+                PerforceSCMProvider.RefreshAll();
+            }
         }
     } catch (err) {
         Display.showImportantError(err);
