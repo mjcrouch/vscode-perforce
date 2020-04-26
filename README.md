@@ -363,12 +363,13 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer
 |`perforce.ignoredChangelistPrefix` |`string`   |Specifies the prefix of the changelists to be ignored.
 |`perforce.hideNonWorkspaceFiles`   |`enum`     |Controls how files outside of the current VS Code workspace are shown in the SCM Provider
-|`perforce.swarmHost`               |`string`   |Specifies the hostname of the Swarm server for annotation links. (`https://localhost`)
+|`perforce.fileShelveMode`          |`enum`     |Controls behaviour when shelving or unshelving an individual file from the SCM view
 |`perforce.hideShelvedFiles`        |`boolean`  |Hide shelved files in the SCM Explorer.
 |`perforce.hideEmptyChangelists`    |`boolean`  |Hide changelists with no file in the SCM Explorer.
 |`perforce.hideSubmitIcon`          |`boolean`  |Don't show the submit icon next to the changelist description.
 |`perforce.promptBeforeSubmit`      |`boolean`  |Whether to prompt for confirmation before submitting a saved changelist.
 |`perforce.resolve.p4editor`        |`string`   |Overrides P4EDITOR when running resolve commands
+|`perforce.swarmHost`               |`string`   |Specifies the hostname of the Swarm server for annotation links. (`https://localhost`)
 |`perforce.editorButtons.diffPrevAndNext`      |`enum`  |Controls when to show buttons on the editor title menu for diffing next / previous
 |&nbsp;
 |`perforce.bottleneck.maxConcurrent` |`number`  |Limit the maximum number of perforce commands running at any given time.
