@@ -13,7 +13,7 @@ import * as PerforceUri from "../../PerforceUri";
 import { Resource } from "../../scm/Resource";
 import { Status } from "../../scm/Status";
 import p4Commands from "../helpers/p4Commands";
-import { HideNonWorkspace, configAccessor } from "../../ConfigService";
+import { HideNonWorkspace, configAccessor, FileShelveMode } from "../../ConfigService";
 import { StubPerforceModel, stubExecute, StubFile } from "../helpers/StubPerforceModel";
 
 import {
@@ -1493,13 +1493,20 @@ describe("Model & ScmProvider modules (integration)", () => {
                 });
 
                 expect(warn).to.have.been.calledOnce;
-                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
-                    unchanged: undefined,
-                });
+                expect(items.stubModel.revert).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    {
+                        paths: [
+                            sinon.match({ fsPath: basicFiles.edit().localFile.fsPath }),
+                        ],
+                    }
+                );
                 expect(items.refresh).to.have.been.called;
             });
             it("Unshelves a shelved file and deletes the shelved file", async () => {
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
                 const resource = findResourceForShelvedFile(
                     items.instance.resources[1],
                     basicFiles.shelveEdit()
@@ -1512,6 +1519,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     shelvedChnum: "1",
                     paths: [basicFiles.shelveEdit().depotPath],
                 });
+                expect(warn).to.have.been.calledOnce;
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     delete: true,
@@ -1566,11 +1574,145 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.showImportantError).to.have.been.calledWith("badness");
                 expect(items.refresh).to.have.been.called;
             });
+            it("Reverts without prompting when mode is `swap`", async () => {
+                sinon
+                    .stub(configAccessor, "fileShelveMode")
+                    .get(() => FileShelveMode.SWAP);
+
+                const resource = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                });
+                expect(items.stubModel.revert).to.have.been.calledWithMatch(
+                    workspaceUri,
+                    {
+                        paths: [
+                            sinon.match({ fsPath: basicFiles.edit().localFile.fsPath }),
+                        ],
+                    }
+                );
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Deletes without prompting when mode is `swap`", async () => {
+                sinon
+                    .stub(configAccessor, "fileShelveMode")
+                    .get(() => FileShelveMode.SWAP);
+                const resource = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    toChnum: "1",
+                    shelvedChnum: "1",
+                    paths: [basicFiles.shelveEdit().depotPath],
+                });
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    delete: true,
+                    paths: [basicFiles.shelveEdit().depotPath],
+                });
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Does not revert when mode is `keep both`", async () => {
+                sinon
+                    .stub(configAccessor, "fileShelveMode")
+                    .get(() => FileShelveMode.KEEP_BOTH);
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+
+                const resource = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                });
+
+                expect(warn).not.to.have.been.called;
+                expect(items.stubModel.revert).not.to.have.been.called;
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Does not delete when mode is `keep both`", async () => {
+                sinon
+                    .stub(configAccessor, "fileShelveMode")
+                    .get(() => FileShelveMode.KEEP_BOTH);
+                const warn = sinon
+                    .stub(vscode.window, "showWarningMessage")
+                    .resolvesArg(2);
+                const resource = findResourceForShelvedFile(
+                    items.instance.resources[1],
+                    basicFiles.shelveEdit()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource);
+
+                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
+                    toChnum: "1",
+                    shelvedChnum: "1",
+                    paths: [basicFiles.shelveEdit().depotPath],
+                });
+                expect(warn).not.to.have.been.called;
+                expect(items.stubModel.shelve).not.to.have.been.called;
+                expect(items.refresh).to.have.been.called;
+            });
             it("Can shelve or unshelve multiple files", async () => {
                 const warn = sinon
                     .stub(vscode.window, "showWarningMessage")
                     .resolvesArg(2);
 
+                const resource1 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.edit()
+                );
+
+                const resource2 = findResourceForFile(
+                    items.instance.resources[1],
+                    basicFiles.delete()
+                );
+
+                await PerforceSCMProvider.ShelveOrUnshelve(resource1, resource2);
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                });
+
+                expect(warn).to.have.been.calledTwice;
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
+                });
+
+                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
+                    chnum: "1",
+                    force: true,
+                    paths: [{ fsPath: basicFiles.delete().localFile.fsPath }],
+                });
+                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
+                    paths: [
+                        sinon.match({ fsPath: basicFiles.delete().localFile.fsPath }),
+                    ],
+                });
+                expect(items.refresh).to.have.been.called;
+            });
+            it("Does not allow a mix of shelved / unshelved files", async () => {
                 const resource1 = findResourceForFile(
                     items.instance.resources[1],
                     basicFiles.edit()
@@ -1583,29 +1725,10 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 await PerforceSCMProvider.ShelveOrUnshelve(resource1, resource2);
 
-                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
-                    chnum: "1",
-                    force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
-                });
-
-                expect(warn).to.have.been.calledOnce;
-                expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
-                    unchanged: undefined,
-                });
-
-                expect(items.stubModel.unshelve).to.have.been.calledWith(workspaceUri, {
-                    toChnum: "1",
-                    shelvedChnum: "1",
-                    paths: [basicFiles.shelveDelete().depotPath],
-                });
-                expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
-                    chnum: "1",
-                    delete: true,
-                    paths: [basicFiles.shelveDelete().depotPath],
-                });
-                expect(items.refresh).to.have.been.called;
+                expect(items.showModalMessage).to.have.been.calledWithMatch("mix");
+                expect(items.stubModel.unshelve).not.to.have.been.called;
+                expect(items.stubModel.shelve).not.to.have.been.called;
+                expect(items.stubModel.shelve).not.to.have.been.called;
             });
         });
 

@@ -6,6 +6,7 @@
     "perforce.hideShelvedFiles": false,
     "perforce.activationMode": "autodetect",
     "perforce.promptBeforeSubmit": false,
+    "perforce.fileShelveMode": "prompt",
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,

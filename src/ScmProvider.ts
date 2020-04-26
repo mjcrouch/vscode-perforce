@@ -605,10 +605,7 @@ export class PerforceSCMProvider {
         const selection = resourceStates.filter(
             (s) => s instanceof Resource
         ) as Resource[];
-        const promises = selection.map((resource) =>
-            resource.model.ShelveOrUnshelve(resource)
-        );
-        await Promise.all(promises);
+        await selection[0]?.model.ShelveOrUnshelveMultiple(selection);
     }
 
     public static async DeleteShelvedFile(

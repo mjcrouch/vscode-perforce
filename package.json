@@ -256,6 +256,12 @@
                     "default": false,
                     "description": "Don't show changelists without any file in the Source Control section."
                 },
+                "perforce.fileShelveMode": {
+                    "type": "string",
+                    "description": "Controls the behaviour when shelving / unshelving an individual file\n\n`swap` - When shelving, always try to revert the open file. When unshelving, always try to delete the shelved file\n`keep both` - When shelving, never try to revert the open file. When unshelving, never try to delete the shelved file\n`prompt` - When shelving, prompt for whether to revert the open file. When unshelving, prompt for whether to delete the shelved file",
+                    "default": "prompt",
+                    "enum": ["swap", "keep both", "prompt"]
+                },
                 "perforce.swarmHost": {
                     "type": "string",
                     "description": "Specifies the host of the Swarm server, allowing you to open the review for a changelist from the SCM provider, annotations and the changelist quick pick. Include the protocol, e.g. https://my_swarm_host\n\nIf you use another changelist-based review tool, enter the full URL for a review request, including the term `${chnum}`, which will be replaced with the changelist number. e.g. http://reviews/search/?q=${chnum}"

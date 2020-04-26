@@ -6,6 +6,12 @@ export enum HideNonWorkspace {
     HIDE_CHANGELISTS,
 }
 
+export enum FileShelveMode {
+    SWAP,
+    KEEP_BOTH,
+    PROMPT,
+}
+
 export class ConfigAccessor {
     constructor() {
         /**/
@@ -102,6 +108,17 @@ export class ConfigAccessor {
 
     public get changelistSearchMaxResults(): number {
         return this.getConfigItem("changelistSearch.maxResults") ?? 200;
+    }
+
+    public get fileShelveMode(): FileShelveMode {
+        const mode = this.getConfigItem<string>("fileShelveMode");
+        if (mode === "keep both") {
+            return FileShelveMode.KEEP_BOTH;
+        }
+        if (mode === "swap") {
+            return FileShelveMode.SWAP;
+        }
+        return FileShelveMode.PROMPT;
     }
 }
 

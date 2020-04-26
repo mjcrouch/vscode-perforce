@@ -10,7 +10,12 @@ import {
     workspace,
     commands,
 } from "vscode";
-import { HideNonWorkspace, ConfigAccessor, configAccessor } from "../ConfigService";
+import {
+    HideNonWorkspace,
+    ConfigAccessor,
+    configAccessor,
+    FileShelveMode,
+} from "../ConfigService";
 import * as PerforceUri from "../PerforceUri";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../Display";
 import { Resource } from "./Resource";
@@ -639,53 +644,110 @@ export class Model implements Disposable {
         }
     }
 
-    public async ShelveOrUnshelve(input: Resource): Promise<void> {
-        if (input.isShelved) {
-            try {
-                const unshelveOutput = await p4.unshelve(this._workspaceUri, {
-                    toChnum: input.change,
-                    shelvedChnum: input.change,
-                    paths: [input.depotPath],
-                });
-                if (unshelveOutput.warnings.length > 0) {
-                    this.Refresh();
-                    const resolveButton = "Resolve file";
-                    const chosen = await vscode.window.showWarningMessage(
-                        Path.basename(input.resourceUri.fsPath) +
-                            " was unshelved, but needs resolving",
-                        resolveButton
-                    );
-                    if (chosen === resolveButton) {
-                        await p4.resolve(this._workspaceUri, {
-                            files: [input.resourceUri],
-                        });
-                    }
-                } else {
-                    const output = await p4.shelve(this._workspaceUri, {
-                        chnum: input.change,
-                        delete: true,
-                        paths: [input.depotPath],
-                    });
-                    Display.channel.append(output);
-                }
-                Display.updateEditor();
-            } catch (reason) {
-                Display.showImportantError(reason.toString());
+    async showResolveWarningForFile(input: Resource) {
+        const resolveButton = "Resolve file";
+        const chosen = await vscode.window.showWarningMessage(
+            Path.basename(input.resourceUri.fsPath) +
+                " was unshelved, but needs resolving",
+            resolveButton
+        );
+        if (chosen === resolveButton) {
+            await p4.resolve(this._workspaceUri, {
+                files: [input.resourceUri],
+            });
+        }
+    }
+
+    async deleteFileAfterUnshelve(input: Resource) {
+        const mode = configAccessor.fileShelveMode;
+        if (mode === FileShelveMode.KEEP_BOTH) {
+            return;
+        }
+
+        if (mode === FileShelveMode.PROMPT) {
+            const file = Path.basename(input.resourceUri.fsPath);
+            const message = file + " was unshelved. Delete the shelved file?";
+            const yes = "Delete " + file + "@=" + input.change;
+            if (!(await this.requestConfirmation(message, yes))) {
+                return;
             }
-            this.Refresh();
+        }
+
+        const output = await p4.shelve(this._workspaceUri, {
+            chnum: input.change,
+            delete: true,
+            paths: [input.depotPath],
+        });
+        Display.channel.append(output);
+        this.Refresh();
+    }
+
+    async revertFileAfterUnshelve(input: Resource) {
+        const mode = configAccessor.fileShelveMode;
+        if (mode === FileShelveMode.KEEP_BOTH) {
+            return;
+        }
+
+        if (mode === FileShelveMode.PROMPT) {
+            const file = Path.basename(input.resourceUri.fsPath);
+            const message = file + " was shelved. Revert the open file?";
+            const yes = "Revert " + file;
+            if (!(await this.requestConfirmation(message, yes))) {
+                return;
+            }
+        }
+
+        await p4.revert(this._workspaceUri, { paths: [input.resourceUri] });
+        this.Refresh();
+    }
+
+    async unshelveShelvedFile(input: Resource) {
+        const unshelveOutput = await p4.unshelve(this._workspaceUri, {
+            toChnum: input.change,
+            shelvedChnum: input.change,
+            paths: [input.depotPath],
+        });
+        this.Refresh();
+        if (unshelveOutput.warnings.length > 0) {
+            await this.showResolveWarningForFile(input);
         } else {
-            try {
-                await p4.shelve(this._workspaceUri, {
-                    chnum: input.change,
-                    force: true,
-                    paths: [{ fsPath: input.resourceUri.fsPath }],
-                });
-                await this.Revert(input);
-            } catch (reason) {
-                Display.showImportantError(reason.toString());
+            await this.deleteFileAfterUnshelve(input);
+        }
+        Display.updateEditor();
+    }
+
+    async shelveOpenFile(input: Resource) {
+        await p4.shelve(this._workspaceUri, {
+            chnum: input.change,
+            force: true,
+            paths: [{ fsPath: input.resourceUri.fsPath }],
+        });
+        this.Refresh();
+        await this.revertFileAfterUnshelve(input);
+    }
+
+    async ShelveOrUnshelve(input: Resource): Promise<void> {
+        try {
+            if (input.isShelved) {
+                await this.unshelveShelvedFile(input);
+            } else {
+                await this.shelveOpenFile(input);
             }
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
             this.Refresh();
         }
+    }
+
+    public async ShelveOrUnshelveMultiple(input: Resource[]) {
+        if (input.some((r) => r.isShelved !== input[0].isShelved)) {
+            Display.showModalMessage(
+                "A mix of shelved / open files was selected. Please select only shelved or only open files for this operation"
+            );
+            return;
+        }
+        const promises = input.map((r) => this.ShelveOrUnshelve(r));
+        await Promise.all(promises);
     }
 
     public async DeleteShelvedFile(input: Resource): Promise<void> {
