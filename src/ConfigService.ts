@@ -1,4 +1,4 @@
-import { Uri, workspace } from "vscode";
+import { Uri, workspace, ConfigurationTarget } from "vscode";
 
 export enum HideNonWorkspace {
     SHOW_ALL,
@@ -19,6 +19,18 @@ export class ConfigAccessor {
 
     private getConfigItem<T>(item: string): T | undefined {
         return workspace.getConfiguration("perforce").get<T>(item);
+    }
+
+    private setConfigItem<T>(item: string, value: T) {
+        workspace.getConfiguration("perforce").update(item, value);
+    }
+
+    private setConfigItemGlobally<T>(item: string, value: T) {
+        // clear from workspace first
+        workspace.getConfiguration("perforce").update(item, undefined);
+        workspace
+            .getConfiguration("perforce")
+            .update(item, value, ConfigurationTarget.Global);
     }
 
     public get changelistOrder(): string {
@@ -119,6 +131,16 @@ export class ConfigAccessor {
             return FileShelveMode.SWAP;
         }
         return FileShelveMode.PROMPT;
+    }
+
+    public set fileShelveMode(mode: FileShelveMode) {
+        if (mode === FileShelveMode.KEEP_BOTH) {
+            this.setConfigItemGlobally("fileShelveMode", "keep both");
+        } else if (mode === FileShelveMode.SWAP) {
+            this.setConfigItemGlobally("fileShelveMode", "swap");
+        } else if (mode === FileShelveMode.PROMPT) {
+            this.setConfigItemGlobally("fileShelveMode", "prompt");
+        }
     }
 }
 

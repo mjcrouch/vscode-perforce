@@ -668,7 +668,21 @@ export class Model implements Disposable {
             const file = Path.basename(input.resourceUri.fsPath);
             const message = file + " was unshelved. Delete the shelved file?";
             const yes = "Delete " + file + "@=" + input.change;
-            if (!(await this.requestConfirmation(message, yes))) {
+            const always = "Always";
+            const never = "Never";
+            const chosen = await vscode.window.showWarningMessage(
+                message,
+                { modal: true },
+                yes,
+                always,
+                never
+            );
+            if (chosen === always) {
+                configAccessor.fileShelveMode = FileShelveMode.SWAP;
+            } else if (chosen === never) {
+                configAccessor.fileShelveMode = FileShelveMode.KEEP_BOTH;
+                return;
+            } else if (chosen !== yes) {
                 return;
             }
         }
@@ -692,7 +706,21 @@ export class Model implements Disposable {
             const file = Path.basename(input.resourceUri.fsPath);
             const message = file + " was shelved. Revert the open file?";
             const yes = "Revert " + file;
-            if (!(await this.requestConfirmation(message, yes))) {
+            const always = "Always";
+            const never = "Never";
+            const chosen = await vscode.window.showWarningMessage(
+                message,
+                { modal: true },
+                yes,
+                always,
+                never
+            );
+            if (chosen === always) {
+                configAccessor.fileShelveMode = FileShelveMode.SWAP;
+            } else if (chosen === never) {
+                configAccessor.fileShelveMode = FileShelveMode.KEEP_BOTH;
+                return;
+            } else if (chosen !== yes) {
                 return;
             }
         }

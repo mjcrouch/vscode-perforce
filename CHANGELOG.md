@@ -1,5 +1,12 @@
 # Change log
 
+## [4.4.0] - 2020-04-27
+
+* Add `fileShelveMode` setting to control behaviour when shelving or unshelving an individual file. Choose whether to revert the open file when it is shelved, and delete the shelved file when it is unshelved. (#91)
+  * The default is to prompt, but you can also choose to always revert / delete or never revert / delete
+* Fix a missing tooltip for the 'add' icon in SCM view
+* After a changelist is unshelved using the quick pick, refresh the SCM view before prompting about unresolved files
+
 ## [4.3.0] - 2020-04-25
 
 * Add "unshelve into" and "unshelve via branch" to the changelist quick pick, e.g. when searching for changelists (#103)
@@ -313,6 +320,7 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.4.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.3.0...4.4.0
 [4.3.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.0.0...4.1.0
