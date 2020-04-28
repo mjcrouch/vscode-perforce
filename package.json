@@ -401,7 +401,7 @@
                 "title": "Diff against the previous revision",
                 "icon": "$(arrow-left)",
                 "category": "Perforce",
-                "enablement": "isInDiffEditor && perforce.currentFile.resourceRevision != 1 && perforce.currentFile.resourceRevision != 2 || isInDiffLeftEditor && perforce.currentFile.resourceRevision != 1"
+                "enablement": "isInDiffEditor && perforce.currentFile.resourceRevision != 1 && !perforce.currentFile.isRightDiffOnRev2"
             },
             {
                 "command": "perforce.diffNext",

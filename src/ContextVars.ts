@@ -13,6 +13,7 @@ const makeDefault = () => {
         message: "",
         hasRevision: false,
         resourceRevision: "",
+        isRightDiffOnRev2: false,
     };
 };
 
@@ -51,11 +52,13 @@ function calculateDiffOptions(file?: vscode.Uri) {
     const rev = getRevision(file);
     const hasRevision = rev > 0;
     const resourceRevision = rev.toString();
+    const isRightDiffOnRev2 = rev === 2 && !!file?.query.includes("leftUri=");
 
     // show next diff button only for diffs (including diffs without a revision - for consistent button placement)
     return {
         hasRevision,
         resourceRevision,
+        isRightDiffOnRev2,
     };
 }
 
