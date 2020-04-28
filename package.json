@@ -394,14 +394,21 @@
                 "title": "Diff against the previous revision",
                 "icon": "$(arrow-left)",
                 "category": "Perforce",
-                "enablement": "perforce.currentFile.canDiffPrev"
+                "enablement": "perforce.currentFile.resourceRevision != 1"
+            },
+            {
+                "command": "perforce.diffPreviousFromDiff",
+                "title": "Diff against the previous revision",
+                "icon": "$(arrow-left)",
+                "category": "Perforce",
+                "enablement": "isInDiffEditor && perforce.currentFile.resourceRevision != 1 && perforce.currentFile.resourceRevision != 2 || isInDiffLeftEditor && perforce.currentFile.resourceRevision != 1"
             },
             {
                 "command": "perforce.diffNext",
                 "title": "Diff against the next revision",
                 "icon": "$(arrow-right)",
                 "category": "Perforce",
-                "enablement": "perforce.currentFile.canDiffNext"
+                "enablement": "resourceScheme == perforce"
             },
             {
                 "command": "perforce.annotate",
@@ -746,6 +753,10 @@
                     "when": "0"
                 },
                 {
+                    "command": "perforce.diffPreviousFromDiff",
+                    "when": "0"
+                },
+                {
                     "command": "perforce.loginScm",
                     "when": "0"
                 },
@@ -1021,27 +1032,57 @@
                 {
                     "command": "perforce.diffPrevious",
                     "group": "navigation@-11",
-                    "when": "perforce.currentFile.showDiffPrev && config.perforce.editorButtons.diffPrevAndNext =~ /All/ || perforce.currentFile.showDiffPrev && config.perforce.editorButtons.diffPrevAndNext =~ /Only/ && perforce.currentFile.isPerforceOrDiff"
+                    "when": "!isInDiffEditor && perforce.currentFile.status =~ /OPEN/ && config.perforce.editorButtons.diffPrevAndNext =~ /All/"
+                },
+                {
+                    "command": "perforce.diffPrevious",
+                    "group": "navigation@-11",
+                    "when": "!isInDiffEditor && perforce.currentFile.status != OPEN && perforce.currentFile.status != NOT_OPEN && config.perforce.editorButtons.diffPrevAndNext =~ /All/ && resourceScheme == perforce"
+                },
+                {
+                    "command": "perforce.diffPrevious",
+                    "group": "navigation@-11",
+                    "when": "!isInDiffEditor && perforce.currentFile.status =~ /OPEN/ && config.perforce.editorButtons.diffPrevAndNext =~ /Only/ && resourceScheme == perforce"
+                },
+                {
+                    "command": "perforce.diffPreviousFromDiff",
+                    "group": "navigation@-11",
+                    "when": "isInDiffEditor && perforce.activation.hasScmProvider && config.perforce.editorButtons.diffPrevAndNext =~ /(All|Only)/"
                 },
                 {
                     "command": "perforce.depotActions",
                     "group": "navigation@-10",
-                    "when": "perforce.currentFile.isPerforceOrDiff"
+                    "when": "isInDiffEditor && perforce.activation.hasScmProvider || resourceScheme == perforce"
                 },
                 {
                     "command": "perforce.diffNext",
                     "group": "navigation@-9",
-                    "when": "perforce.currentFile.showDiffNext && config.perforce.editorButtons.diffPrevAndNext =~ /All/ || perforce.currentFile.showDiffPrev && config.perforce.editorButtons.diffPrevAndNext =~ /Only/ && perforce.currentFile.isPerforceOrDiff"
+                    "when": "!isInDiffEditor && config.perforce.editorButtons.diffPrevAndNext =~ /(All|Only)/ && resourceScheme == perforce && perforce.currentFile.hasRevision"
+                },
+                {
+                    "command": "perforce.diffNext",
+                    "group": "navigation@-9",
+                    "when": "isInDiffEditor && perforce.activation.hasScmProvider && config.perforce.editorButtons.diffPrevAndNext =~ /(All|Only)/"
                 },
                 {
                     "command": "perforce.diffPrevious",
                     "group": "perforce@1",
-                    "when": "perforce.currentFile.showDiffPrev"
+                    "when": "!isInDiffEditor && perforce.currentFile.status =~ /OPEN/"
+                },
+                {
+                    "command": "perforce.diffPrevious",
+                    "group": "perforce@1",
+                    "when": "!isInDiffEditor && perforce.currentFile.status != OPEN && perforce.currentFile.status != NOT_OPEN && resourceScheme == perforce"
+                },
+                {
+                    "command": "perforce.diffPreviousFromDiff",
+                    "group": "perforce@1",
+                    "when": "isInDiffEditor && perforce.activation.hasScmProvider"
                 },
                 {
                     "command": "perforce.diffNext",
                     "group": "perforce@2",
-                    "when": "perforce.currentFile.showDiffNext"
+                    "when": "isInDiffEditor && perforce.activation.hasScmProvider"
                 }
             ],
             "view/item/context": [

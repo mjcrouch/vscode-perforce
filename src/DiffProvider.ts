@@ -77,10 +77,14 @@ export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
         PerforceUri.decodeUriQuery(rightFile.query).diffStartFile ??
         PerforceUri.decodeUriQuery(leftFile.query).diffStartFile;
 
-    const rightUriWithLeftInfo = PerforceUri.withArgs(rightFile, {
-        leftUri: leftFileWithoutLeftFiles.toString(),
-        diffStartFile: gotStartFile ?? rightFile.toString(),
-    });
+    // DON'T ADD QUERY PARAMS to a file: URI
+    const rightUriWithLeftInfo =
+        rightFile.scheme === "perforce"
+            ? PerforceUri.withArgs(rightFile, {
+                  leftUri: leftFileWithoutLeftFiles.toString(),
+                  diffStartFile: gotStartFile ?? rightFile.toString(),
+              })
+            : rightFile;
 
     const fullTitle = title ?? diffTitleForFiles(leftFile, rightFile);
 
@@ -123,17 +127,23 @@ async function diffPreviousFrom(rightUri?: Uri) {
 /**
  * Work out the have revision for the file, and diff the working file against that revision
  */
-async function diffPreviousFromWorking(fromDoc: Uri) {
+async function diffPreviousFromWorking(fromDoc: Uri, fromDiffEditor?: boolean) {
     const leftUri = (await p4.have(fromDoc, { file: fromDoc }))?.depotUri;
     if (!leftUri) {
         Display.showImportantError("No previous revision available");
         return;
     }
-    const leftRev = PerforceUri.getRevOrAtLabel(leftUri);
-    await diffFiles(
-        PerforceUri.withArgs(leftUri, { haveRev: leftRev }),
-        PerforceUri.withArgs(fromDoc, { haveRev: leftRev })
-    );
+    const leftWithRev = PerforceUri.withArgs(leftUri, {
+        haveRev: PerforceUri.getRevOrAtLabel(leftUri),
+        diffStartFile: fromDoc.toString(),
+    });
+    if (fromDiffEditor) {
+        // already in a diff where right hand is a local file - skip a revision
+        await diffPreviousFrom(leftWithRev);
+    } else {
+        await diffFiles(leftWithRev, fromDoc);
+    }
+    // can't put query params on to the fromDoc as a file: uri - it breaks some things in vs code, remote ssh and cpp extension
 }
 
 /**
@@ -156,10 +166,10 @@ function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
     return diffPreviousFrom(rightUri);
 }
 
-async function diffPreviousUsingRevision(fromDoc: Uri) {
+async function diffPreviousUsingRevision(fromDoc: Uri, fromDiffEditor?: boolean) {
     const rev = parseInt(PerforceUri.getRevOrAtLabel(fromDoc));
     if (isNaN(rev)) {
-        await diffPreviousFromWorking(fromDoc);
+        await diffPreviousFromWorking(fromDoc, fromDiffEditor);
     } else {
         await diffPreviousFrom(fromDoc);
     }
@@ -174,12 +184,12 @@ export async function diffPreviousIgnoringLeftInfo(fromDoc: Uri) {
     await diffPreviousUsingRevision(fromDoc);
 }
 
-export async function diffPrevious(fromDoc: Uri) {
+export async function diffPrevious(fromDoc: Uri, fromDiffEditor?: boolean) {
     const usingLeftInfo = diffPreviousUsingLeftInfo(fromDoc);
     if (usingLeftInfo) {
         await usingLeftInfo;
     } else {
-        await diffPreviousUsingRevision(fromDoc);
+        await diffPreviousUsingRevision(fromDoc, fromDiffEditor);
     }
 }
 

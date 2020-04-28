@@ -1,4 +1,4 @@
-import { Display, ActiveStatusEvent, ActiveEditorStatus } from "./Display";
+import { Display, ActiveStatusEvent } from "./Display";
 import * as vscode from "vscode";
 import * as PerforceUri from "./PerforceUri";
 
@@ -11,12 +11,8 @@ const makeDefault = () => {
         operation: "",
         filetype: "",
         message: "",
-        showDiffPrev: false,
-        showDiffNext: false,
-        canDiffPrev: false,
-        canDiffNext: false,
-        isPerforceOrDiff: false,
         hasRevision: false,
+        resourceRevision: "",
     };
 };
 
@@ -40,14 +36,6 @@ function getFileContext(arg: keyof ContextVars) {
     return fileContext[arg] ?? "";
 }
 
-function isPerforceDoc(file?: vscode.Uri) {
-    return !!file && file.scheme === "perforce";
-}
-
-function isRightDiffWindow(file?: vscode.Uri) {
-    return !!file && !!PerforceUri.decodeUriQuery(file.query).leftUri;
-}
-
 function getRevision(file?: vscode.Uri) {
     if (!file) {
         return -1;
@@ -59,38 +47,20 @@ function getRevision(file?: vscode.Uri) {
     return fileRev;
 }
 
-function calculateDiffOptions(file?: vscode.Uri, status?: ActiveEditorStatus) {
-    const isRightWindow = isRightDiffWindow(file);
-    // show diff buttons for all perforce files, all diff windows and anything that is NOT 'not in workspace'
-
-    const isPerforceOrDiff = isRightWindow || isPerforceDoc(file);
-
-    const isNotUnknown =
-        status === ActiveEditorStatus.NOT_OPEN || status === ActiveEditorStatus.OPEN;
-    const showDiffPrev = isNotUnknown || isPerforceOrDiff;
-
+function calculateDiffOptions(file?: vscode.Uri) {
     const rev = getRevision(file);
     const hasRevision = rev > 0;
+    const resourceRevision = rev.toString();
 
     // show next diff button only for diffs (including diffs without a revision - for consistent button placement)
-    const showDiffNext = showDiffPrev && (rev >= 0 || isRightWindow);
-
-    const disableDiffPrev =
-        (isPerforceDoc && rev === 1) || (isRightWindow && rev <= 2 && rev > 0);
-    const disableDiffNext = isRightDiffWindow && rev <= 0;
-
     return {
-        showDiffNext,
-        showDiffPrev,
-        canDiffNext: !disableDiffNext,
-        canDiffPrev: !disableDiffPrev,
-        isPerforceOrDiff,
         hasRevision,
+        resourceRevision,
     };
 }
 
 function setContextVars(event: ActiveStatusEvent) {
-    const diffOptions = calculateDiffOptions(event.file, event.status);
+    const diffOptions = calculateDiffOptions(event.file);
 
     fileContext = {
         status: event.status.toString(),

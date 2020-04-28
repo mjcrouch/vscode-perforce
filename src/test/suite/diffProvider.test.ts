@@ -69,20 +69,15 @@ describe("Diff Provider", () => {
         });
     });
     describe("diffFiles", () => {
-        it("Diffs the supplied URIs, adding information about the starting & left file", async () => {
+        it("Diffs the supplied URIs, adding information about the starting file", async () => {
             const right = basicFiles.edit().localFile;
             const left = PerforceUri.fromUriWithRevision(right, "2");
-
-            const expectedRight = PerforceUri.withArgs(right, {
-                leftUri: left.toString(),
-                diffStartFile: right.toString(),
-            });
 
             await DiffProvider.diffFiles(left, right);
 
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
                 left,
-                expectedRight,
+                right,
                 "a.txt#2 ⟷ a.txt"
             );
         });
@@ -113,16 +108,11 @@ describe("Diff Provider", () => {
             const right = basicFiles.edit().localFile;
             const left = PerforceUri.fromUriWithRevision(right, "2");
 
-            const expectedRight = PerforceUri.withArgs(right, {
-                leftUri: left.toString(),
-                diffStartFile: right.toString(),
-            });
-
             await DiffProvider.diffFiles(left, right);
 
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
                 left,
-                expectedRight,
+                right,
                 "a.txt#2 ⟷ a.txt"
             );
         });
@@ -211,17 +201,12 @@ describe("Diff Provider", () => {
                 const expectedLeft = PerforceUri.withArgs(have.depotUri, {
                     haveRev: "4",
                 });
-                const expectedRight = PerforceUri.withArgs(localFile, {
-                    haveRev: "4",
-                    leftUri: expectedLeft.toString(),
-                    diffStartFile: localFile.toString(),
-                });
 
                 await DiffProvider.diffPrevious(localFile);
 
                 expect(execCommand.lastCall).to.be.vscodeDiffCall(
                     expectedLeft,
-                    expectedRight,
+                    localFile,
                     "a.txt#4 ⟷ a.txt (workspace)"
                 );
             });
@@ -272,6 +257,34 @@ describe("Diff Provider", () => {
                 expect(execCommand).not.to.have.been.called;
             });
         });
+        describe("When diffing from the working file in a diff editor", () => {
+            it("Diffs have against have-1", async () => {
+                const { localFile, depotPath } = basicFiles.edit();
+                const have: HaveFile = {
+                    localUri: localFile,
+                    depotPath: depotPath,
+                    revision: "4",
+                    depotUri: PerforceUri.fromDepotPath(localFile, depotPath, "4"),
+                };
+                stubModel.have.resolves(have);
+
+                const expectedLeft = PerforceUri.withArgs(have.depotUri, {
+                    haveRev: "4",
+                    rev: "3",
+                }).with({ fragment: "3" });
+                const expectedRight = PerforceUri.withArgs(have.depotUri, {
+                    haveRev: "4",
+                });
+
+                await DiffProvider.diffPrevious(localFile, true);
+
+                expect(execCommand.lastCall).to.be.vscodeDiffCall(
+                    expectedLeft,
+                    expectedRight,
+                    "a.txt#3 ⟷ a.txt#4"
+                );
+            });
+        });
     });
     describe("diffNext", () => {
         it("Does not diff files without a revision", async () => {
@@ -310,19 +323,12 @@ describe("Diff Provider", () => {
                 );
 
                 const expectedLeft = from;
-                const expectedRight = PerforceUri.withArgs(
-                    localFile,
-                    {
-                        leftUri: expectedLeft.toString(),
-                    },
-                    ""
-                );
 
                 await DiffProvider.diffNext(from);
 
                 expect(execCommand.lastCall).to.be.vscodeDiffCall(
                     expectedLeft,
-                    expectedRight,
+                    localFile,
                     "a.txt#4 ⟷ a.txt (workspace)"
                 );
             });

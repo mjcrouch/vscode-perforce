@@ -35,6 +35,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
         commands.registerCommand("perforce.diffPrevious", diffPrevious);
+        commands.registerCommand("perforce.diffPreviousFromDiff", diffPreviousFromDiff);
         commands.registerCommand("perforce.diffNext", diffNext);
         commands.registerCommand("perforce.depotActions", showDepotActions);
         commands.registerCommand("perforce.showQuickPick", showQuickPick);
@@ -325,6 +326,15 @@ export namespace PerforceCommands {
             return false;
         }
         await DiffProvider.diffPrevious(fromDoc);
+    }
+
+    async function diffPreviousFromDiff() {
+        const fromDoc = window.activeTextEditor?.document.uri;
+        if (!fromDoc) {
+            Display.showError("No file to diff");
+            return false;
+        }
+        await DiffProvider.diffPrevious(fromDoc, true);
     }
 
     async function diffNext(fromDoc?: Uri) {
