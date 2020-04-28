@@ -208,7 +208,7 @@ class SearchResultFile extends SelfExpandingTreeItem<any> {
             arguments: [
                 "file",
                 PerforceUri.fromDepotPath(
-                    this._resource,
+                    PerforceUri.getUsableWorkspace(this._resource) ?? this._resource,
                     this._file.depotPath,
                     this._file.revision
                 ).toString(),
