@@ -248,9 +248,13 @@ export async function diffDefault(
     const leftUri = PerforceUri.withArgs(left.uri, {
         haveRev: resource.workingRevision,
     });
-    const rightUri = PerforceUri.withArgs(right, {
-        haveRev: resource.workingRevision,
-    });
+    // don't add query params to file: URIs
+    const rightUri =
+        right.scheme === "file"
+            ? right
+            : PerforceUri.withArgs(right, {
+                  haveRev: resource.workingRevision,
+              });
     await diffFiles(leftUri, rightUri, getTitle(resource, left.title, diffType));
     return;
 }
