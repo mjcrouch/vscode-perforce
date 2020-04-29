@@ -4,7 +4,7 @@
  * @param obj a single element
  * @returns the truthiness of the value, and narrows the type to T
  */
-export function isTruthy<T>(obj: T | undefined | null): obj is T {
+export function isTruthy<T>(obj: T | undefined | null | void): obj is T {
     return !!obj;
 }
 
@@ -51,4 +51,12 @@ export function isPositiveOrZero(str: string) {
 export function dedupe<T, K extends keyof T>(items: T[], key: K) {
     const done = new Set<T[K]>();
     return items.filter((i) => (done.has(i[key]) ? false : done.add(i[key])));
+}
+
+export function addUniqueKeysToSet<T, K extends keyof T>(
+    current: Set<T[K]>,
+    items: T[],
+    key: K
+) {
+    return items.filter((i) => (current.has(i[key]) ? false : current.add(i[key])));
 }

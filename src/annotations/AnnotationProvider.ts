@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
 import * as p4 from "../api/PerforceApi";
 
-import { isTruthy } from "../TsUtils";
+import { isTruthy, dedupe, addUniqueKeysToSet, pluralise } from "../TsUtils";
 import * as PerforceUri from "../PerforceUri";
 import * as md from "./MarkdownGenerator";
 import * as ColumnFormatter from "./ColumnFormatter";
 import { Display } from "../Display";
+import { configAccessor } from "../ConfigService";
 
 const nbsp = "\xa0";
 
@@ -27,6 +28,13 @@ const highlightedDecoration = vscode.window.createTextEditorDecorationType({
     overviewRulerColor: new vscode.ThemeColor("perforce.lineHighlightOverviewRulerColor"),
     overviewRulerLane: vscode.OverviewRulerLane.Left,
 });
+
+type LogInfo = {
+    log: p4.FileLogItem;
+    prev?: p4.FileLogItem;
+    index: number;
+    ageRating: number;
+};
 
 export class AnnotationProvider {
     private static _annotationsByUri = new Map<vscode.Uri, AnnotationProvider>();
@@ -169,6 +177,101 @@ export class AnnotationProvider {
         this._subscriptions.forEach((d) => d.dispose());
     }
 
+    static getSecondaryIntegrations(log: p4.FileLogItem[]) {
+        return log.flatMap((log) => {
+            const froms = log.integrations.filter(
+                (i) => i.direction === p4.Direction.FROM
+            );
+            if (froms.length > 1) {
+                return froms.filter((i) => i.operation === "copy");
+            }
+            return [];
+        });
+    }
+
+    /**
+     * Recursively expands file logs to get information about changes not in the original filelog ouput
+     */
+    static async expandLogs(
+        underlying: vscode.Uri,
+        log: p4.FileLogItem[],
+        doneFiles: Set<string>
+    ): Promise<p4.FileLogItem[][]> {
+        const needsMore = AnnotationProvider.getSecondaryIntegrations(log);
+
+        const newFiles = addUniqueKeysToSet(doneFiles, needsMore, "file");
+
+        if (newFiles.length > 0) {
+            const promises = newFiles.map((int) =>
+                p4.getFileHistory(underlying, { file: int.file, followBranches: true })
+            );
+            const newLogs = await Promise.all(promises);
+            const expandedPromises = newLogs.map((log) =>
+                this.expandLogs(underlying, log, doneFiles).catch((err) =>
+                    Display.channel.appendLine(err)
+                )
+            );
+            const expanded = (await Promise.all(expandedPromises)).filter(isTruthy);
+            return newLogs.concat(...expanded);
+        } else {
+            return [];
+        }
+    }
+
+    static findLogInfoForChange(
+        change: string,
+        logs: p4.FileLogItem[][],
+        index: number,
+        totalRevisions: number
+    ): LogInfo | undefined {
+        for (const log of logs) {
+            const found = log.findIndex((l) => l.chnum === change);
+            if (found >= 0) {
+                const ageStep = 1 / Math.min(Math.max(1, totalRevisions), 10);
+                const ageRating = Math.max(1 - ageStep * index, 0);
+                return {
+                    log: log[found],
+                    prev: log[found + 1],
+                    index,
+                    ageRating,
+                };
+            }
+        }
+    }
+
+    static toMapByChnum(
+        annotations: p4.Annotation[],
+        logs: p4.FileLogItem[][]
+    ): Map<string, LogInfo> {
+        const ret = new Map<string, LogInfo>();
+
+        const required = dedupe(annotations, "revisionOrChnum")
+            .map((a) => a.revisionOrChnum)
+            .sort((a, b) => parseInt(b) - parseInt(a)); // sorted newest to oldest for heatmap
+        const totalRevisions = required.length;
+
+        const notFound: string[] = [];
+        required.forEach((change, index) => {
+            const found = this.findLogInfoForChange(change, logs, index, totalRevisions);
+            if (found) {
+                ret.set(change, found);
+            } else {
+                notFound.push(change);
+            }
+        });
+
+        if (notFound.length > 0) {
+            Display.showImportantError(
+                "Error during annotation - could not find change information for " +
+                    pluralise(notFound.length, "change") +
+                    ": " +
+                    notFound.join(", ")
+            );
+        }
+
+        return ret;
+    }
+
     static async annotate(uri: vscode.Uri) {
         const existing = this._annotationsByUri.get(uri);
         if (existing) {
@@ -177,9 +280,7 @@ export class AnnotationProvider {
             existing.dispose();
         }
 
-        const followBranches = vscode.workspace
-            .getConfiguration("perforce")
-            .get("annotate.followBranches", false);
+        const followBranches = configAccessor.annotateFollowBranches;
 
         const underlying = PerforceUri.getUsableWorkspace(uri) ?? uri;
 
@@ -192,7 +293,14 @@ export class AnnotationProvider {
         const logPromise = p4.getFileHistory(underlying, { file: uri, followBranches });
 
         const [annotations, log] = await Promise.all([annotationsPromise, logPromise]);
-        const decorations = getDecorations(underlying, annotations, log);
+
+        const expanded = followBranches
+            ? await this.expandLogs(underlying, log, new Set<string>())
+            : [];
+        const allLogs = [log, ...expanded];
+        const logsByChnum = this.toMapByChnum(annotations.filter(isTruthy), allLogs);
+
+        const decorations = getDecorations(underlying, annotations, log[0], logsByChnum);
 
         // try to use the depot URI to open the document, so that we can perform revision actions on it
         if (!PerforceUri.getRevOrAtLabel(uri) && !PerforceUri.isDepotUri(uri) && log[0]) {
@@ -227,19 +335,16 @@ function makeHoverMessage(
     return markdown;
 }
 
-function makeDecoration(
-    lineNumber: number,
-    revisionsAgo: number,
-    totalRevisions: number,
+function makeDecorationForChange(
+    ageRating: number,
     isTop: boolean,
     summaryText: string,
     hoverMessage: vscode.MarkdownString,
     foregroundColor: vscode.ThemeColor,
     backgroundColor: vscode.ThemeColor,
     columnWidth: number
-) {
-    const alphaStep = 1 / Math.min(Math.max(1, totalRevisions), 10);
-    const alpha = Math.max(1 - alphaStep * revisionsAgo, 0);
+): DecorationWithoutRange {
+    const alpha = ageRating;
     const color = `rgba(246, 106, 10, ${alpha})`;
 
     const overline = isTop ? "overline solid rgba(0, 0, 0, 0.2)" : undefined;
@@ -258,21 +363,27 @@ function makeDecoration(
     const renderOptions: vscode.DecorationInstanceRenderOptions = { before };
 
     return {
-        range: new vscode.Range(lineNumber, 0, lineNumber, 0),
         hoverMessage,
         renderOptions,
     };
 }
 
-function getDecorations(
+type DecorationWithoutRange = Omit<vscode.DecorationOptions, "range">;
+
+type ChangeDecoration = {
+    // decoration for first line of an annotation
+    top: DecorationWithoutRange;
+    // decoration for subsequent lines
+    body: DecorationWithoutRange;
+};
+
+function makeDecorationsByChnum(
     underlying: vscode.Uri,
-    annotations: (p4.Annotation | undefined)[],
-    log: p4.FileLogItem[]
-): vscode.DecorationOptions[] {
+    latestChange: p4.FileLogItem,
+    logsByChnum: Map<string, LogInfo>
+): Map<string, ChangeDecoration> {
     const backgroundColor = new vscode.ThemeColor("perforce.gutterBackgroundColor");
     const foregroundColor = new vscode.ThemeColor("perforce.gutterForegroundColor");
-
-    const latestChange = log[0];
 
     const columnOptions = ColumnFormatter.parseColumns(
         vscode.workspace
@@ -282,57 +393,72 @@ function getDecorations(
 
     const columnWidth = ColumnFormatter.calculateTotalWidth(columnOptions);
 
+    const ret = new Map<string, ChangeDecoration>();
+    logsByChnum.forEach((log) => {
+        const change = log.log;
+        const prevChange = log.prev;
+        const summary = ColumnFormatter.makeSummaryText(
+            change,
+            latestChange,
+            columnOptions
+        );
+        const hoverMessage = makeHoverMessage(
+            underlying,
+            change,
+            latestChange,
+            prevChange
+        );
+        const top = makeDecorationForChange(
+            log.ageRating,
+            true,
+            summary,
+            hoverMessage,
+            foregroundColor,
+            backgroundColor,
+            columnWidth
+        );
+        const body = makeDecorationForChange(
+            log.ageRating,
+            false,
+            nbsp,
+            hoverMessage,
+            foregroundColor,
+            backgroundColor,
+            columnWidth
+        );
+        ret.set(change.chnum, { top, body });
+    });
+
+    return ret;
+}
+
+function getDecorations(
+    underlying: vscode.Uri,
+    annotations: (p4.Annotation | undefined)[],
+    latestChange: p4.FileLogItem,
+    logsByChnum: Map<string, LogInfo>
+): vscode.DecorationOptions[] {
+    const decorations = makeDecorationsByChnum(underlying, latestChange, logsByChnum);
     return annotations
         .map((a, i) => {
-            const usePrevious =
-                i > 0 && a?.revisionOrChnum === annotations[i - 1]?.revisionOrChnum;
-            const annotation = usePrevious ? annotations[i - 1] : a;
-
-            if (!annotation) {
+            if (!a || !a?.revisionOrChnum) {
                 return;
             }
 
-            const changeIndex = log.findIndex(
-                (l) => l.chnum === annotation.revisionOrChnum
-            );
-            if (changeIndex < 0) {
-                Display.showImportantError(
-                    "Error during annotation - could not read change information for " +
-                        annotation.revisionOrChnum
-                );
-                throw new Error(
-                    "Could not find change info for " + annotation.revisionOrChnum
-                );
+            const changeDecoration = decorations.get(a.revisionOrChnum);
+
+            if (!changeDecoration) {
+                return;
             }
-            const revisionsAgo = changeIndex;
 
-            const change = log[changeIndex];
-            const prevChange = log[changeIndex + 1];
+            const usePrevious =
+                i > 0 && a.revisionOrChnum === annotations[i - 1]?.revisionOrChnum;
+            const decoration = usePrevious ? changeDecoration.body : changeDecoration.top;
 
-            const summary = usePrevious
-                ? nbsp
-                : change
-                ? ColumnFormatter.makeSummaryText(change, latestChange, columnOptions)
-                : "Unknown!";
-
-            const hoverMessage = makeHoverMessage(
-                underlying,
-                change,
-                latestChange,
-                prevChange
-            );
-
-            return makeDecoration(
-                i,
-                revisionsAgo,
-                log.length,
-                !usePrevious,
-                summary,
-                hoverMessage,
-                foregroundColor,
-                backgroundColor,
-                columnWidth
-            );
+            return {
+                range: new vscode.Range(i, 0, i, 0),
+                ...decoration,
+            };
         })
         .filter(isTruthy);
 }

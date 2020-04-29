@@ -142,6 +142,10 @@ export class ConfigAccessor {
             this.setConfigItemGlobally("fileShelveMode", "prompt");
         }
     }
+
+    public get annotateFollowBranches(): boolean {
+        return this.getConfigItem("annotate.followBranches") ?? false;
+    }
 }
 
 export const configAccessor = new ConfigAccessor();
