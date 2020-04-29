@@ -194,9 +194,9 @@ function makeAllRevisionPicks(
     const revPicks = changes.all.flatMap((change) => {
         const icon =
             change === changes.current ? "$(location)" : "$(debug-stackframe-dot)";
-        const fromRev = includeIntegrations
-            ? change.integrations.find((c) => c.direction === p4.Direction.FROM)
-            : undefined;
+        const fromRevs = includeIntegrations
+            ? change.integrations.filter((c) => c.direction === p4.Direction.FROM)
+            : [];
         const toRevs = includeIntegrationTargets
             ? change.integrations.filter((c) => c.direction === p4.Direction.TO)
             : [];
@@ -223,26 +223,26 @@ function makeAllRevisionPicks(
             },
         };
 
-        const fromPick: qp.ActionableQuickPickItem | undefined = fromRev
-            ? {
-                  label:
-                      nbsp.repeat(10) +
-                      "$(git-merge) " +
-                      fromRev.operation +
-                      " from " +
-                      fromRev.file +
-                      "#" +
-                      qp.toRevString(fromRev.startRev, fromRev.endRev),
-                  performAction: () => {
-                      const revUri = PerforceUri.fromDepotPath(
-                          PerforceUri.getUsableWorkspace(uri) ?? uri,
-                          fromRev.file,
-                          fromRev.endRev
-                      );
-                      return showQuickPickForFile(revUri);
-                  },
-              }
-            : undefined;
+        const fromPicks = fromRevs.map((rev) => {
+            return {
+                label:
+                    nbsp.repeat(10) +
+                    "$(git-merge) " +
+                    rev.operation +
+                    " from " +
+                    rev.file +
+                    "#" +
+                    qp.toRevString(rev.startRev, rev.endRev),
+                performAction: () => {
+                    const revUri = PerforceUri.fromDepotPath(
+                        PerforceUri.getUsableWorkspace(uri) ?? uri,
+                        rev.file,
+                        rev.endRev
+                    );
+                    return showQuickPickForFile(revUri);
+                },
+            };
+        });
 
         const toPicks = toRevs.map((rev) => {
             return {
@@ -265,7 +265,7 @@ function makeAllRevisionPicks(
             };
         });
 
-        return [revPick, ...toPicks, fromPick].filter(isTruthy);
+        return [revPick, ...toPicks, ...fromPicks].filter(isTruthy);
     });
 
     const controls: qp.ActionableQuickPickItem[] = [
