@@ -306,6 +306,11 @@
                     "default": 200,
                     "description": "The maximum number of results to return in the changelist search",
                     "minimum": 1
+                },
+                "perforce.explorer.showSyncCommands": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Whether to show sync commands on the explorer context menu"
                 }
             }
         },
@@ -375,6 +380,16 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.syncOpenFile",
+                "title": "Sync file - Sync the open file to the latest revision",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.syncOpenFileRevision",
+                "title": "Sync file revision - Sync the open file to a specific revision",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.diff",
                 "title": "Diff - Display diff of client file with depot file",
                 "category": "Perforce"
@@ -423,6 +438,16 @@
                     "light": "resources/icons/light/p4.svg",
                     "dark": "resources/icons/dark/p4.svg"
                 }
+            },
+            {
+                "command": "perforce.explorer.syncPath",
+                "title": "Perforce: Sync file",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.explorer.syncDir",
+                "title": "Perforce: Sync directory",
+                "category": "Perforce"
             },
             {
                 "command": "perforce.Sync",
@@ -815,6 +840,14 @@
                 {
                     "command": "perforce.changeSearch.disableAutoRefresh",
                     "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.syncPath",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.syncDir",
+                    "when": "0"
                 }
             ],
             "scm/title": [
@@ -1083,6 +1116,18 @@
                     "command": "perforce.diffNext",
                     "group": "perforce@2",
                     "when": "isInDiffEditor && perforce.activation.hasScmProvider"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "perforce.explorer.syncPath",
+                    "group": "perforce@1",
+                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
+                },
+                {
+                    "command": "perforce.explorer.syncDir",
+                    "group": "perforce@1",
+                    "when": "explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
                 }
             ],
             "view/item/context": [

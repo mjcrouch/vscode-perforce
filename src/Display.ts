@@ -177,7 +177,7 @@ export namespace Display {
     }
 
     export function showMessage(message: string) {
-        window.setStatusBarMessage("Perforce: " + message, 3000);
+        window.setStatusBarMessage("Perforce: " + message.replace(/\r?\n/g, " "), 3000);
         channel.append(message + "\n");
     }
 
@@ -186,7 +186,7 @@ export namespace Display {
     }
 
     export function showError(error: string) {
-        window.setStatusBarMessage("Perforce: " + error, 3000);
+        window.setStatusBarMessage("Perforce: " + error.replace(/\r?\n/g, " "), 3000);
         channel.appendLine(`ERROR: ${JSON.stringify(error)}`);
     }
 

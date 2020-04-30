@@ -11,12 +11,17 @@ import { isTruthy, parseDate } from "../../TsUtils";
 export interface FilelogOptions {
     file: PerforceFile;
     followBranches?: boolean;
+    omitNonContributoryIntegrations?: boolean;
 }
 
-const filelogFlags = flagMapper<FilelogOptions>([["i", "followBranches"]], "file", [
-    "-l",
-    "-t",
-]);
+const filelogFlags = flagMapper<FilelogOptions>(
+    [
+        ["i", "followBranches"],
+        ["s", "omitNonContributoryIntegrations"],
+    ],
+    "file",
+    ["-l", "-t"]
+);
 
 const filelog = makeSimpleCommand("filelog", filelogFlags);
 

@@ -12,6 +12,7 @@ import * as ChangeQuickPick from "./ChangeQuickPick";
 import * as qp from "./QuickPickProvider";
 import { showIntegPickForFile } from "./IntegrationQuickPick";
 import { timeAgo, toReadableDateTime } from "../DateFormatter";
+import * as Path from "path";
 
 const nbsp = "\xa0";
 
@@ -21,6 +22,7 @@ export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
         const changes = await getChangeDetails(uri, cached);
         const actions = makeNextAndPrevPicks(uri, changes).concat(
             makeClipboardPicks(uri, changes),
+            makeSyncPicks(uri, changes),
             makeDiffPicks(uri, changes),
             makeChangelistPicks(uri, changes)
         );
@@ -431,6 +433,28 @@ function makeClipboardPicks(
                 vscode.env.clipboard.writeText(
                     changes.current.file + "#" + changes.current.revision
                 );
+            },
+        },
+    ];
+}
+
+function makeSyncPicks(
+    uri: vscode.Uri,
+    change: ChangeDetails
+): qp.ActionableQuickPickItem[] {
+    return [
+        {
+            label: "$(repo-pull) Sync this revision",
+            description:
+                "Sync " +
+                Path.basename(change.current.file) +
+                "#" +
+                change.current.revision,
+            performAction: async () => {
+                await p4.sync(uri, {
+                    files: [change.current.file + "#" + change.current.revision],
+                });
+                Display.showMessage("File synced");
             },
         },
     ];

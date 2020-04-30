@@ -60,3 +60,15 @@ export function addUniqueKeysToSet<T, K extends keyof T>(
 ) {
     return items.filter((i) => (current.has(i[key]) ? false : current.add(i[key])));
 }
+
+export function splitBy<T, R>(items: T[], keyFunc: (item: T) => R): T[][] {
+    const arrs = new Map<R, T[]>();
+    items.forEach((item) => {
+        const key = keyFunc(item);
+        if (!arrs.get(key)) {
+            arrs.set(key, []);
+        }
+        arrs.get(key)?.push(item);
+    });
+    return [...arrs.values()];
+}
