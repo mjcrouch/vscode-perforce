@@ -446,7 +446,7 @@
             },
             {
                 "command": "perforce.explorer.syncDir",
-                "title": "Perforce: Sync directory",
+                "title": "Perforce: Sync folder",
                 "category": "Perforce"
             },
             {
