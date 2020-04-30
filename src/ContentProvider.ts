@@ -63,3 +63,11 @@ export class PerforceContentProvider {
         return runPerforceCommand(resource, command, allP4Args, { hideStdErr: true });
     }
 }
+
+let _perforceContentProvider: PerforceContentProvider;
+export function perforceContentProvider() {
+    if (!_perforceContentProvider) {
+        _perforceContentProvider = new PerforceContentProvider();
+    }
+    return _perforceContentProvider;
+}

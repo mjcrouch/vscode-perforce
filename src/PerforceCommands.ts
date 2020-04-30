@@ -23,6 +23,7 @@ import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
 import { showQuickPick } from "./quickPick/QuickPickProvider";
 import { splitBy } from "./TsUtils";
+import { perforceContentProvider } from "./ContentProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -232,6 +233,7 @@ export namespace PerforceCommands {
         }
 
         const output = await p4.submitChangelist(file, { description, file });
+        didChangeHaveRev(file);
         PerforceSCMProvider.RefreshAll();
         Display.showMessage("Changelist " + output.chnum + " submitted");
     }
@@ -258,6 +260,12 @@ export namespace PerforceCommands {
         return chosen?.item;
     }
 
+    function didChangeHaveRev(uri: Uri) {
+        perforceContentProvider().requestUpdatedDocument(
+            PerforceUri.fromUriWithRevision(uri, "have")
+        );
+    }
+
     export async function syncOpenFile() {
         const file = window.activeTextEditor?.document.uri;
         if (!file || file.scheme !== "file") {
@@ -268,6 +276,7 @@ export namespace PerforceCommands {
         try {
             await p4.sync(file, { files: [file] });
             Display.showMessage("File Synced");
+            didChangeHaveRev(file);
         } catch {}
         PerforceSCMProvider.RefreshAll();
     }
@@ -290,6 +299,7 @@ export namespace PerforceCommands {
             try {
                 await p4.sync(file, { files: [chosen] });
                 Display.showMessage("File Synced");
+                didChangeHaveRev(file);
             } catch {}
             PerforceSCMProvider.RefreshAll();
         }
@@ -321,9 +331,15 @@ export namespace PerforceCommands {
         const resource = typeof file === "string" ? Uri.parse(file) : file;
         const allFiles = [resource, ...files.filter((f) => f.fsPath !== resource.fsPath)];
         const filesByDir = splitBy(allFiles, (f) => Path.dirname(f.fsPath));
-        const promises = filesByDir.map((dirFiles) =>
-            p4.sync(dirFiles[0], { files: dirFiles })
-        );
+        const promises = filesByDir.map(async (dirFiles) => {
+            try {
+                await p4.sync(dirFiles[0], { files: dirFiles });
+            } catch (err) {
+                throw err;
+            } finally {
+                dirFiles.map((file) => didChangeHaveRev(file));
+            }
+        });
         try {
             await withExplorerProgress(() => Promise.all(promises));
             Display.showMessage("File Synced");
