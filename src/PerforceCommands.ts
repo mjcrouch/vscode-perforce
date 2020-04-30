@@ -265,9 +265,11 @@ export namespace PerforceCommands {
             return;
         }
 
-        await p4.sync(file, { files: [file] });
+        try {
+            await p4.sync(file, { files: [file] });
+            Display.showMessage("File Synced");
+        } catch {}
         PerforceSCMProvider.RefreshAll();
-        Display.showMessage("File Synced");
     }
 
     export async function syncOpenFileRevision() {
@@ -285,9 +287,11 @@ export namespace PerforceCommands {
                 revision.file,
                 revision.revision
             );
-            await p4.sync(file, { files: [chosen] });
+            try {
+                await p4.sync(file, { files: [chosen] });
+                Display.showMessage("File Synced");
+            } catch {}
             PerforceSCMProvider.RefreshAll();
-            Display.showMessage("File Synced");
         }
     }
 
@@ -307,9 +311,9 @@ export namespace PerforceCommands {
         });
         try {
             await withExplorerProgress(() => Promise.all(promises));
+            Display.showMessage("Directory Synced");
         } catch {}
         PerforceSCMProvider.RefreshAll();
-        Display.showMessage("Directory Synced");
     }
 
     // accepts a string for any custom tasks etc
@@ -322,9 +326,9 @@ export namespace PerforceCommands {
         );
         try {
             await withExplorerProgress(() => Promise.all(promises));
+            Display.showMessage("File Synced");
         } catch {}
         PerforceSCMProvider.RefreshAll();
-        Display.showMessage("File Synced");
     }
 
     export async function diff(revision?: number) {
