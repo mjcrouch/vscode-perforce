@@ -356,7 +356,7 @@ export namespace PerforceCommands {
             await p4.edit.ignoringAndHidingStdErr(file, { files: [fromWild] });
             await p4.move(file, { fromToFile: [fromWild, toWild] });
         } catch (err) {
-            Display.showImportantError(err);
+            Display.showImportantError(err.toString());
         }
     }
 
@@ -365,7 +365,7 @@ export namespace PerforceCommands {
             await p4.edit.ignoringAndHidingStdErr(file, { files: [file] });
             await p4.move(file, { fromToFile: [file, newFsPath] });
         } catch (err) {
-            Display.showImportantError(err);
+            Display.showImportantError(err.toString());
         }
     }
 
@@ -398,9 +398,9 @@ export namespace PerforceCommands {
                 moveOne(file, Path.join(newPath, Path.basename(file.fsPath)))
             );
             try {
-                await Promise.all(promises);
+                await withExplorerProgress(() => Promise.all(promises));
             } catch (err) {
-                Display.showImportantError(err);
+                Display.showImportantError(err.toString());
             }
             PerforceSCMProvider.RefreshAll();
         }
@@ -420,9 +420,9 @@ export namespace PerforceCommands {
         });
         if (newPath) {
             try {
-                await moveOne(file, newPath);
+                await withExplorerProgress(() => moveOne(file, newPath));
             } catch (err) {
-                Display.showImportantError(err);
+                Display.showImportantError(err.toString());
             }
             PerforceSCMProvider.RefreshAll();
         }

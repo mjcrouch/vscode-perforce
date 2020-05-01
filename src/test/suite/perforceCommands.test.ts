@@ -15,6 +15,7 @@ import { Display } from "../../Display";
 import { getLocalFile } from "../helpers/testUtils";
 import { PerforceSCMProvider } from "../../ScmProvider";
 import { Status } from "../../scm/Status";
+import * as Path from "path";
 
 chai.use(sinonChai);
 chai.use(p4Commands);
@@ -198,6 +199,149 @@ describe("Perforce Command Module (integration)", () => {
                 file: { fsPath: localFile.fsPath },
                 description: "new changelist description",
                 chnum: undefined,
+            });
+        });
+    });
+    describe("Explorer Move/Rename", () => {
+        describe("When a single file is selected", () => {
+            it("Requests a new name for the file", async () => {
+                const prompt = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves(undefined);
+                const file = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                await PerforceCommands.moveExplorerFiles(file, [file]);
+                expect(prompt).to.have.been.calledWithMatch({
+                    prompt: sinon.match("Enter the new path"),
+                    value: file.fsPath,
+                });
+                expect(stubModel.editIgnoringStdErr).not.to.have.been.called;
+                expect(stubModel.move).not.to.have.been.called;
+            });
+            it("Opens the file for edit and moves it to the new name", async () => {
+                const file = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const newName = file.fsPath + "2";
+                sinon.stub(vscode.window, "showInputBox").resolves(newName);
+
+                await PerforceCommands.moveExplorerFiles(file, [file]);
+
+                expect(stubModel.editIgnoringStdErr).to.have.been.calledWithMatch(file, {
+                    files: [sinon.match({ fsPath: file.fsPath })],
+                });
+                expect(stubModel.move).to.have.been.calledWithMatch(file, {
+                    fromToFile: [sinon.match({ fsPath: file.fsPath }), newName],
+                });
+            });
+            it("Reports errors moving the file", async () => {
+                const showError = sinon.stub(Display, "showImportantError");
+
+                const file = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const newName = file.fsPath + "2";
+                sinon.stub(vscode.window, "showInputBox").resolves(newName);
+                stubModel.move.rejects("My move error");
+
+                await PerforceCommands.moveExplorerFiles(file, [file]);
+
+                expect(showError).to.have.been.calledWithMatch("My move error");
+            });
+            it("Opens and moves all files if the selection is a directory", async () => {
+                const file = getLocalFile(workspaceUri, "testFolder", "subFolder");
+                const newName = file.fsPath + "2";
+                const oldWild = Path.join(file.fsPath, "...");
+                const newWild = Path.join(newName, "...");
+                sinon.stub(vscode.window, "showInputBox").resolves(newName);
+
+                await PerforceCommands.moveExplorerFiles(file, [file]);
+
+                expect(stubModel.editIgnoringStdErr).to.have.been.calledWithMatch(file, {
+                    files: [oldWild],
+                });
+                expect(stubModel.move).to.have.been.calledWithMatch(file, {
+                    fromToFile: [oldWild, newWild],
+                });
+            });
+        });
+        describe("When multiple files are selected", () => {
+            it("Does not support multiple files from different directories", async () => {
+                const modal = sinon.stub(Display, "showModalMessage");
+                const file1 = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const file2 = getLocalFile(
+                    workspaceUri,
+                    "testFolder",
+                    "subFolder",
+                    "underSubFolder"
+                );
+
+                await PerforceCommands.moveExplorerFiles(file1, [file1, file2]);
+
+                expect(modal).to.have.been.calledWithMatch("same folder");
+                expect(stubModel.editIgnoringStdErr).not.to.have.been.called;
+                expect(stubModel.move).not.to.have.been.called;
+            });
+            it("Requests a new location for the files", async () => {
+                const prompt = sinon
+                    .stub(vscode.window, "showInputBox")
+                    .resolves(undefined);
+
+                const file1 = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const file2 = getLocalFile(workspaceUri, "testFolder", "subFolder");
+
+                await PerforceCommands.moveExplorerFiles(file1, [file1, file2]);
+
+                expect(prompt).to.have.been.calledWithMatch({
+                    prompt: sinon.match("Enter the new location"),
+                    value: Path.dirname(file1.fsPath),
+                });
+                expect(stubModel.editIgnoringStdErr).not.to.have.been.called;
+                expect(stubModel.move).not.to.have.been.called;
+            });
+            it("Opens all selected files and directories for edit", async () => {
+                const file1 = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const file2 = getLocalFile(workspaceUri, "testFolder", "subFolder");
+                const dir = Path.dirname(file1.fsPath);
+                const newDir = dir + "2";
+                sinon.stub(vscode.window, "showInputBox").resolves(newDir);
+
+                const newFile1 = Path.join(newDir, "a.txt");
+                const wildFile2 = Path.join(file2.fsPath, "...");
+                const newFile2 = Path.join(newDir, "subFolder", "...");
+
+                await PerforceCommands.moveExplorerFiles(file1, [file1, file2]);
+
+                expect(stubModel.editIgnoringStdErr).to.have.been.calledWithMatch(file1, {
+                    files: [sinon.match({ fsPath: file1.fsPath })],
+                });
+                expect(stubModel.move).to.have.been.calledWithMatch(file1, {
+                    fromToFile: [sinon.match({ fsPath: file1.fsPath }), newFile1],
+                });
+
+                expect(stubModel.editIgnoringStdErr).to.have.been.calledWithMatch(file2, {
+                    files: [wildFile2],
+                });
+                expect(stubModel.move).to.have.been.calledWithMatch(file2, {
+                    fromToFile: [wildFile2, newFile2],
+                });
+            });
+            it("Reports errors moving files but does not stop", async () => {
+                const showError = sinon.stub(Display, "showImportantError");
+
+                const file1 = getLocalFile(workspaceUri, "testFolder", "a.txt");
+                const file2 = getLocalFile(workspaceUri, "testFolder", "subFolder");
+                const dir = Path.dirname(file1.fsPath);
+                const newDir = dir + "2";
+                sinon.stub(vscode.window, "showInputBox").resolves(newDir);
+
+                const wildFile2 = Path.join(file2.fsPath, "...");
+                const newFile2 = Path.join(newDir, "subFolder", "...");
+
+                stubModel.move.onFirstCall().rejects("My move error");
+
+                await PerforceCommands.moveExplorerFiles(file1, [file1, file2]);
+
+                expect(showError).to.have.been.calledWithMatch("My move error");
+
+                expect(stubModel.move).to.have.been.calledWithMatch(file2, {
+                    fromToFile: [wildFile2, newFile2],
+                });
             });
         });
     });

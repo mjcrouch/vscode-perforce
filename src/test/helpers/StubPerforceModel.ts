@@ -94,6 +94,9 @@ export class StubPerforceModel {
     public unshelve: sinon.SinonStub<any>;
     public inputChangeSpec: sinon.SinonStub<any>;
     public del: sinon.SinonStub<any>;
+    public move: sinon.SinonStub<any>;
+    public edit: sinon.SinonStub<any>;
+    public editIgnoringStdErr: sinon.SinonStub<any>;
 
     constructor() {
         this.changelists = [];
@@ -140,6 +143,11 @@ export class StubPerforceModel {
             .stub(p4, "inputChangeSpec")
             .resolves({ chnum: "99", rawOutput: "Change 99 created" });
         this.del = sinon.stub(p4, "del").resolves("Files deleted");
+        this.move = sinon.stub(p4, "move").resolves("File moved");
+        this.editIgnoringStdErr = sinon
+            .stub(p4.edit, "ignoringAndHidingStdErr")
+            .resolves("File edited");
+        this.edit = sinon.stub(p4, "edit").resolves("File edited");
     }
 
     resolveOpenFiles(
