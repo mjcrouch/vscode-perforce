@@ -40,6 +40,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.explorer.syncPath", syncExplorerPath);
         commands.registerCommand("perforce.explorer.syncDir", syncExplorerDir);
         commands.registerCommand("perforce.explorer.move", moveExplorerFiles);
+        commands.registerCommand("perforce.move", moveOpenFile);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
         commands.registerCommand("perforce.diffPrevious", diffPrevious);
@@ -411,7 +412,7 @@ export namespace PerforceCommands {
         return [dirname.length + 1, file.length];
     }
 
-    async function moveRenameSingleFileOrDir(file: Uri) {
+    async function moveRenameSingleFileOrDir(file: Uri, openInEditor?: boolean) {
         const newPath = await window.showInputBox({
             prompt: "Enter the new path for " + Path.basename(file.fsPath),
             value: file.fsPath,
@@ -421,6 +422,9 @@ export namespace PerforceCommands {
         if (newPath) {
             try {
                 await withExplorerProgress(() => moveOne(file, newPath));
+                if (openInEditor === true) {
+                    await window.showTextDocument(Uri.file(newPath));
+                }
             } catch (err) {
                 Display.showImportantError(err.toString());
             }
@@ -432,8 +436,21 @@ export namespace PerforceCommands {
         if (all.length > 1) {
             await moveMultipleToNewDir(all);
         } else {
-            await moveRenameSingleFileOrDir(selected);
+            await moveRenameSingleFileOrDir(
+                selected,
+                window.activeTextEditor?.document.uri.fsPath === selected.fsPath
+            );
         }
+    }
+
+    export async function moveOpenFile() {
+        const file = window.activeTextEditor?.document.uri;
+        if (!file || file.scheme !== "file") {
+            Display.showError("No open file to sync");
+            return;
+        }
+
+        await moveRenameSingleFileOrDir(file, true);
     }
 
     export async function diff(revision?: number) {
@@ -706,6 +723,10 @@ export namespace PerforceCommands {
             description: "Submit the open file, ONLY if it is in the default changelist",
         });
         items.push({
+            label: "move",
+            description: "Move or rename the open file",
+        });
+        items.push({
             label: "sync file",
             description: "Sync the file to the latest revision",
         });
@@ -751,6 +772,9 @@ export namespace PerforceCommands {
                         break;
                     case "revert":
                         revertOpenFile();
+                        break;
+                    case "move":
+                        moveOpenFile();
                         break;
                     case "submit single file":
                         submitSingle();

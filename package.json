@@ -460,6 +460,11 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.move",
+                "title": "Move - Move or Rename the open file",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.Sync",
                 "title": "Sync",
                 "category": "Perforce",
@@ -857,6 +862,10 @@
                 },
                 {
                     "command": "perforce.explorer.syncDir",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.move",
                     "when": "0"
                 }
             ],
