@@ -8,6 +8,7 @@ import {
     QuickPickItem,
     Disposable,
     ProgressLocation,
+    FileType,
 } from "vscode";
 
 import * as Path from "path";
@@ -38,6 +39,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.syncOpenFileRevision", syncOpenFileRevision);
         commands.registerCommand("perforce.explorer.syncPath", syncExplorerPath);
         commands.registerCommand("perforce.explorer.syncDir", syncExplorerDir);
+        commands.registerCommand("perforce.explorer.move", moveExplorerFiles);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
         commands.registerCommand("perforce.diffPrevious", diffPrevious);
@@ -345,6 +347,93 @@ export namespace PerforceCommands {
             Display.showMessage("File Synced");
         } catch {}
         PerforceSCMProvider.RefreshAll();
+    }
+
+    async function moveOneDir(file: Uri, newFsPath: string) {
+        const fromWild = Path.join(file.fsPath, "...");
+        const toWild = Path.join(newFsPath, "...");
+        try {
+            await p4.edit.ignoringAndHidingStdErr(file, { files: [fromWild] });
+            await p4.move(file, { fromToFile: [fromWild, toWild] });
+        } catch (err) {
+            Display.showImportantError(err);
+        }
+    }
+
+    async function moveOneFile(file: Uri, newFsPath: string) {
+        try {
+            await p4.edit.ignoringAndHidingStdErr(file, { files: [file] });
+            await p4.move(file, { fromToFile: [file, newFsPath] });
+        } catch (err) {
+            Display.showImportantError(err);
+        }
+    }
+
+    async function moveOne(file: Uri, newFsPath: string) {
+        const isDir = (await workspace.fs.stat(file)).type === FileType.Directory;
+        if (isDir) {
+            await moveOneDir(file, newFsPath);
+        } else {
+            await moveOneFile(file, newFsPath);
+        }
+    }
+
+    async function moveMultipleToNewDir(files: Uri[]) {
+        const dirname = Path.dirname(files[0].fsPath);
+        const differentDir = files.find((file) => Path.dirname(file.fsPath) !== dirname);
+        if (differentDir) {
+            Display.showModalMessage(
+                "To move multiple files, all moved files must be within the same folder"
+            );
+            return;
+        }
+        const newPath = await window.showInputBox({
+            prompt: "Enter the new location for the " + files.length + " selected files",
+            value: dirname,
+            placeHolder: dirname,
+            valueSelection: getDirSelectionRange(dirname),
+        });
+        if (newPath) {
+            const promises = files.map((file) =>
+                moveOne(file, Path.join(newPath, Path.basename(file.fsPath)))
+            );
+            try {
+                await Promise.all(promises);
+            } catch (err) {
+                Display.showImportantError(err);
+            }
+            PerforceSCMProvider.RefreshAll();
+        }
+    }
+
+    function getDirSelectionRange(file: string): [number, number] {
+        const dirname = Path.dirname(file);
+        return [dirname.length + 1, file.length];
+    }
+
+    async function moveRenameSingleFileOrDir(file: Uri) {
+        const newPath = await window.showInputBox({
+            prompt: "Enter the new path for " + Path.basename(file.fsPath),
+            value: file.fsPath,
+            placeHolder: file.fsPath,
+            valueSelection: getDirSelectionRange(file.fsPath),
+        });
+        if (newPath) {
+            try {
+                await moveOne(file, newPath);
+            } catch (err) {
+                Display.showImportantError(err);
+            }
+            PerforceSCMProvider.RefreshAll();
+        }
+    }
+
+    export async function moveExplorerFiles(selected: Uri, all: Uri[]) {
+        if (all.length > 1) {
+            await moveMultipleToNewDir(all);
+        } else {
+            await moveRenameSingleFileOrDir(selected);
+        }
     }
 
     export async function diff(revision?: number) {

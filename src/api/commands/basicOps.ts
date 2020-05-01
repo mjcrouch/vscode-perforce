@@ -320,3 +320,19 @@ const resolveFlags = flagMapper<ResolveOptions>(
 export const resolve = makeSimpleCommand("resolve", resolveFlags, () => {
     return { useTerminal: true };
 });
+
+export type EditOptions = {
+    chnum?: string;
+    files: PerforceFile[];
+};
+const editFlags = flagMapper<EditOptions>([["c", "chnum"]], "files");
+
+export const edit = makeSimpleCommand("edit", editFlags);
+
+export type MoveOptions = {
+    chnum?: string;
+    fromToFile: [PerforceFile, PerforceFile];
+};
+const moveFlags = flagMapper<MoveOptions>([["c", "chnum"]], "fromToFile");
+
+export const move = makeSimpleCommand("move", moveFlags);

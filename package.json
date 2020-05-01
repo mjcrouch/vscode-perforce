@@ -311,6 +311,11 @@
                     "type": "boolean",
                     "default": "true",
                     "description": "Whether to show sync commands on the explorer context menu"
+                },
+                "perforce.explorer.showFileOpCommands": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Whether to show file operation commands on the explorer context menu (move / rename etc)"
                 }
             }
         },
@@ -447,6 +452,11 @@
             {
                 "command": "perforce.explorer.syncDir",
                 "title": "Perforce: Sync folder",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.explorer.move",
+                "title": "Perforce: Move / Rename",
                 "category": "Perforce"
             },
             {
@@ -1128,6 +1138,11 @@
                     "command": "perforce.explorer.syncDir",
                     "group": "perforce@1",
                     "when": "explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
+                },
+                {
+                    "command": "perforce.explorer.move",
+                    "group": "perforce@5",
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showFileOpCommands"
                 }
             ],
             "view/item/context": [
