@@ -456,22 +456,22 @@
             },
             {
                 "command": "perforce.explorer.add",
-                "title": "Perforce: Add",
+                "title": "Perforce: Add file(s)",
                 "category": "Perforce"
             },
             {
                 "command": "perforce.explorer.edit",
-                "title": "Perforce: Edit",
+                "title": "Perforce: Edit file(s)",
                 "category": "Perforce"
             },
             {
                 "command": "perforce.explorer.revert",
-                "title": "Perforce: Revert",
+                "title": "Perforce: Revert file(s)",
                 "category": "Perforce"
             },
             {
                 "command": "perforce.explorer.revertUnchanged",
-                "title": "Perforce: Revert if unchanged",
+                "title": "Perforce: Revert unchanged file(s)",
                 "category": "Perforce"
             },
             {
@@ -1178,22 +1178,22 @@
                 {
                     "command": "perforce.explorer.add",
                     "group": "perforce2-op@1",
-                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
                 },
                 {
                     "command": "perforce.explorer.edit",
                     "group": "perforce2-op@2",
-                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
                 },
                 {
                     "command": "perforce.explorer.revert",
                     "group": "perforce2-op@3",
-                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
                 },
                 {
                     "command": "perforce.explorer.revertUnchanged",
                     "group": "perforce2-op@4",
-                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
                 },
                 {
                     "command": "perforce.explorer.move",

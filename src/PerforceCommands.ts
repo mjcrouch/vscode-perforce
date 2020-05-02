@@ -23,7 +23,7 @@ import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
 import { showQuickPick } from "./quickPick/QuickPickProvider";
-import { splitBy, pluralise } from "./TsUtils";
+import { splitBy, pluralise, isTruthy } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
 
@@ -330,17 +330,13 @@ export namespace PerforceCommands {
         );
     }
 
-    function splitByDir(files: Uri[]) {
-        return splitBy(files, (f) => Path.dirname(f.fsPath));
-    }
-
     // accepts a string for any custom tasks etc
     export async function syncExplorerPath(file: Uri | string, files?: Uri[]) {
         return explorerOperationByDir(
             file,
             files,
             (dirFiles, resource) => p4.sync(resource, { files: dirFiles }),
-            { message: "File synced", hideSubErrors: true, includeDirWildcards: true }
+            { message: "Sync complete", hideSubErrors: true }
         );
     }
 
@@ -444,10 +440,29 @@ export namespace PerforceCommands {
         }
     }
 
-    function consolidatedUris(file: Uri | string, all?: Uri[]) {
+    function consolidateUris(file: Uri | string, all?: Uri[]) {
         const allUris = all ?? [];
         const resource = typeof file === "string" ? Uri.parse(file) : file;
         return [resource, ...allUris.filter((f) => f.fsPath !== resource.fsPath)];
+    }
+
+    type FileAndDir = {
+        file: Uri;
+        isDir: boolean;
+        dir: Uri;
+    };
+
+    async function mapToFilesByDir(files: Uri[]): Promise<FileAndDir[]> {
+        return await Promise.all(
+            files.map(async (file) => {
+                const fileIsDir = await isDir(file);
+                return {
+                    file: fileIsDir ? Uri.file(Path.join(file.fsPath, "...")) : file,
+                    isDir: fileIsDir,
+                    dir: fileIsDir ? file : Uri.file(Path.dirname(file.fsPath)),
+                };
+            })
+        );
     }
 
     async function explorerOperationByDir(
@@ -457,33 +472,32 @@ export namespace PerforceCommands {
         options?: {
             message?: string;
             hideSubErrors?: boolean;
-            includeDirWildcards?: boolean;
         }
     ) {
-        const files = consolidatedUris(selected, all);
-        const promises = splitByDir(files).map(async (dirFiles) => {
-            try {
-                if (options?.includeDirWildcards) {
-                    const expanded = await Promise.all(
-                        dirFiles.map(async (file) =>
-                            (await isDir(file))
-                                ? Uri.file(Path.join(file.fsPath, "..."))
-                                : file
-                        )
+        const files = consolidateUris(selected, all);
+        const filesByDir = await mapToFilesByDir(files);
+
+        const promises = splitBy(filesByDir, (file) => file.dir.fsPath).map(
+            async (dirFiles) => {
+                try {
+                    await op(
+                        dirFiles.map((file) => file.file),
+                        dirFiles[0].dir
                     );
-                    await op(expanded, dirFiles[0]);
-                } else {
-                    await op(dirFiles, dirFiles[0]);
+                } catch (err) {
+                    if (!options?.hideSubErrors) {
+                        Display.showImportantError(err);
+                    }
+                    throw err;
+                } finally {
+                    dirFiles.forEach((file) => {
+                        if (!file.isDir) {
+                            didChangeHaveRev(file.file);
+                        }
+                    });
                 }
-            } catch (err) {
-                if (!options?.hideSubErrors) {
-                    Display.showImportantError(err);
-                }
-                throw err;
-            } finally {
-                dirFiles.map((file) => didChangeHaveRev(file));
             }
-        });
+        );
 
         try {
             await withExplorerProgress(() => Promise.all(promises));
@@ -505,16 +519,30 @@ export namespace PerforceCommands {
         );
     }
 
+    async function fileAndFolderCount(files: Uri[]) {
+        const dirCount = (await Promise.all(files.map((f) => isDir(f)))).filter(isTruthy)
+            .length;
+        const fileCount = files.length - dirCount;
+        const items = [
+            fileCount > 0 ? pluralise(fileCount, "file") : undefined,
+            dirCount > 0 ? "all files in " + pluralise(dirCount, "folder") : undefined,
+        ].filter(isTruthy);
+        return items.join(", and ");
+    }
+
     export async function revertExplorerFiles(selected: Uri | string, all?: Uri[]) {
-        const count = consolidatedUris(selected, all).length;
-        const plural = pluralise(count, "file");
+        const allFiles = consolidateUris(selected, all);
+        const allPlural = await fileAndFolderCount(allFiles);
         const ok = await Display.requestConfirmation(
-            "Are you sure you want to revert " + plural + "?",
-            "Revert " + plural
+            "Are you sure you want to revert " + allPlural + "?",
+            "Revert " + allPlural
         );
         if (ok) {
-            await explorerOperationByDir(selected, all, (dirFiles, resource) =>
-                p4.revert(resource, { paths: dirFiles })
+            await explorerOperationByDir(
+                selected,
+                all,
+                (dirFiles, resource) => p4.revert(resource, { paths: dirFiles }),
+                { hideSubErrors: true }
             );
         }
     }
@@ -525,7 +553,7 @@ export namespace PerforceCommands {
             all,
             (dirFiles, resource) =>
                 p4.revert(resource, { paths: dirFiles, unchanged: true }),
-            { hideSubErrors: true, message: "Files reverted" }
+            { hideSubErrors: true }
         );
     }
 
