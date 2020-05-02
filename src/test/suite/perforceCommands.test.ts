@@ -93,6 +93,7 @@ describe("Perforce Command Module (integration)", () => {
     });
     describe("Revert", () => {
         it("Reverts the file open in the editor", async () => {
+            const warn = sinon.stub(Display, "requestConfirmation").resolves(true);
             const localFile = getLocalFile(workspaceUri, "testFolder", "a.txt");
             await vscode.window.showTextDocument(localFile, {
                 preview: false,
@@ -107,6 +108,7 @@ describe("Perforce Command Module (integration)", () => {
             expect(stubModel.revert.getCall(-1).args[1]).to.deep.equal({
                 paths: [localFile],
             });
+            expect(warn).to.have.been.calledWithMatch("sure");
 
             expect(refresh).to.have.been.called;
         });

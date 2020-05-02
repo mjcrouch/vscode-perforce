@@ -321,6 +321,14 @@ export const resolve = makeSimpleCommand("resolve", resolveFlags, () => {
     return { useTerminal: true };
 });
 
+export type AddOptions = {
+    chnum?: string;
+    files: PerforceFile[];
+};
+const addFlags = flagMapper<AddOptions>([["c", "chnum"]], "files");
+
+export const add = makeSimpleCommand("add", addFlags);
+
 export type EditOptions = {
     chnum?: string;
     files: PerforceFile[];

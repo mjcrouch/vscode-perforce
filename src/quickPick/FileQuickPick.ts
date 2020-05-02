@@ -105,7 +105,7 @@ export async function showDiffChooserForFile(uri: vscode.Uri) {
 }
 
 type CachedOutput = {
-    filelog: p4.FileLogItem[];
+    filelog?: p4.FileLogItem[];
     haveFile?: p4.HaveFile;
 };
 
@@ -159,8 +159,11 @@ async function getChangeDetails(
     cached?: CachedOutput,
     followBranches?: boolean
 ): Promise<ChangeDetails> {
-    const rev = uri.fragment;
-    if (!uri.fragment || isNaN(parseInt(rev))) {
+    const haveFile = cached?.haveFile ?? (await p4.have(uri, { file: uri }));
+
+    const uriRev = uri.fragment;
+    const useRev = !uri.fragment || isNaN(parseInt(uriRev)) ? haveFile?.revision : uriRev;
+    if (!useRev) {
         Display.showError("Unable to get file details without a revision");
         throw new Error("No revision available for " + uri.toString());
     }
@@ -171,14 +174,12 @@ async function getChangeDetails(
         cached?.filelog ??
         (await p4.getFileHistory(uri, { file: arg, followBranches: followBranches }));
 
-    const haveFile = cached?.haveFile ?? (await p4.have(uri, { file: uri }));
-
     if (filelog.length === 0) {
         Display.showImportantError("No file history found");
         throw new Error("Filelog info empty");
     }
 
-    const currentIndex = filelog.findIndex((c) => c.revision === uri.fragment);
+    const currentIndex = filelog.findIndex((c) => c.revision === useRev);
     const current = filelog[currentIndex];
     const next = filelog[currentIndex - 1];
     const prev = filelog[currentIndex + 1];

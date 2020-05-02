@@ -312,6 +312,11 @@
                     "default": "true",
                     "description": "Whether to show sync commands on the explorer context menu"
                 },
+                "perforce.explorer.showBasicOpCommands": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Whether to show basic operation commands on the explorer context menu (add / edit / revert)"
+                },
                 "perforce.explorer.showFileOpCommands": {
                     "type": "boolean",
                     "default": "true",
@@ -446,12 +451,27 @@
             },
             {
                 "command": "perforce.explorer.syncPath",
-                "title": "Perforce: Sync file",
+                "title": "Perforce: Sync",
                 "category": "Perforce"
             },
             {
-                "command": "perforce.explorer.syncDir",
-                "title": "Perforce: Sync folder",
+                "command": "perforce.explorer.add",
+                "title": "Perforce: Add",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.explorer.edit",
+                "title": "Perforce: Edit",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.explorer.revert",
+                "title": "Perforce: Revert",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.explorer.revertUnchanged",
+                "title": "Perforce: Revert if unchanged",
                 "category": "Perforce"
             },
             {
@@ -861,7 +881,19 @@
                     "when": "0"
                 },
                 {
-                    "command": "perforce.explorer.syncDir",
+                    "command": "perforce.explorer.add",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.edit",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.revert",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.revertUnchanged",
                     "when": "0"
                 },
                 {
@@ -1140,17 +1172,32 @@
             "explorer/context": [
                 {
                     "command": "perforce.explorer.syncPath",
-                    "group": "perforce@1",
-                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
+                    "group": "perforce1-sync@1",
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
                 },
                 {
-                    "command": "perforce.explorer.syncDir",
-                    "group": "perforce@1",
-                    "when": "explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showSyncCommands"
+                    "command": "perforce.explorer.add",
+                    "group": "perforce2-op@1",
+                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                },
+                {
+                    "command": "perforce.explorer.edit",
+                    "group": "perforce2-op@2",
+                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                },
+                {
+                    "command": "perforce.explorer.revert",
+                    "group": "perforce2-op@3",
+                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
+                },
+                {
+                    "command": "perforce.explorer.revertUnchanged",
+                    "group": "perforce2-op@4",
+                    "when": "!explorerResourceIsFolder && perforce.activation.hasScmProvider && config.perforce.explorer.showBasicOpCommands"
                 },
                 {
                     "command": "perforce.explorer.move",
-                    "group": "perforce@5",
+                    "group": "perforce3-fileop@1",
                     "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showFileOpCommands"
                 }
             ],

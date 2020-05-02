@@ -185,6 +185,11 @@ export namespace Display {
         window.showInformationMessage(message, { modal: true });
     }
 
+    export async function requestConfirmation(message: string, yes: string) {
+        const chosen = await window.showWarningMessage(message, { modal: true }, yes);
+        return chosen === yes;
+    }
+
     export function showError(error: string) {
         window.setStatusBarMessage("Perforce: " + error.replace(/\r?\n/g, " "), 3000);
         channel.appendLine(`ERROR: ${JSON.stringify(error)}`);

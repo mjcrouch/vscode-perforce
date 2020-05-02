@@ -23,8 +23,9 @@ import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
 import { showQuickPick } from "./quickPick/QuickPickProvider";
-import { splitBy } from "./TsUtils";
+import { splitBy, pluralise } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
+import { showRevChooserForFile } from "./quickPick/FileQuickPick";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -38,8 +39,14 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.syncOpenFile", syncOpenFile);
         commands.registerCommand("perforce.syncOpenFileRevision", syncOpenFileRevision);
         commands.registerCommand("perforce.explorer.syncPath", syncExplorerPath);
-        commands.registerCommand("perforce.explorer.syncDir", syncExplorerDir);
         commands.registerCommand("perforce.explorer.move", moveExplorerFiles);
+        commands.registerCommand("perforce.explorer.add", addExplorerFiles);
+        commands.registerCommand("perforce.explorer.edit", editExplorerFiles);
+        commands.registerCommand("perforce.explorer.revert", revertExplorerFiles);
+        commands.registerCommand(
+            "perforce.explorer.revertUnchanged",
+            revertExplorerFilesUnchanged
+        );
         commands.registerCommand("perforce.move", moveOpenFile);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
@@ -157,9 +164,8 @@ export namespace PerforceCommands {
             return false;
         }
 
-        await revertOpenFile();
         const fileUri = editor.document.uri;
-        await p4delete(fileUri);
+        await p4revertAndDelete(fileUri);
     }
 
     export async function p4delete(fileUri: Uri, resource?: Uri) {
@@ -186,7 +192,16 @@ export namespace PerforceCommands {
         }
 
         const fileUri = editor.document.uri;
-        await p4revert(fileUri);
+
+        const filename = Path.basename(fileUri.fsPath);
+        const ok = await Display.requestConfirmation(
+            "Are you sure you want to revert " + filename + "?",
+            "Revert " + filename
+        );
+
+        if (ok) {
+            await p4revert(fileUri);
+        }
     }
 
     export async function p4revert(fileUri: Uri, resource?: Uri) {
@@ -315,39 +330,18 @@ export namespace PerforceCommands {
         );
     }
 
-    export async function syncExplorerDir(dir: Uri | string, dirs: Uri[]) {
-        const resource = typeof dir === "string" ? Uri.parse(dir) : dir;
-        const allDirs = [resource, ...dirs.filter((d) => d.fsPath !== resource.fsPath)];
-        const promises = allDirs.map((d) => {
-            const path = Path.join(d.fsPath, "...");
-            return p4.sync(d, { files: [path] });
-        });
-        try {
-            await withExplorerProgress(() => Promise.all(promises));
-            Display.showMessage("Directory Synced");
-        } catch {}
-        PerforceSCMProvider.RefreshAll();
+    function splitByDir(files: Uri[]) {
+        return splitBy(files, (f) => Path.dirname(f.fsPath));
     }
 
     // accepts a string for any custom tasks etc
-    export async function syncExplorerPath(file: Uri | string, files: Uri[]) {
-        const resource = typeof file === "string" ? Uri.parse(file) : file;
-        const allFiles = [resource, ...files.filter((f) => f.fsPath !== resource.fsPath)];
-        const filesByDir = splitBy(allFiles, (f) => Path.dirname(f.fsPath));
-        const promises = filesByDir.map(async (dirFiles) => {
-            try {
-                await p4.sync(dirFiles[0], { files: dirFiles });
-            } catch (err) {
-                throw err;
-            } finally {
-                dirFiles.map((file) => didChangeHaveRev(file));
-            }
-        });
-        try {
-            await withExplorerProgress(() => Promise.all(promises));
-            Display.showMessage("File Synced");
-        } catch {}
-        PerforceSCMProvider.RefreshAll();
+    export async function syncExplorerPath(file: Uri | string, files?: Uri[]) {
+        return explorerOperationByDir(
+            file,
+            files,
+            (dirFiles, resource) => p4.sync(resource, { files: dirFiles }),
+            { message: "File synced", hideSubErrors: true, includeDirWildcards: true }
+        );
     }
 
     async function moveOneDir(file: Uri, newFsPath: string) {
@@ -370,9 +364,16 @@ export namespace PerforceCommands {
         }
     }
 
+    async function isDir(file: Uri): Promise<boolean> {
+        try {
+            return (await workspace.fs.stat(file)).type === FileType.Directory;
+        } catch (err) {
+            return false;
+        }
+    }
+
     async function moveOne(file: Uri, newFsPath: string) {
-        const isDir = (await workspace.fs.stat(file)).type === FileType.Directory;
-        if (isDir) {
+        if (await isDir(file)) {
             await moveOneDir(file, newFsPath);
         } else {
             await moveOneFile(file, newFsPath);
@@ -441,6 +442,91 @@ export namespace PerforceCommands {
                 window.activeTextEditor?.document.uri.fsPath === selected.fsPath
             );
         }
+    }
+
+    function consolidatedUris(file: Uri | string, all?: Uri[]) {
+        const allUris = all ?? [];
+        const resource = typeof file === "string" ? Uri.parse(file) : file;
+        return [resource, ...allUris.filter((f) => f.fsPath !== resource.fsPath)];
+    }
+
+    async function explorerOperationByDir(
+        selected: Uri | string,
+        all: Uri[] | undefined,
+        op: (files: Uri[], resource: Uri) => Promise<any>,
+        options?: {
+            message?: string;
+            hideSubErrors?: boolean;
+            includeDirWildcards?: boolean;
+        }
+    ) {
+        const files = consolidatedUris(selected, all);
+        const promises = splitByDir(files).map(async (dirFiles) => {
+            try {
+                if (options?.includeDirWildcards) {
+                    const expanded = await Promise.all(
+                        dirFiles.map(async (file) =>
+                            (await isDir(file))
+                                ? Uri.file(Path.join(file.fsPath, "..."))
+                                : file
+                        )
+                    );
+                    await op(expanded, dirFiles[0]);
+                } else {
+                    await op(dirFiles, dirFiles[0]);
+                }
+            } catch (err) {
+                if (!options?.hideSubErrors) {
+                    Display.showImportantError(err);
+                }
+                throw err;
+            } finally {
+                dirFiles.map((file) => didChangeHaveRev(file));
+            }
+        });
+
+        try {
+            await withExplorerProgress(() => Promise.all(promises));
+            Display.showMessage(options?.message ?? "Operation complete");
+        } catch (err) {}
+        PerforceSCMProvider.RefreshAll();
+        Display.updateEditor();
+    }
+
+    export function addExplorerFiles(selected: Uri | string, all?: Uri[]) {
+        return explorerOperationByDir(selected, all, (dirFiles, resource) =>
+            p4.add(resource, { files: dirFiles })
+        );
+    }
+
+    export function editExplorerFiles(selected: Uri | string, all?: Uri[]) {
+        return explorerOperationByDir(selected, all, (dirFiles, resource) =>
+            p4.edit(resource, { files: dirFiles })
+        );
+    }
+
+    export async function revertExplorerFiles(selected: Uri | string, all?: Uri[]) {
+        const count = consolidatedUris(selected, all).length;
+        const plural = pluralise(count, "file");
+        const ok = await Display.requestConfirmation(
+            "Are you sure you want to revert " + plural + "?",
+            "Revert " + plural
+        );
+        if (ok) {
+            await explorerOperationByDir(selected, all, (dirFiles, resource) =>
+                p4.revert(resource, { paths: dirFiles })
+            );
+        }
+    }
+
+    export function revertExplorerFilesUnchanged(selected: Uri | string, all?: Uri[]) {
+        return explorerOperationByDir(
+            selected,
+            all,
+            (dirFiles, resource) =>
+                p4.revert(resource, { paths: dirFiles, unchanged: true }),
+            { hideSubErrors: true, message: "Files reverted" }
+        );
     }
 
     export async function moveOpenFile() {
@@ -707,6 +793,14 @@ export namespace PerforceCommands {
         }
     }
 
+    function showFileHistory() {
+        const file = window.activeTextEditor?.document.uri;
+        if (!file) {
+            return;
+        }
+        return showRevChooserForFile(PerforceUri.fromUriWithRevision(file, "have"));
+    }
+
     export function menuFunctions() {
         const items: QuickPickItem[] = [];
         items.push({
@@ -747,7 +841,10 @@ export namespace PerforceCommands {
             label: "annotate",
             description: "Print file lines and their revisions",
         });
-        items.push({ label: "info", description: "Display client/server information" });
+        items.push({
+            label: "history",
+            description: "Show file history",
+        });
         items.push({
             label: "opened",
             description: "View 'open' files and open one in editor",
@@ -802,6 +899,9 @@ export namespace PerforceCommands {
                         break;
                     case "logout":
                         logout();
+                        break;
+                    case "history":
+                        showFileHistory();
                         break;
                     default:
                         break;

@@ -371,7 +371,10 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.resolve.p4editor`        |`string`   |Overrides P4EDITOR when running resolve commands
 |`perforce.swarmHost`               |`string`   |Specifies the hostname of the Swarm server for annotation links. (`https://localhost`)
 |`perforce.editorButtons.diffPrevAndNext`      |`enum`  |Controls when to show buttons on the editor title menu for diffing next / previous
+|&nbsp;
 |`perforce.explorer.showSyncCommands`|`boolean` |Whether to show commands in the explorer context menu for syncing files and folders
+|`perforce.explorer.showBasicOpCommands`|`boolean` |Whether to show commands in the explorer context menu for adding, editing and reverting files
+|`perforce.explorer.showFileOpCommands`|`boolean` |Whether to show commands in the explorer context menu for moving files with p4 move
 |&nbsp;
 |`perforce.bottleneck.maxConcurrent` |`number`  |Limit the maximum number of perforce commands running at any given time.
 
