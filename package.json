@@ -480,6 +480,11 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.explorer.delete",
+                "title": "Perforce: Delete file(s)",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.move",
                 "title": "Move - Move or Rename the open file",
                 "category": "Perforce"
@@ -899,6 +904,10 @@
                 {
                     "command": "perforce.explorer.move",
                     "when": "0"
+                },
+                {
+                    "command": "perforce.explorer.delete",
+                    "when": "0"
                 }
             ],
             "scm/title": [
@@ -1198,6 +1207,11 @@
                 {
                     "command": "perforce.explorer.move",
                     "group": "perforce3-fileop@1",
+                    "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showFileOpCommands"
+                },
+                {
+                    "command": "perforce.explorer.delete",
+                    "group": "perforce3-fileop@2",
                     "when": "perforce.activation.hasScmProvider && config.perforce.explorer.showFileOpCommands"
                 }
             ],

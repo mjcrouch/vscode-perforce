@@ -47,6 +47,7 @@ export namespace PerforceCommands {
             "perforce.explorer.revertUnchanged",
             revertExplorerFilesUnchanged
         );
+        commands.registerCommand("perforce.explorer.delete", deleteExplorerFiles);
         commands.registerCommand("perforce.move", moveOpenFile);
         commands.registerCommand("perforce.diff", diff);
         commands.registerCommand("perforce.diffRevision", diffRevision);
@@ -525,7 +526,7 @@ export namespace PerforceCommands {
         const fileCount = files.length - dirCount;
         const items = [
             fileCount > 0 ? pluralise(fileCount, "file") : undefined,
-            dirCount > 0 ? "all files in " + pluralise(dirCount, "folder") : undefined,
+            dirCount > 0 ? "ALL FILES in " + pluralise(dirCount, "folder") : undefined,
         ].filter(isTruthy);
         return items.join(", and ");
     }
@@ -555,6 +556,22 @@ export namespace PerforceCommands {
                 p4.revert(resource, { paths: dirFiles, unchanged: true }),
             { hideSubErrors: true }
         );
+    }
+
+    export async function deleteExplorerFiles(selected: Uri | string, all?: Uri[]) {
+        const allFiles = consolidateUris(selected, all);
+        const allPlural = await fileAndFolderCount(allFiles);
+        const ok = await Display.requestConfirmation(
+            "Are you sure you want to delete " +
+                allPlural +
+                "?\nThis operation does not revert open files",
+            "Delete " + allPlural
+        );
+        if (ok) {
+            await explorerOperationByDir(selected, all, (dirFiles, resource) =>
+                p4.del(resource, { paths: dirFiles })
+            );
+        }
     }
 
     export async function moveOpenFile() {
