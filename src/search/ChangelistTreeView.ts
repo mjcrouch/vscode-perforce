@@ -486,6 +486,7 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
     focusChangelist(resource: vscode.Uri, described: DescribedChangelist) {
         this._allResults.addSingleResult(resource, described);
         this.didChange();
+        vscode.commands.executeCommand("perforce.searchChangelists.focus");
     }
 }
 
