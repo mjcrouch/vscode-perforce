@@ -15,7 +15,9 @@ export type DeleteChangelistOptions = {
 
 const deleteChangelistFlags = flagMapper<DeleteChangelistOptions>([["d", "chnum"]]);
 
-export const deleteChangelist = makeSimpleCommand("change", deleteChangelistFlags);
+export const deleteChangelist = makeSimpleCommand("change", deleteChangelistFlags, () => {
+    return { logStdOut: true };
+});
 
 export type SubmitChangelistOptions = {
     chnum?: string;
@@ -31,7 +33,9 @@ const submitFlags = flagMapper<SubmitChangelistOptions>(
     "file"
 );
 
-const submitChangelistCommand = makeSimpleCommand("submit", submitFlags);
+const submitChangelistCommand = makeSimpleCommand("submit", submitFlags, () => {
+    return { logStdOut: true };
+});
 
 function parseSubmitOutput(output: string) {
     const matches = /Change (\d+) submitted/.exec(output);
@@ -60,7 +64,9 @@ const revertFlags = flagMapper<RevertOptions>(
     "paths"
 );
 
-export const revert = makeSimpleCommand("revert", revertFlags);
+export const revert = makeSimpleCommand("revert", revertFlags, () => {
+    return { logStdOut: true };
+});
 
 export interface DeleteOptions {
     chnum?: string;
@@ -69,7 +75,9 @@ export interface DeleteOptions {
 
 const deleteFlags = flagMapper<DeleteOptions>([["c", "chnum"]], "paths");
 
-export const del = makeSimpleCommand("delete", deleteFlags);
+export const del = makeSimpleCommand("delete", deleteFlags, () => {
+    return { logStdOut: true };
+});
 
 //#region Shelving
 
@@ -89,7 +97,9 @@ const shelveFlags = flagMapper<ShelveOptions>(
     "paths"
 );
 
-export const shelve = makeSimpleCommand("shelve", shelveFlags);
+export const shelve = makeSimpleCommand("shelve", shelveFlags, () => {
+    return { logStdOut: true };
+});
 
 export interface UnshelveOptions {
     shelvedChnum: string;
@@ -169,7 +179,9 @@ function parseUnshelveOutput(output: string): UnshelvedFiles {
     };
 }
 
-const unshelveCommand = makeSimpleCommand("unshelve", unshelveFlags);
+const unshelveCommand = makeSimpleCommand("unshelve", unshelveFlags, () => {
+    return { logStdOut: true };
+});
 
 export const unshelve = asyncOuputHandler(unshelveCommand, parseUnshelveOutput);
 
@@ -206,7 +218,11 @@ export interface SyncOptions {
 
 const syncFlags = flagMapper<SyncOptions>([], "files");
 
-export const sync = makeSimpleCommand("sync", syncFlags);
+export const sync = makeSimpleCommand("sync", syncFlags, (opts) => {
+    if (opts.files) {
+        return { logStdOut: true };
+    }
+});
 
 function parseInfo(output: string): Map<string, string> {
     const map = new Map<string, string>();
@@ -327,7 +343,9 @@ export type AddOptions = {
 };
 const addFlags = flagMapper<AddOptions>([["c", "chnum"]], "files");
 
-export const add = makeSimpleCommand("add", addFlags);
+export const add = makeSimpleCommand("add", addFlags, () => {
+    return { logStdOut: true };
+});
 
 export type EditOptions = {
     chnum?: string;
@@ -335,7 +353,9 @@ export type EditOptions = {
 };
 const editFlags = flagMapper<EditOptions>([["c", "chnum"]], "files");
 
-export const edit = makeSimpleCommand("edit", editFlags);
+export const edit = makeSimpleCommand("edit", editFlags, () => {
+    return { logStdOut: true };
+});
 
 export type MoveOptions = {
     chnum?: string;
@@ -343,4 +363,6 @@ export type MoveOptions = {
 };
 const moveFlags = flagMapper<MoveOptions>([["c", "chnum"]], "fromToFile");
 
-export const move = makeSimpleCommand("move", moveFlags);
+export const move = makeSimpleCommand("move", moveFlags, () => {
+    return { logStdOut: true };
+});

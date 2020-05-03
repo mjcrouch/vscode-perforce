@@ -216,6 +216,7 @@ type CommandParams = {
     hideStdErr?: boolean;
     stdErrIsOk?: boolean;
     useTerminal?: boolean;
+    logStdOut?: boolean;
 };
 
 export function runPerforceCommandIgnoringStdErr(
@@ -245,7 +246,7 @@ export async function runPerforceCommand(
     args: string[],
     params: CommandParams
 ): Promise<string> {
-    const { input, hideStdErr, stdErrIsOk, useTerminal } = params;
+    const { input, hideStdErr, stdErrIsOk, useTerminal, logStdOut } = params;
 
     try {
         const [stdout, stderr] = await runPerforceCommandRaw(
@@ -253,7 +254,8 @@ export async function runPerforceCommand(
             command,
             args,
             input,
-            useTerminal
+            useTerminal,
+            logStdOut
         );
         if (stderr) {
             if (hideStdErr) {
@@ -284,13 +286,17 @@ function runPerforceCommandRaw(
     command: string,
     args: string[],
     input?: string,
-    useTerminal?: boolean
+    useTerminal?: boolean,
+    logStdOut?: boolean
 ): Promise<[string, string]> {
     return new Promise((resolve, reject) =>
         PerforceService.execute(
             resource,
             command,
             (err, stdout, stderr) => {
+                if (logStdOut && stdout) {
+                    Display.channel.appendLine("< " + stdout);
+                }
                 if (err) {
                     reject(err);
                 } else {
@@ -333,7 +339,7 @@ export function mergeAll<T>(...args: T[]): T {
 export function makeSimpleCommand<T>(
     command: string,
     fn: (opts: T) => CmdlineArgs,
-    otherParams?: (opts: T) => CommandParams
+    otherParams?: (opts: T) => CommandParams | undefined
 ) {
     const func = (resource: vscode.Uri, options: T, overrideParams?: CommandParams) =>
         runPerforceCommand(
