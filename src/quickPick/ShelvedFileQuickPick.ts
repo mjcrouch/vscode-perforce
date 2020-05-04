@@ -7,7 +7,7 @@ import * as qp from "./QuickPickProvider";
 import * as DiffProvider from "../DiffProvider";
 
 import { isTruthy } from "../TsUtils";
-import { GetStatus, operationCreatesFile } from "../scm/Status";
+import { GetStatus, operationCreatesFile, Status } from "../scm/Status";
 import * as ChangeQuickPick from "./ChangeQuickPick";
 import { showQuickPickForFile } from "./FileQuickPick";
 import * as Path from "path";
@@ -35,7 +35,7 @@ export const shelvedFileQuickPickProvider: qp.ActionableQuickPickProvider = {
             operation.revision
         );
         const have = await p4.have(resource, { file: depotUri });
-        const actions = makeDiffPicks(resource, depotUri, operation, have, change);
+        const actions = await makeDiffPicks(resource, depotUri, operation, have, change);
         actions.push({
             label: "$(list-flat) Go to changelist details",
             description:
@@ -91,15 +91,39 @@ function makeShelvedFileSummary(depotPath: string, changeInfo: p4.ChangeInfo) {
     );
 }
 
-function makeDiffPicks(
+async function getMovedFromFile(
+    resource: vscode.Uri,
+    operation: p4.DepotFileOperation,
+    change: p4.ChangeInfo
+) {
+    const fstat = await p4.getFstatInfo(resource, {
+        depotPaths: [operation.depotPath],
+        limitToShelved: true,
+        outputPendingRecord: true,
+        chnum: change.chnum,
+    });
+    if (fstat?.[0]) {
+        const fromPath = fstat[0]["resolveFromFile0"];
+        const endFromRev = fstat[0]["resolveEndFromRev0"];
+        if (fromPath && endFromRev) {
+            return PerforceUri.fromDepotPath(resource, fromPath, endFromRev);
+        }
+    }
+}
+
+async function makeDiffPicks(
     resource: vscode.Uri,
     uri: vscode.Uri,
     operation: p4.DepotFileOperation,
     have: p4.HaveFile | undefined,
     change: p4.ChangeInfo
-): qp.ActionableQuickPickItem[] {
+): Promise<qp.ActionableQuickPickItem[]> {
     const shelvedUri = PerforceUri.fromUriWithRevision(uri, "@=" + change.chnum);
     const status = GetStatus(operation.operation);
+    const movedFrom =
+        status === Status.MOVE_ADD
+            ? await getMovedFromFile(resource, operation, change)
+            : undefined;
     return [
         {
             label: "$(file) Show shelved file",
@@ -129,6 +153,18 @@ function makeDiffPicks(
                   performAction: () => DiffProvider.diffFiles(uri, shelvedUri),
               }
             : undefined,
+        movedFrom
+            ? {
+                  label: "$(diff) Diff against moved-from revision",
+                  description: DiffProvider.diffTitleForDepotPaths(
+                      PerforceUri.getDepotPathFromDepotUri(movedFrom),
+                      PerforceUri.getRevOrAtLabel(movedFrom),
+                      operation.depotPath,
+                      "@=" + change.chnum
+                  ),
+                  performAction: () => DiffProvider.diffFiles(movedFrom, shelvedUri),
+              }
+            : undefined,
         // TODO e.g. move / add diff against deleted file - need fstat for that
         {
             label: "$(diff) Diff against workspace file",
@@ -144,6 +180,16 @@ function makeDiffPicks(
                   label: "$(list-flat) Go to source revision",
                   description: Path.basename(uri.fsPath) + "#" + operation.revision,
                   performAction: () => showQuickPickForFile(uri),
+              }
+            : undefined,
+        movedFrom
+            ? {
+                  label: "$(list-flat) Go to moved-from revision",
+                  description:
+                      Path.basename(movedFrom.fsPath) +
+                      "#" +
+                      PerforceUri.getRevOrAtLabel(movedFrom),
+                  performAction: () => showQuickPickForFile(movedFrom),
               }
             : undefined,
     ].filter(isTruthy);
