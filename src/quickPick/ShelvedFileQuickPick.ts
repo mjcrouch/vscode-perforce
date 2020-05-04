@@ -9,6 +9,8 @@ import * as DiffProvider from "../DiffProvider";
 import { isTruthy } from "../TsUtils";
 import { GetStatus, operationCreatesFile } from "../scm/Status";
 import * as ChangeQuickPick from "./ChangeQuickPick";
+import { showQuickPickForFile } from "./FileQuickPick";
+import * as Path from "path";
 
 const nbsp = "\xa0";
 
@@ -137,5 +139,12 @@ function makeDiffPicks(
                   }
                 : undefined,
         },
+        !operationCreatesFile(status)
+            ? {
+                  label: "$(list-flat) Go to source revision",
+                  description: Path.basename(uri.fsPath) + "#" + operation.revision,
+                  performAction: () => showQuickPickForFile(uri),
+              }
+            : undefined,
     ].filter(isTruthy);
 }
