@@ -192,6 +192,53 @@ class RunSearch extends SelfExpandingTreeItem<any> {
     tooltip = "Apply current filters";
 }
 
+class SearchResultShelvedFile extends SelfExpandingTreeItem<any> {
+    constructor(
+        private _resource: vscode.Uri,
+        private _file: p4.DepotFileOperation,
+        private _chnum: string
+    ) {
+        super(_file.depotPath + "#" + _file.revision);
+        this.description = _file.operation;
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon(getOperationIcon(this._file.operation));
+    }
+
+    get command() {
+        return {
+            command: "perforce.showQuickPick",
+            arguments: [
+                "shelvedFile",
+                (
+                    PerforceUri.getUsableWorkspace(this._resource) ?? this._resource
+                ).toString(),
+                JSON.stringify(this._file),
+                this._chnum,
+            ],
+            title: "Show shelved file quick pick",
+        };
+    }
+}
+
+class SearchResultShelvedSubTree extends SelfExpandingTreeItem<SearchResultShelvedFile> {
+    constructor(resource: vscode.Uri, change: DescribedChangelist) {
+        super(
+            "Shelved Files (" + change.shelvedFiles.length + ")",
+            vscode.TreeItemCollapsibleState.Collapsed
+        );
+        const files = change.shelvedFiles.map(
+            (file) => new SearchResultShelvedFile(resource, file, change.chnum)
+        );
+        files.forEach((file) => this.addChild(file));
+    }
+
+    get iconPath() {
+        return new vscode.ThemeIcon("files");
+    }
+}
+
 class SearchResultFile extends SelfExpandingTreeItem<any> {
     constructor(private _resource: vscode.Uri, private _file: p4.DepotFileOperation) {
         super(_file.depotPath + "#" + _file.revision);
@@ -218,7 +265,9 @@ class SearchResultFile extends SelfExpandingTreeItem<any> {
     }
 }
 
-class SearchResultItem extends SelfExpandingTreeItem<SearchResultFile> {
+class SearchResultItem extends SelfExpandingTreeItem<
+    SearchResultFile | SearchResultShelvedSubTree
+> {
     constructor(private _resource: vscode.Uri, private _change: ChangeInfo) {
         super(
             _change.chnum + ": " + _change.description.join(" ").slice(0, 32),
@@ -242,6 +291,16 @@ class SearchResultItem extends SelfExpandingTreeItem<SearchResultFile> {
             curState === vscode.TreeItemCollapsibleState.Expanded
                 ? curState
                 : vscode.TreeItemCollapsibleState.Collapsed;
+    }
+
+    addShelvedFiles(detail: DescribedChangelist) {
+        // remove any existing shelved file group, in case of timing issues
+        this.getChildren()
+            .filter((child) => child.label?.startsWith("Shelved Files"))
+            .forEach((child) => child.dispose());
+        if (detail.shelvedFiles.length > 0) {
+            this.insertChild(new SearchResultShelvedSubTree(this._resource, detail));
+        }
     }
 
     get iconPath() {
@@ -303,6 +362,26 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
             child?.addDetails(d);
         });
         this.didChange();
+        this.populateShelvedFiles();
+    }
+
+    async populateShelvedFiles() {
+        try {
+            const couldHaveShelved = this._results
+                .filter((r) => r.isPending)
+                .map((r) => r.chnum);
+            const shelvedDescriptions = await p4.describe(this._resource, {
+                omitDiffs: true,
+                chnums: couldHaveShelved,
+                shelved: true,
+            });
+            const curChildren = this.getChildren();
+            shelvedDescriptions.forEach((d) => {
+                const child = curChildren.find((c) => c.chnum === d.chnum);
+                child?.addShelvedFiles(d);
+            });
+            this.didChange();
+        } catch (err) {}
     }
 
     public async refresh() {

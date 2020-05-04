@@ -63,21 +63,46 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
 
     public addChild(item: T) {
         if (this._children.add(item)) {
-            item.setParent(this);
-            this._subscriptions.push(
-                item.onChanged((subItem) => this._onChanged.fire(subItem))
+            this.subscribeToChild(item);
+        }
+    }
+
+    private subscribeToChild(item: T) {
+        item.setParent(this);
+        this._subscriptions.push(
+            item.onChanged((subItem) => this._onChanged.fire(subItem))
+        );
+        this._subscriptions.push(
+            item.onDisposed(() => {
+                this._children.delete(item);
+                this._onChanged.fire(this);
+            })
+        );
+        this._subscriptions.push(
+            item.onRevealRequested((item) => {
+                this._onRevealRequested.fire(item);
+            })
+        );
+    }
+
+    public insertChild(item: T, beforeIndex?: number) {
+        const newChildren = this.getChildren();
+
+        const alreadyHave = this._children.has(item);
+        if (alreadyHave) {
+            newChildren.splice(
+                newChildren.findIndex((child) => child === item),
+                1
             );
-            this._subscriptions.push(
-                item.onDisposed(() => {
-                    this._children.delete(item);
-                    this._onChanged.fire(this);
-                })
-            );
-            this._subscriptions.push(
-                item.onRevealRequested((item) => {
-                    this._onRevealRequested.fire(item);
-                })
-            );
+        }
+
+        this._children.clear();
+        const index = beforeIndex ? beforeIndex : 0;
+        newChildren.splice(index, 0, item);
+        newChildren.forEach((child) => this._children.add(child));
+
+        if (!alreadyHave) {
+            this.subscribeToChild(item);
         }
     }
 

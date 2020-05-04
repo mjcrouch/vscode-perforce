@@ -5,14 +5,8 @@ import * as p4 from "../api/PerforceApi";
 
 import * as qp from "./QuickPickProvider";
 import * as DiffProvider from "../DiffProvider";
-import { Display } from "../Display";
-import { DescribedChangelist, shelve } from "../api/PerforceApi";
-import { showQuickPickForFile } from "./FileQuickPick";
-import { toReadableDateTime } from "../DateFormatter";
-import { configAccessor } from "../ConfigService";
-import { focusChangelist } from "../search/ChangelistTreeView";
-import { PerforceSCMProvider } from "../ScmProvider";
-import { pluralise, isTruthy } from "../TsUtils";
+
+import { isTruthy } from "../TsUtils";
 import { GetStatus, operationCreatesFile } from "../scm/Status";
 import * as ChangeQuickPick from "./ChangeQuickPick";
 
@@ -20,10 +14,19 @@ const nbsp = "\xa0";
 
 export const shelvedFileQuickPickProvider: qp.ActionableQuickPickProvider = {
     provideActions: async (
-        resource: vscode.Uri,
-        operation: p4.DepotFileOperation,
-        change: p4.ChangeInfo
+        resourceOrStr: vscode.Uri | string, // string refers to a URI encoded with Uri.toString()
+        operationOrStr: p4.DepotFileOperation | string, // string refers to an object serialised with JSON.stringify
+        changeOrChnum: p4.ChangeInfo | string // string refers to a change number, NOT an object
     ) => {
+        const resource = qp.asUri(resourceOrStr);
+        const change = await getChangeDetail(resource, changeOrChnum);
+        if (!change) {
+            throw new Error("Could not find change details for changelist " + change);
+        }
+        const operation =
+            typeof operationOrStr === "string"
+                ? (JSON.parse(operationOrStr) as p4.DepotFileOperation)
+                : operationOrStr;
         const depotUri = PerforceUri.fromDepotPath(
             resource,
             operation.depotPath,
@@ -34,7 +37,12 @@ export const shelvedFileQuickPickProvider: qp.ActionableQuickPickProvider = {
         actions.push({
             label: "$(list-flat) Go to changelist details",
             description:
-                "Change " + change.chnum + nbsp + " $(book) " + nbsp + change.description,
+                "Change " +
+                change.chnum +
+                nbsp +
+                " $(book) " +
+                nbsp +
+                change.description.join(" "),
             performAction: () =>
                 ChangeQuickPick.showQuickPickForChangelist(depotUri, change.chnum),
         });
@@ -44,6 +52,23 @@ export const shelvedFileQuickPickProvider: qp.ActionableQuickPickProvider = {
         };
     },
 };
+
+async function getChangeDetail(
+    resource: vscode.Uri,
+    change: p4.ChangeInfo | string
+): Promise<p4.ChangeInfo | undefined> {
+    if (typeof change === "string") {
+        return (
+            await p4.describe(resource, {
+                chnums: [change],
+                shelved: true,
+                omitDiffs: true,
+            })
+        )[0];
+    } else {
+        return change;
+    }
+}
 
 export async function showQuickPickForShelvedFile(
     resource: vscode.Uri,
@@ -102,6 +127,7 @@ function makeDiffPicks(
                   performAction: () => DiffProvider.diffFiles(uri, shelvedUri),
               }
             : undefined,
+        // TODO e.g. move / add diff against deleted file - need fstat for that
         {
             label: "$(diff) Diff against workspace file",
             description: have ? "" : "No matching workspace file found",
@@ -111,12 +137,5 @@ function makeDiffPicks(
                   }
                 : undefined,
         },
-        /*{
-            label: "$(diff) Diff against...",
-            description: "Choose another revision to diff against",
-            performAction: () => {
-                showDiffChooserForFile(uri);
-            },
-        },*/
     ].filter(isTruthy);
 }

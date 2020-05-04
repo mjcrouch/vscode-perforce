@@ -58,6 +58,14 @@ describe("Diff Provider", () => {
                 "file1.txt#2 ⟷ file1.txt#3"
             );
         });
+        it("Uses the full filename when the dirnames are the same", () => {
+            const path = "//depot/main/file1.txt";
+            const rev1 = "2";
+            const rev2 = "3";
+            expect(
+                DiffProvider.diffTitleForDepotPaths(path + "a", rev1, path + "b", rev2)
+            ).to.equal("file1.txta#2 ⟷ file1.txtb#3");
+        });
         it("Includes all parts of the filename that are not common between the two", () => {
             const path1 = "//depot/main/file1.txt";
             const path2 = "//depot/branches/branch1/file1.txt";

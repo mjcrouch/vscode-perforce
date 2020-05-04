@@ -14,11 +14,25 @@ export enum DiffType {
     WORKSPACE_V_SHELVE,
 }
 
+function numberOfLeadingSlashes(str: string, after = 0) {
+    return str
+        .slice(after)
+        .split("")
+        .findIndex((a) => a !== "/" && a !== "\\");
+}
+
 function findLengthOfCommonPrefix(sa: string, sb: string) {
     const aDir = Path.dirname(sa);
     const bDir = Path.dirname(sb);
     if (aDir === bDir) {
-        return aDir.length + 1;
+        const remainingCommonSlashes = Math.max(
+            0,
+            Math.min(
+                numberOfLeadingSlashes(sa, aDir.length),
+                numberOfLeadingSlashes(sb, bDir.length)
+            )
+        );
+        return aDir.length + remainingCommonSlashes;
     }
     const i = sa.split("").findIndex((a, i) => a !== sb[i]);
     return i;
