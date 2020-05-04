@@ -161,8 +161,8 @@ async function getChangeDetails(
 ): Promise<ChangeDetails> {
     const haveFile = cached?.haveFile ?? (await p4.have(uri, { file: uri }));
 
-    const uriRev = uri.fragment;
-    const useRev = !uri.fragment || isNaN(parseInt(uriRev)) ? haveFile?.revision : uriRev;
+    const uriRev = PerforceUri.getRevOrAtLabel(uri);
+    const useRev = !uriRev || isNaN(parseInt(uriRev)) ? haveFile?.revision : uriRev;
     if (!useRev) {
         Display.showError("Unable to get file details without a revision");
         throw new Error("No revision available for " + uri.toString());

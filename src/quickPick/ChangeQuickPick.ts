@@ -12,6 +12,7 @@ import { configAccessor } from "../ConfigService";
 import { focusChangelist } from "../search/ChangelistTreeView";
 import { PerforceSCMProvider } from "../ScmProvider";
 import { pluralise, isTruthy } from "../TsUtils";
+import { showQuickPickForShelvedFile } from "./ShelvedFileQuickPick";
 
 const nbsp = "\xa0";
 
@@ -297,6 +298,7 @@ function makeFilePicks(
                     file.depotPath +
                     "#" +
                     file.revision,
+                description: file.operation,
                 performAction: () => {
                     const thisUri = PerforceUri.fromDepotPath(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,
@@ -369,13 +371,13 @@ function makeShelvedFilePicks(
                     file.depotPath +
                     "#" +
                     file.revision,
+                description: file.operation,
                 performAction: () => {
-                    const thisUri = PerforceUri.fromDepotPath(
+                    showQuickPickForShelvedFile(
                         PerforceUri.getUsableWorkspace(uri) ?? uri,
-                        file.depotPath,
-                        file.revision
+                        file,
+                        change
                     );
-                    showQuickPickForFile(thisUri);
                 },
             };
         })

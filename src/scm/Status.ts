@@ -13,6 +13,43 @@ export enum Status {
     UNKNOWN,
 }
 
+export function operationCreatesFile(status: Status) {
+    return [Status.ADD, Status.BRANCH, Status.MOVE_ADD].includes(status);
+}
+
+export function operationDeletesFile(status: Status) {
+    return [Status.DELETE, Status.MOVE_DELETE].includes(status);
+}
+
+export function GetStatus(statusText: string): Status {
+    switch (statusText.trim().toLowerCase()) {
+        case "add":
+            return Status.ADD;
+        case "archive":
+            return Status.ARCHIVE;
+        case "branch":
+            return Status.BRANCH;
+        case "delete":
+            return Status.DELETE;
+        case "edit":
+            return Status.EDIT;
+        case "integrate":
+            return Status.INTEGRATE;
+        case "import":
+            return Status.IMPORT;
+        case "lock":
+            return Status.LOCK;
+        case "move/add":
+            return Status.MOVE_ADD;
+        case "move/delete":
+            return Status.MOVE_DELETE;
+        case "purge":
+            return Status.PURGE;
+        default:
+            return Status.UNKNOWN;
+    }
+}
+
 export function GetStatuses(statusText: string): Status[] {
     const result: Status[] = [];
     if (!statusText) {
@@ -21,44 +58,7 @@ export function GetStatuses(statusText: string): Status[] {
 
     const statusStrings: string[] = statusText.split(",");
     for (let i = 0; i < statusStrings.length; i++) {
-        switch (statusStrings[i].trim().toLowerCase()) {
-            case "add":
-                result.push(Status.ADD);
-                break;
-            case "archive":
-                result.push(Status.ARCHIVE);
-                break;
-            case "branch":
-                result.push(Status.BRANCH);
-                break;
-            case "delete":
-                result.push(Status.DELETE);
-                break;
-            case "edit":
-                result.push(Status.EDIT);
-                break;
-            case "integrate":
-                result.push(Status.INTEGRATE);
-                break;
-            case "import":
-                result.push(Status.IMPORT);
-                break;
-            case "lock":
-                result.push(Status.LOCK);
-                break;
-            case "move/add":
-                result.push(Status.MOVE_ADD);
-                break;
-            case "move/delete":
-                result.push(Status.MOVE_DELETE);
-                break;
-            case "purge":
-                result.push(Status.PURGE);
-                break;
-            default:
-                result.push(Status.UNKNOWN);
-                break;
-        }
+        result.push(GetStatus(statusStrings[i]));
     }
 
     return result;

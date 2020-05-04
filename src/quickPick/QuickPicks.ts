@@ -1,5 +1,6 @@
 import * as QuickPickProvider from "./QuickPickProvider";
 import * as FileQuickPick from "./FileQuickPick";
+import * as ShelvedFileQuickPick from "./ShelvedFileQuickPick";
 import * as ChangeQuickPick from "./ChangeQuickPick";
 import * as IntegrationQuickPick from "./IntegrationQuickPick";
 import * as ChangeSearchQuickPick from "./ChangeSearchQuickPick";
@@ -34,5 +35,9 @@ export function registerQuickPicks() {
     QuickPickProvider.registerQuickPickProvider(
         "integ",
         IntegrationQuickPick.integrationQuickPickProvider
+    );
+    QuickPickProvider.registerQuickPickProvider(
+        "shelvedFile",
+        ShelvedFileQuickPick.shelvedFileQuickPickProvider
     );
 }
