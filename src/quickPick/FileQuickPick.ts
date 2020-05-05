@@ -42,6 +42,7 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
         uriOrStr: vscode.Uri | string,
         includeIntegrations: boolean,
         includeIntegrationTargets: boolean,
+        includeNewerRevisions: boolean,
         cached?: CachedOutput
     ) => {
         const uri = qp.asUri(uriOrStr);
@@ -50,7 +51,8 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
             uri,
             changes,
             includeIntegrations,
-            includeIntegrationTargets
+            includeIntegrationTargets,
+            includeNewerRevisions
         );
         return {
             items: actions,
@@ -65,13 +67,14 @@ export const fileRevisionQuickPickProvider: qp.ActionableQuickPickProvider = {
 };
 
 export async function showRevChooserForFile(uri: vscode.Uri, cached?: CachedOutput) {
-    await qp.showQuickPick("filerev", uri, false, false, cached);
+    await qp.showQuickPick("filerev", uri, false, false, true, cached);
 }
 
 async function showRevChooserWithIntegrations(
     uri: vscode.Uri,
     includeIntegrations: boolean,
     includeIntegrationTargets: boolean,
+    includeNewerRevisions: boolean,
     cached?: CachedOutput
 ) {
     await qp.showQuickPick(
@@ -79,15 +82,19 @@ async function showRevChooserWithIntegrations(
         uri,
         includeIntegrations,
         includeIntegrationTargets,
+        includeNewerRevisions,
         cached
     );
 }
 
 export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
-    provideActions: async (uriOrStr: vscode.Uri | string) => {
+    provideActions: async (
+        uriOrStr: vscode.Uri | string,
+        includeNewerRevisions: boolean
+    ) => {
         const uri = qp.asUri(uriOrStr);
         const changes = await getChangeDetails(uri, undefined, true);
-        const actions = makeDiffRevisionPicks(uri, changes);
+        const actions = makeDiffRevisionPicks(uri, changes, includeNewerRevisions);
         return {
             items: actions,
             excludeFromHistory: true,
@@ -101,7 +108,14 @@ export const fileDiffQuickPickProvider: qp.ActionableQuickPickProvider = {
 };
 
 export async function showDiffChooserForFile(uri: vscode.Uri) {
-    await qp.showQuickPick("filediff", uri);
+    await qp.showQuickPick("filediff", uri, true);
+}
+
+async function showDiffChooserWithOptions(
+    uri: vscode.Uri,
+    includeNewerRevisions: boolean
+) {
+    await qp.showQuickPick("filediff", uri, includeNewerRevisions);
 }
 
 type CachedOutput = {
@@ -192,9 +206,15 @@ function makeAllRevisionPicks(
     uri: vscode.Uri,
     changes: ChangeDetails,
     includeIntegrations: boolean,
-    includeIntegrationTargets: boolean
+    includeIntegrationTargets: boolean,
+    includeNewerRevisions: boolean
 ): qp.ActionableQuickPickItem[] {
-    const revPicks = changes.all.flatMap((change) => {
+    const ageFiltered = includeNewerRevisions
+        ? changes.all
+        : changes.all.slice(
+              changes.all.findIndex((c) => c.chnum === changes.current.chnum)
+          );
+    const revPicks = ageFiltered.flatMap((change) => {
         const icon =
             change === changes.current ? "$(location)" : "$(debug-stackframe-dot)";
         const fromRevs = includeIntegrations
@@ -281,6 +301,7 @@ function makeAllRevisionPicks(
                     uri,
                     includeIntegrations,
                     !includeIntegrationTargets,
+                    includeNewerRevisions,
                     makeCache(changes)
                 );
             },
@@ -294,6 +315,21 @@ function makeAllRevisionPicks(
                     uri,
                     !includeIntegrations,
                     includeIntegrationTargets,
+                    includeNewerRevisions,
+                    makeCache(changes)
+                );
+            },
+        },
+        {
+            label: includeNewerRevisions
+                ? "$(exclude) Hide newer revisions"
+                : "$(gear) Show newer revisions",
+            performAction: () => {
+                return showRevChooserWithIntegrations(
+                    uri,
+                    includeIntegrations,
+                    includeIntegrationTargets,
+                    !includeNewerRevisions,
                     makeCache(changes)
                 );
             },
@@ -305,14 +341,31 @@ function makeAllRevisionPicks(
 
 function makeDiffRevisionPicks(
     uri: vscode.Uri,
-    changes: ChangeDetails
+    changes: ChangeDetails,
+    includeNewerRevisions: boolean
 ): qp.ActionableQuickPickItem[] {
     const currentUri = PerforceUri.fromDepotPath(
         PerforceUri.getUsableWorkspace(uri) ?? uri,
         changes.current.file,
         changes.current.revision
     );
-    return changes.all.map((change, i) => {
+    const controls: qp.ActionableQuickPickItem[] = [
+        {
+            label: includeNewerRevisions
+                ? "$(exclude) Hide newer revisions"
+                : "$(gear) Show newer revisions",
+            performAction: () => {
+                return showDiffChooserWithOptions(uri, !includeNewerRevisions);
+            },
+        },
+    ];
+
+    const ageFiltered = includeNewerRevisions
+        ? changes.all
+        : changes.all.slice(
+              changes.all.findIndex((change) => change.chnum === changes.current.chnum)
+          );
+    const revPicks = ageFiltered.map((change, i) => {
         const prefix =
             change === changes.current
                 ? "$(location) "
@@ -343,6 +396,7 @@ function makeDiffRevisionPicks(
             },
         };
     });
+    return controls.concat(revPicks);
 }
 
 function makeNextAndPrevPicks(

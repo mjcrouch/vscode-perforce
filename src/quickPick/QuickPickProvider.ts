@@ -72,10 +72,13 @@ export async function showQuickPick(type: string, ...args: any[]) {
             },
             () => provider.provideActions(...args)
         );
+        const curAction: ActionableQuickPickItem = {
+            label: "$(location) " + actions.placeHolder,
+        };
         const stackActions = makeStackActions();
 
         const picked = await vscode.window.showQuickPick(
-            stackActions.concat(actions.items),
+            [...stackActions, curAction, ...actions.items],
             {
                 //ignoreFocusOut: true,
                 matchOnDescription: true,
