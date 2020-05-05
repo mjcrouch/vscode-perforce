@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { isTruthy } from "../TsUtils";
+import { Display } from "../Display";
 
 export function asUri(uri: vscode.Uri | string) {
     if (typeof uri === "string") {
@@ -41,6 +42,16 @@ export function registerQuickPickProvider(
 
 const backLabel = "$(discard) Go Back";
 
+export function openLastQuickPick() {
+    const prev = quickPickStack[quickPickStack.length - 1];
+    if (prev) {
+        quickPickStack.pop();
+        showQuickPick(prev.type, ...prev.args);
+    } else {
+        Display.showImportantError("No previous quick pick available");
+    }
+}
+
 function makeStackActions(): ActionableQuickPickItem[] {
     const prev = quickPickStack[quickPickStack.length - 1];
     return [
@@ -49,8 +60,7 @@ function makeStackActions(): ActionableQuickPickItem[] {
                   label: backLabel,
                   description: "to " + prev.description,
                   performAction: () => {
-                      quickPickStack.pop();
-                      showQuickPick(prev.type, ...prev.args);
+                      openLastQuickPick();
                   },
               }
             : {

@@ -22,7 +22,7 @@ import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
-import { showQuickPick } from "./quickPick/QuickPickProvider";
+import { showQuickPick, openLastQuickPick } from "./quickPick/QuickPickProvider";
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
@@ -39,6 +39,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.syncOpenFile", syncOpenFile);
         commands.registerCommand("perforce.syncOpenFileRevision", syncOpenFileRevision);
         commands.registerCommand("perforce.explorer.syncPath", syncExplorerPath);
+        commands.registerCommand("perforce.showOpenFileHistory", showFileHistory);
         commands.registerCommand("perforce.explorer.move", moveExplorerFiles);
         commands.registerCommand("perforce.explorer.add", addExplorerFiles);
         commands.registerCommand("perforce.explorer.edit", editExplorerFiles);
@@ -56,6 +57,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.diffNext", diffNext);
         commands.registerCommand("perforce.depotActions", showDepotActions);
         commands.registerCommand("perforce.showQuickPick", showQuickPick);
+        commands.registerCommand("perforce.showLastQuickPick", openLastQuickPick);
         commands.registerCommand("perforce.annotate", annotate);
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);

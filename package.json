@@ -721,6 +721,17 @@
                 "title": "Disable auto search",
                 "category": "Perforce",
                 "icon": "$(sync)"
+            },
+            {
+                "command": "perforce.showOpenFileHistory",
+                "title": "History - show open file history",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.showLastQuickPick",
+                "title": "Re-open last quick pick menu",
+                "category": "Perforce",
+                "icon": "$(list-flat)"
             }
         ],
         "menus": {
@@ -949,6 +960,11 @@
                 {
                     "command": "perforce.showOutput",
                     "group": "3_info",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.showLastQuickPick",
+                    "group": "4_more",
                     "when": "scmProvider == perforce"
                 }
             ],
@@ -1354,6 +1370,11 @@
                 "when": "editorTextFocus"
             },
             {
+                "key": "alt+p alt+d",
+                "command": "perforce.diffRevision",
+                "when": "editorTextFocus"
+            },
+            {
                 "key": "alt+p n",
                 "command": "perforce.annotate",
                 "when": "editorTextFocus"
@@ -1365,6 +1386,55 @@
             {
                 "key": "alt+p s",
                 "command": "perforce.submitDefault"
+            },
+            {
+                "key": "alt+p h",
+                "command": "perforce.showOpenFileHistory",
+                "when": "editorTextFocus"
+            },
+            {
+                "key": "alt+p m",
+                "command": "perforce.move",
+                "when": "editorTextFocus"
+            },
+            {
+                "key": "alt+p p",
+                "command": "perforce.showLastQuickPick",
+                "when": "editorTextFocus"
+            },
+            {
+                "key": "alt+p down",
+                "command": "perforce.syncOpenFile",
+                "when": "editorTextFocus"
+            },
+            {
+                "key": "alt+p alt+down",
+                "command": "perforce.syncOpenFileRevision",
+                "when": "editorTextFocus"
+            },
+            {
+                "key": "alt+p shift+down",
+                "command": "perforce.Sync"
+            },
+            {
+                "key": "alt+p left",
+                "command": "perforce.diffPrevious",
+                "when": "!isInDiffEditor && perforce.currentFile.resourceRevision != 1"
+            },
+            {
+                "key": "alt+p left",
+                "command": "perforce.diffPreviousFromDiff",
+                "when": "isInDiffEditor && perforce.currentFile.resourceRevision != 1 && !perforce.currentFile.isRightDiffOnRev2"
+            },
+            {
+                "key": "alt+p right",
+                "command": "perforce.diffNext",
+                "when": "resourceScheme == perforce"
+            },
+            {
+                "key": "alt+p up",
+                "command": "perforce.submitSingle",
+                "when": "editorTextFocus"
             }
         ]
     },
