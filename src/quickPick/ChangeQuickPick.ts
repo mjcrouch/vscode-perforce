@@ -55,7 +55,8 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         return {
             items: actions,
             placeHolder:
-                "Change " +
+                (change.isPending ? "Pending" : "Submitted") +
+                " change " +
                 chnum +
                 " by " +
                 change.user +
@@ -142,6 +143,7 @@ export const unshelveChangeQuickPickProvider: qp.ActionableQuickPickProvider = {
                 "Unshelve changelist " +
                 chnum +
                 (branchMapping ? " through branch " + branchMapping : "") +
+                " into..." +
                 (clobber ? " (WILL CLOBBER WRITABLE FILES)" : ""),
         };
     },
