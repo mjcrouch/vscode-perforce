@@ -26,6 +26,8 @@ import { DebouncedFunction, debounce } from "../Debounce";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo, ChangeSpec } from "../api/CommonTypes";
 import { isTruthy, pluralise } from "../TsUtils";
+import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
+import { showQuickPickForJob } from "../quickPick/JobQuickPick";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -169,6 +171,20 @@ export class Model implements Disposable {
 
     public Logout() {
         return Display.doLogoutFlow(this._workspaceUri);
+    }
+
+    public async GoToChangelist() {
+        const chnum = await Display.requestChangelistNumber();
+        if (chnum) {
+            showQuickPickForChangelist(this._workspaceUri, chnum);
+        }
+    }
+
+    public async GoToJob() {
+        const job = await Display.requestJobId();
+        if (job) {
+            showQuickPickForJob(this._workspaceUri, job);
+        }
     }
 
     public async Sync(): Promise<void> {

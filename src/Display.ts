@@ -5,11 +5,13 @@ import {
     EventEmitter,
     Uri,
     commands,
+    env,
 } from "vscode";
 
 import { debounce } from "./Debounce";
 import * as p4 from "./api/PerforceApi";
 import * as PerforceUri from "./PerforceUri";
+import { isPositiveOrZero } from "./TsUtils";
 
 let _statusBarItem: StatusBarItem;
 
@@ -232,5 +234,38 @@ export namespace Display {
             return true;
         } catch {}
         return false;
+    }
+
+    async function trimmedClipValue() {
+        const clipValue = await env.clipboard.readText();
+        return clipValue.trim();
+    }
+
+    export async function requestChangelistNumber() {
+        const clipValue = await trimmedClipValue();
+        const value = isPositiveOrZero(clipValue) ? clipValue : undefined;
+
+        return await window.showInputBox({
+            placeHolder: "Changelist number",
+            prompt: "Enter a changelist number",
+            value,
+            validateInput: (value) => {
+                if (!isPositiveOrZero(value)) {
+                    return "must be a positive number";
+                }
+            },
+        });
+    }
+
+    export async function requestJobId() {
+        const clipValue = await trimmedClipValue();
+        const value = /^[a-zA-Z]+[0-9]+[a-zA-Z0-9]*$/.test(clipValue)
+            ? clipValue
+            : undefined;
+        return await window.showInputBox({
+            placeHolder: "job00000n",
+            prompt: "Enter a job",
+            value,
+        });
     }
 }

@@ -732,6 +732,16 @@
                 "title": "Re-open last quick pick menu",
                 "category": "Perforce",
                 "icon": "$(list-flat)"
+            },
+            {
+                "command": "perforce.goToChangelist",
+                "title": "Go to changelist...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.goToJob",
+                "title": "Go to job...",
+                "category": "Perforce"
             }
         ],
         "menus": {
@@ -963,8 +973,18 @@
                     "when": "scmProvider == perforce"
                 },
                 {
+                    "command": "perforce.goToJob",
+                    "group": "4_more@1",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.goToChangelist",
+                    "group": "4_more@2",
+                    "when": "scmProvider == perforce"
+                },
+                {
                     "command": "perforce.showLastQuickPick",
-                    "group": "4_more",
+                    "group": "4_more@3",
                     "when": "scmProvider == perforce"
                 }
             ],

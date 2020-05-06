@@ -372,6 +372,14 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.Logout.bind(this)
         );
         commands.registerCommand(
+            "perforce.goToChangelist",
+            PerforceSCMProvider.GoToChangelist.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.goToJob",
+            PerforceSCMProvider.GoToJob.bind(this)
+        );
+        commands.registerCommand(
             "perforce.openReviewTool",
             PerforceSCMProvider.OpenChangelistInReviewTool.bind(this)
         );
@@ -412,14 +420,55 @@ export class PerforceSCMProvider {
         );
     }
 
+    static async chooseScmProvider(sourceControl?: SourceControl) {
+        if (!this.isSourceControl(sourceControl)) {
+            if (this.instances.length === 1) {
+                return this.instances[0];
+            }
+            const items = this.instances.map((instance) => {
+                const label =
+                    instance._clientRoot.clientName +
+                    " / " +
+                    instance._clientRoot.userName;
+                return { label, value: instance };
+            });
+            const chosen = await window.showQuickPick(items, {
+                placeHolder: "Choose a context for this operation",
+            });
+            if (chosen) {
+                return chosen.value;
+            }
+        } else {
+            return this.GetInstance(sourceControl);
+        }
+    }
+
     public static async Login(sourceControl?: SourceControl) {
-        const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
         await perforceProvider?._model.Login();
     }
 
     public static async Logout(sourceControl?: SourceControl) {
-        const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
         await perforceProvider?._model.Logout();
+    }
+
+    public static async GoToChangelist(sourceControl?: SourceControl) {
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
+        await perforceProvider?._model.GoToChangelist();
+    }
+
+    public static async GoToJob(sourceControl?: SourceControl) {
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
+        await perforceProvider?._model.GoToJob();
     }
 
     public static async OpenFile(...resourceStates: SourceControlResourceState[]) {

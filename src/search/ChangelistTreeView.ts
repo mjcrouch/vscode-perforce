@@ -17,13 +17,13 @@ import {
     makeFilterLabelText,
 } from "./Filters";
 import {
-    showQuickPickForChangelist,
     getOperationIcon,
+    showQuickPickForChangelist,
 } from "../quickPick/ChangeQuickPick";
 import { Display } from "../Display";
 import * as p4 from "../api/PerforceApi";
 import { ChangeInfo } from "../api/CommonTypes";
-import { isPositiveOrZero, dedupe } from "../TsUtils";
+import { dedupe } from "../TsUtils";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
 import { showQuickPickForChangeSearch } from "../quickPick/ChangeSearchQuickPick";
@@ -120,19 +120,8 @@ class GoToChangelist extends SelfExpandingTreeItem<any> {
             throw new Error("No context for changelist search");
         }
 
-        const clipValue = await vscode.env.clipboard.readText();
-        const value = isPositiveOrZero(clipValue) ? clipValue : undefined;
+        const chnum = await Display.requestChangelistNumber();
 
-        const chnum = await vscode.window.showInputBox({
-            placeHolder: "Changelist number",
-            prompt: "Enter a changelist number",
-            value,
-            validateInput: (value) => {
-                if (!isPositiveOrZero(value)) {
-                    return "must be a positive number";
-                }
-            },
-        });
         if (chnum !== undefined) {
             showQuickPickForChangelist(selectedClient.configSource, chnum);
         }
