@@ -124,3 +124,19 @@ export async function showQuickPick(type: string, ...args: any[]) {
 export function toRevString(startRev: string | undefined, endRev: string) {
     return startRev ? startRev + "," + endRev : endRev;
 }
+
+export function makeClipPick(
+    name: string,
+    value: string | undefined
+): ActionableQuickPickItem {
+    const val = value ?? "";
+    return {
+        label: "$(clippy) Copy " + name + " to clipboard",
+        description: val,
+        performAction: (reopen) => {
+            vscode.env.clipboard.writeText(val);
+            vscode.window.setStatusBarMessage("Copied to clipboard");
+            reopen();
+        },
+    };
+}

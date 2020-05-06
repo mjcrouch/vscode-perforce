@@ -4,29 +4,10 @@ import {
     flagMapper,
     makeSimpleCommand,
     asyncOuputHandler,
-    removeLeadingNewline,
     splitIntoLines,
-    removeIndent,
-    splitIntoSections,
 } from "../CommandUtils";
 import { RawField, ChangeSpec } from "../CommonTypes";
-
-const parseRawField = pipe(removeLeadingNewline, splitIntoLines, removeIndent);
-
-function parseRawFields(parts: string[]): RawField[] {
-    return parts.map((field) => {
-        const colPos = field.indexOf(":");
-        const name = field.slice(0, colPos);
-        const value = parseRawField(field.slice(colPos + 2));
-        return { name, value };
-    });
-}
-
-const getBasicField = (fields: RawField[], field: string) =>
-    fields.find((i) => i.name === field)?.value;
-
-const excludeNonFields = (parts: string[]) =>
-    parts.filter((part) => !part.startsWith("#") && part !== "");
+import { getBasicField, parseSpecOutput } from "../SpecParser";
 
 function mapToChangeFields(rawFields: RawField[]): ChangeSpec {
     return {
@@ -47,12 +28,19 @@ function mapToChangeFields(rawFields: RawField[]): ChangeSpec {
     };
 }
 
-const parseChangeSpec = pipe(
-    splitIntoSections,
-    excludeNonFields,
-    parseRawFields,
-    mapToChangeFields
-);
+const parseChangeSpec = pipe(parseSpecOutput, mapToChangeFields);
+
+export type ChangeSpecOptions = {
+    existingChangelist?: string;
+};
+
+const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", ["-o"], {
+    lastArgIsFormattedArray: true,
+});
+
+const outputChange = makeSimpleCommand("change", changeFlags);
+
+export const getChangeSpec = asyncOuputHandler(outputChange, parseChangeSpec);
 
 const getChangeAsRawField = (spec: ChangeSpec) =>
     spec.change ? { name: "Change", value: [spec.change] } : undefined;
@@ -77,18 +65,6 @@ function getDefinedSpecFields(spec: ChangeSpec): RawField[] {
         getFilesAsRawField
     )(spec);
 }
-
-export type ChangeSpecOptions = {
-    existingChangelist?: string;
-};
-
-const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", ["-o"], {
-    lastArgIsFormattedArray: true,
-});
-
-const outputChange = makeSimpleCommand("change", changeFlags);
-
-export const getChangeSpec = asyncOuputHandler(outputChange, parseChangeSpec);
 
 export type InputChangeSpecOptions = {
     spec: ChangeSpec;

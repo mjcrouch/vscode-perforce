@@ -482,14 +482,10 @@ function makeClipboardPicks(
     changes: ChangeDetails
 ): qp.ActionableQuickPickItem[] {
     return [
-        {
-            label: "$(clippy) Copy depot path to clipboard",
-            performAction: () => {
-                vscode.env.clipboard.writeText(
-                    changes.current.file + "#" + changes.current.revision
-                );
-            },
-        },
+        qp.makeClipPick(
+            "depot path",
+            changes.current.file + "#" + changes.current.revision
+        ),
     ];
 }
 

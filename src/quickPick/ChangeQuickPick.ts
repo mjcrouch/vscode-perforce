@@ -13,6 +13,7 @@ import { focusChangelist } from "../search/ChangelistTreeView";
 import { PerforceSCMProvider } from "../ScmProvider";
 import { pluralise, isTruthy } from "../TsUtils";
 import { showQuickPickForShelvedFile } from "./ShelvedFileQuickPick";
+import { showQuickPickForJob } from "./JobQuickPick";
 
 const nbsp = "\xa0";
 
@@ -256,27 +257,9 @@ function makeClipboardPicks(
     change: DescribedChangelist
 ): qp.ActionableQuickPickItem[] {
     return [
-        {
-            label: "$(clippy) Copy change number to clipboard",
-            description: change.chnum,
-            performAction: () => {
-                vscode.env.clipboard.writeText(change.chnum);
-            },
-        },
-        {
-            label: "$(clippy) Copy user to clipboard",
-            description: change.user,
-            performAction: () => {
-                vscode.env.clipboard.writeText(change.user);
-            },
-        },
-        {
-            label: "$(clippy) Copy change description to clipboard",
-            description: change.description.join(" ").slice(0, 32),
-            performAction: () => {
-                vscode.env.clipboard.writeText(change.description.join("\n"));
-            },
-        },
+        qp.makeClipPick("change number", change.chnum),
+        qp.makeClipPick("user", change.user),
+        qp.makeClipPick("change description", change.description.join("\n")),
     ];
 }
 
@@ -399,6 +382,9 @@ function makeJobPicks(
             return {
                 label: nbsp.repeat(3) + "$(tools) " + job.id,
                 description: job.description.join(" "),
+                performAction: () => {
+                    showQuickPickForJob(uri, job.id);
+                },
             };
         })
     );

@@ -7,4 +7,5 @@ export * from "./commands/basicOps";
 export * from "./commands/filelog";
 export * from "./commands/changes";
 export * from "./commands/integrated";
+export * from "./commands/job";
 export * from "./CommonTypes";
