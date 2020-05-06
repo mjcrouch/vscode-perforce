@@ -843,11 +843,11 @@
                     "when": "0"
                 },
                 {
-                    "command": "perforce.loginScm",
+                    "command": "perforce.login",
                     "when": "0"
                 },
                 {
-                    "command": "perforce.logoutScm",
+                    "command": "perforce.logout",
                     "when": "0"
                 },
                 {
@@ -1363,11 +1363,11 @@
             },
             {
                 "key": "alt+p enter",
-                "command": "perforce.login"
+                "command": "perforce.loginScm"
             },
             {
                 "key": "alt+p q",
-                "command": "perforce.logout"
+                "command": "perforce.logoutScm"
             },
             {
                 "key": "alt+p a",
