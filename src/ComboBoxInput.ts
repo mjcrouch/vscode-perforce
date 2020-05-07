@@ -22,19 +22,19 @@ function insertItem<T>(items: T[], newItems: T[], insertBeforeIndex?: number): T
 export async function showComboBoxInput<T extends vscode.QuickPickItem>(
     items: T[],
     options: ComboBoxInputOptions,
-    provideInputOptions: (value: string) => T[]
+    provideInputItems: (value: string) => T[]
 ) {
     const quickPick = vscode.window.createQuickPick<T>();
     quickPick.matchOnDescription = options.matchOnDescription ?? false;
     quickPick.matchOnDetail = options.matchOnDetail ?? false;
     quickPick.ignoreFocusOut = options.ignoreFocusOut ?? false;
     quickPick.placeholder = options.placeHolder;
-    const def = provideInputOptions("");
+    const def = provideInputItems("");
     quickPick.items = insertItem(items, def, options.insertBeforeIndex);
 
     let providedItems = new Set<T>(def);
     quickPick.onDidChangeValue((value) => {
-        const provided = provideInputOptions(value);
+        const provided = provideInputItems(value);
         quickPick.items = quickPick.items
             .filter((item) => !providedItems.has(item))
             .concat(provided);
