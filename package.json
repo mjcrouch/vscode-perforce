@@ -729,7 +729,13 @@
             },
             {
                 "command": "perforce.showLastQuickPick",
-                "title": "Re-open last quick pick menu",
+                "title": "Open last quick pick menu",
+                "category": "Perforce",
+                "icon": "$(list-flat)"
+            },
+            {
+                "command": "perforce.showRecentQuickPick",
+                "title": "Open a recent quick pick...",
                 "category": "Perforce",
                 "icon": "$(list-flat)"
             },
@@ -985,6 +991,11 @@
                 {
                     "command": "perforce.showLastQuickPick",
                     "group": "4_more@3",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.showRecentQuickPick",
+                    "group": "4_more@4",
                     "when": "scmProvider == perforce"
                 }
             ],
@@ -1419,8 +1430,11 @@
             },
             {
                 "key": "alt+p p",
-                "command": "perforce.showLastQuickPick",
-                "when": "editorTextFocus"
+                "command": "perforce.showLastQuickPick"
+            },
+            {
+                "key": "alt+p alt+p",
+                "command": "perforce.showRecentQuickPick"
             },
             {
                 "key": "alt+p down",

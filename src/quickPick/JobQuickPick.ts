@@ -6,6 +6,7 @@ import * as p4 from "../api/PerforceApi";
 import * as qp from "./QuickPickProvider";
 import { showQuickPickForChangelist } from "./ChangeQuickPick";
 import { Job } from "../api/PerforceApi";
+import { Display } from "../Display";
 
 const nbsp = "\xa0";
 
@@ -16,6 +17,10 @@ export const jobQuickPickProvider: qp.ActionableQuickPickProvider = {
     ): Promise<qp.ActionableQuickPick> => {
         const resource = qp.asUri(resourceOrStr);
         const jobInfo = await p4.getJob(resource, { existingJob: job });
+        if (jobInfo.description === "<enter description here>") {
+            Display.showImportantError("Job " + job + " does not exist");
+            throw new Error("Job " + job + " does not exist");
+        }
         const clipItems = makeClipboardPicks(jobInfo);
 
         const fixItems = await makeFixesPicks(resource, job);
