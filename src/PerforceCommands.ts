@@ -22,7 +22,11 @@ import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
 import * as DiffProvider from "./DiffProvider";
 import * as QuickPicks from "./quickPick/QuickPicks";
-import { showQuickPick, openLastQuickPick } from "./quickPick/QuickPickProvider";
+import {
+    showQuickPick,
+    openLastQuickPick,
+    chooseRecentQuickPick,
+} from "./quickPick/QuickPickProvider";
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
@@ -58,6 +62,7 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.depotActions", showDepotActions);
         commands.registerCommand("perforce.showQuickPick", showQuickPick);
         commands.registerCommand("perforce.showLastQuickPick", openLastQuickPick);
+        commands.registerCommand("perforce.showRecentQuickPick", chooseRecentQuickPick);
         commands.registerCommand("perforce.annotate", annotate);
         commands.registerCommand("perforce.opened", opened);
         commands.registerCommand("perforce.logout", logout);

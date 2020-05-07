@@ -13,6 +13,7 @@ export type ActionableQuickPick = {
     items: ActionableQuickPickItem[];
     excludeFromHistory?: boolean;
     placeHolder: string;
+    recentKey?: string;
 };
 
 export interface ActionableQuickPickProvider {
@@ -29,9 +30,12 @@ type QuickPickInstance = {
     type: string;
     args: any[];
     description: string;
+    recentKey: string;
 };
 
 const quickPickStack: QuickPickInstance[] = [];
+// unique recent items by recentKey
+let recents: QuickPickInstance[] = [];
 
 export function registerQuickPickProvider(
     type: string,
@@ -49,6 +53,32 @@ export function openLastQuickPick() {
         showQuickPick(prev.type, ...prev.args);
     } else {
         Display.showImportantError("No previous quick pick available");
+    }
+}
+
+function addToRecentQuickPicks(qp: QuickPickInstance) {
+    const found = recents.findIndex((r) => qp.recentKey === r.recentKey);
+    if (found >= 0) {
+        recents.splice(found, 1);
+    }
+    recents = [qp, ...recents.slice(0, 49)];
+}
+
+export async function chooseRecentQuickPick() {
+    const items = recents.map((r) => {
+        return {
+            label: r.description,
+            value: r,
+        };
+    });
+
+    const chosen = await vscode.window.showQuickPick(items, {
+        placeHolder: "Choose a recent quick pick to open",
+        matchOnDescription: true,
+    });
+
+    if (chosen) {
+        showQuickPick(chosen.value.type, ...chosen.value.args);
     }
 }
 
@@ -82,6 +112,17 @@ export async function showQuickPick(type: string, ...args: any[]) {
             },
             () => provider.provideActions(...args)
         );
+
+        const instance: QuickPickInstance = {
+            type,
+            args,
+            description: actions.placeHolder,
+            recentKey: actions.recentKey ?? actions.placeHolder,
+        };
+        if (!actions.excludeFromHistory) {
+            addToRecentQuickPicks(instance);
+        }
+
         const curAction: ActionableQuickPickItem = {
             label: "$(location) " + actions.placeHolder,
         };
@@ -106,7 +147,7 @@ export async function showQuickPick(type: string, ...args: any[]) {
 
         const addToStack = backLabel !== picked?.label && !actions.excludeFromHistory;
         if (addToStack) {
-            quickPickStack.push({ type, args, description: actions.placeHolder });
+            quickPickStack.push(instance);
         }
 
         const reopen = () => {

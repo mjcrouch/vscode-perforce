@@ -29,6 +29,7 @@ export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
         return {
             items: actions,
             placeHolder: makeRevisionSummary(changes.current),
+            recentKey: "file:" + uri.fsPath,
         };
     },
 };
