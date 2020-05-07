@@ -172,21 +172,20 @@ async function showFilterTextInput(
     };
 }
 
-async function pickFromProviderOrCustom<T>(
+async function pickFromProviderOrCustom(
     placeHolder: string,
     currentValue: string | undefined,
     client: ClientRoot | undefined,
     clientValue: string | undefined,
-    readableKey: string,
-    readableValue: string | undefined
+    readableKey: string
 ) {
     const current: PickWithValue<SearchFilterValue<string>> | undefined =
         client && clientValue !== undefined
             ? {
                   label: "$(person) Current " + readableKey,
-                  description: readableValue,
+                  description: clientValue,
                   value: {
-                      label: readableValue ?? "",
+                      label: clientValue ?? "",
                       value: clientValue,
                   },
               }
@@ -213,6 +212,9 @@ async function pickFromProviderOrCustom<T>(
         { placeHolder, matchOnDescription: true, insertBeforeIndex: 1 },
         (value) => {
             return [
+                {
+                    label: "$(search) Search for " + readableKey + ": " + value,
+                },
                 {
                     label: value
                         ? "$(edit) Entered " + readableKey + ": " + value
@@ -251,8 +253,7 @@ class UserFilter extends FilterItem<string> {
             this.value,
             this._provider.client,
             this._provider.client?.userName,
-            "user",
-            this._provider.client?.userName
+            "user"
         );
     }
 }
@@ -272,8 +273,7 @@ class ClientFilter extends FilterItem<string> {
             this.value,
             this._provider.client,
             this._provider.client?.clientName,
-            "perforce client",
-            this._provider.client?.clientName
+            "perforce client"
         );
     }
 }
