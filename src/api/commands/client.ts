@@ -12,7 +12,7 @@ export interface ClientsOptions {
 }
 
 const clientsFlags = flagMapper<ClientsOptions>([
-    ["E", "nameFilter", { withoutSpace: true }],
+    ["E", "nameFilter"],
     ["m", "max"],
 ]);
 

@@ -330,7 +330,7 @@ class ClientFilter extends FilterItem<string> {
             async (value) => {
                 const clients = await p4.clients(client.configSource, {
                     max: 200,
-                    nameFilter: value,
+                    nameFilter: value.replace("*", "..."),
                 });
                 return clients.map((c) => c.client);
             }
