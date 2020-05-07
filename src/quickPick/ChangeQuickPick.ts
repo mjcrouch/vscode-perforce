@@ -297,6 +297,28 @@ function makeFilePicks(
     );
 }
 
+async function searchForBranch(
+    uri: vscode.Uri,
+    branch: string
+): Promise<string | undefined> {
+    try {
+        const branches = await p4.branches(uri, {
+            max: 200,
+            nameFilter: branch.replace("*", "..."),
+        });
+        if (branches.length < 1) {
+            Display.showImportantError("No branch mappings match " + branch);
+            return;
+        }
+        return await vscode.window.showQuickPick(
+            branches.map((b) => b.branch),
+            { placeHolder: "Choose a matching branch" }
+        );
+    } catch (err) {
+        Display.showImportantError(err);
+    }
+}
+
 function makeUnshelvePicks(
     uri: vscode.Uri,
     change?: DescribedChangelist
@@ -320,13 +342,18 @@ function makeUnshelvePicks(
                     prompt:
                         "Enter branch name to unshelve changelist " +
                         change.chnum +
-                        " through",
+                        " through (use * to search by wildcard)",
                     ignoreFocusOut: true,
                 });
-                if (branch === undefined) {
+
+                const chosen = branch?.includes("*")
+                    ? await searchForBranch(uri, branch)
+                    : branch;
+
+                if (chosen === undefined) {
                     reopen();
                 } else {
-                    showUnshelveQuickPick(uri, change.chnum, branch);
+                    showUnshelveQuickPick(uri, change.chnum, chosen);
                 }
             },
         },

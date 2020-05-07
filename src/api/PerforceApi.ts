@@ -10,4 +10,5 @@ export * from "./commands/integrated";
 export * from "./commands/job";
 export * from "./commands/client";
 export * from "./commands/users";
+export * from "./commands/branch";
 export * from "./CommonTypes";
