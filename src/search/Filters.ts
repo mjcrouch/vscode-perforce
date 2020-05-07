@@ -414,10 +414,6 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
     }
 
     private async pickNewFilter() {
-        const custom: PickWithValue<string> = {
-            label: "Enter path...",
-            description: "Enter a file or depot path",
-        };
         const rootPath = this.getClientRootPath();
         const clientRoot: PickWithValue<string> | undefined = rootPath
             ? {
@@ -437,23 +433,42 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
                 : undefined;
 
         const existingChildren = this.getChildren();
-        const options = [clientRoot, clientSource, ...this.makeOpenFilePicks(), custom]
+        const options = [clientRoot, clientSource, ...this.makeOpenFilePicks()]
             .filter(isTruthy)
             .filter(
                 (opt) =>
                     !existingChildren.some((existing) => existing.label === opt.value)
             );
 
-        const chosen = await vscode.window.showQuickPick(options, {
-            matchOnDescription: true,
-            placeHolder: "Filter by a depot or file path",
-        });
+        const customDescription = "Type a path";
+        const chosen = await showComboBoxInput(
+            options,
+            {
+                matchOnDescription: true,
+                placeHolder: "Filter by a depot or file path",
+            },
+            (value) => {
+                return [
+                    {
+                        label: value ? "Entered path: " + value : "Enter a path",
+                        description: value ? "" : customDescription,
+                        detail: value
+                            ? "\xa0".repeat(4) + "Use ... for wildcards"
+                            : undefined,
+                        alwaysShow: true,
+                        value: value,
+                    },
+                ];
+            }
+        );
 
         if (!chosen) {
             return;
         }
 
-        return chosen === custom ? await this.enterCustomValue() : chosen.value;
+        return chosen.description === customDescription && !chosen.value
+            ? await this.enterCustomValue()
+            : chosen.value;
     }
 
     async addNewFilter() {
