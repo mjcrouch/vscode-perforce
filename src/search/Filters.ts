@@ -8,6 +8,7 @@ import * as PerforceUri from "../PerforceUri";
 import * as Path from "path";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
+import { showComboBoxInput } from "../ComboBoxInput";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -175,11 +176,11 @@ async function pickFromProviderOrCustom<T>(
     placeHolder: string,
     currentValue: string | undefined,
     client: ClientRoot | undefined,
-    clientValue: T | undefined,
+    clientValue: string | undefined,
     readableKey: string,
     readableValue: string | undefined
 ) {
-    const current: PickWithValue<SearchFilterValue<T>> | undefined =
+    const current: PickWithValue<SearchFilterValue<string>> | undefined =
         client && clientValue !== undefined
             ? {
                   label: "$(person) Current " + readableKey,
@@ -190,13 +191,13 @@ async function pickFromProviderOrCustom<T>(
                   },
               }
             : undefined;
-    const custom: PickWithValue<SearchFilterValue<T>> = {
+    /*    const custom: PickWithValue<SearchFilterValue<string>> = {
         label: "$(edit) Enter a " + readableKey + "...",
         description: "Filter by a different " + readableKey,
     };
-    const items: PickWithValue<SearchFilterValue<T>>[] = [
+    */
+    const items: PickWithValue<SearchFilterValue<string>>[] = [
         current,
-        custom,
         {
             label: "$(chrome-close) Reset",
             description: "Don't filter by " + readableKey,
@@ -206,10 +207,30 @@ async function pickFromProviderOrCustom<T>(
             },
         },
     ].filter(isTruthy);
-    const chosen = await vscode.window.showQuickPick(items, {
+    const customDescription = "Type a " + readableKey + " filter";
+    const chosen = await showComboBoxInput(
+        items,
+        { placeHolder, matchOnDescription: true, insertBeforeIndex: 1 },
+        (value) => {
+            return [
+                {
+                    label: value
+                        ? "$(edit) Entered " + readableKey + ": " + value
+                        : "$(edit) Enter a " + readableKey,
+                    description: value ? "" : customDescription,
+                    alwaysShow: true,
+                    value: {
+                        label: value,
+                        value: value,
+                    },
+                },
+            ];
+        }
+    );
+    /*const chosen = await vscode.window.showQuickPick(items, {
         placeHolder: placeHolder,
-    });
-    if (chosen === custom) {
+    });*/
+    if (chosen?.description === customDescription && !chosen.value?.value) {
         return showFilterTextInput("Enter a " + readableKey, currentValue);
     }
     return chosen?.value;
