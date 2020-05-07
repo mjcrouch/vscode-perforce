@@ -73,7 +73,12 @@ async function makeFixesPicks(
                 (change?.isPending ? "$(tools) " : "$(check) ") +
                 fix.chnum,
             description:
-                "$(person) " + fix.user + "@" + fix.client + " $(calendar) " + fix.date,
+                "$(person) " +
+                fix.user +
+                " $(calendar) " +
+                fix.date +
+                " $(book) " +
+                change?.description.join(" "),
             performAction: () => {
                 showQuickPickForChangelist(resource, fix.chnum);
             },
