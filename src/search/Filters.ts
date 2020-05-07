@@ -9,6 +9,8 @@ import * as Path from "path";
 import { ProviderSelection } from "./ProviderSelection";
 import { configAccessor } from "../ConfigService";
 import { showComboBoxInput } from "../ComboBoxInput";
+import * as p4 from "../api/PerforceApi";
+import { Display } from "../Display";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -156,15 +158,19 @@ class StatusFilter extends FilterItem<ChangelistStatus> {
 
 async function showFilterTextInput(
     placeHolder: string,
-    currentValue?: string
+    currentValue: string,
+    getSearchResults: (value: string) => Promise<string[]>
 ): Promise<SearchFilterValue<string> | undefined> {
     const value = await vscode.window.showInputBox({
-        prompt: placeHolder,
+        prompt: placeHolder + " (use * for wildcards)",
         value: currentValue,
         placeHolder: placeHolder,
     });
     if (value === undefined) {
         return undefined;
+    }
+    if (value.includes("*")) {
+        return showSearchResults(value, placeHolder, getSearchResults);
     }
     return {
         label: value,
@@ -172,12 +178,37 @@ async function showFilterTextInput(
     };
 }
 
+async function showSearchResults(
+    filter: string,
+    placeHolder: string,
+    getSearchResults: (value: string) => Promise<string[]>
+): Promise<SearchFilterValue<string> | undefined> {
+    const results = await getSearchResults(filter);
+    if (results.length < 1) {
+        Display.showImportantError("No results found for filter " + filter);
+        return;
+    }
+    const items = results.map((item) => {
+        return {
+            label: item,
+            value: {
+                label: item,
+                value: item,
+            },
+            alwaysShow: true,
+        };
+    });
+    const newChosen = await vscode.window.showQuickPick(items, { placeHolder });
+    return newChosen?.value;
+}
+
 async function pickFromProviderOrCustom(
     placeHolder: string,
     currentValue: string | undefined,
     client: ClientRoot | undefined,
     clientValue: string | undefined,
-    readableKey: string
+    readableKey: string,
+    getSearchResults: (value: string) => Promise<string[]>
 ) {
     const current: PickWithValue<SearchFilterValue<string>> | undefined =
         client && clientValue !== undefined
@@ -190,11 +221,6 @@ async function pickFromProviderOrCustom(
                   },
               }
             : undefined;
-    /*    const custom: PickWithValue<SearchFilterValue<string>> = {
-        label: "$(edit) Enter a " + readableKey + "...",
-        description: "Filter by a different " + readableKey,
-    };
-    */
     const items: PickWithValue<SearchFilterValue<string>>[] = [
         current,
         {
@@ -211,15 +237,19 @@ async function pickFromProviderOrCustom(
         items,
         { placeHolder, matchOnDescription: true, insertBeforeIndex: 1 },
         (value) => {
+            const isSearch = value.includes("*");
             return [
                 {
-                    label: "$(search) Search for " + readableKey + ": " + value,
-                },
-                {
                     label: value
-                        ? "$(edit) Entered " + readableKey + ": " + value
+                        ? (isSearch ? "$(search) Search for " : "$(edit) Entered ") +
+                          readableKey +
+                          ": " +
+                          value
                         : "$(edit) Enter a " + readableKey,
                     description: value ? "" : customDescription,
+                    detail: value
+                        ? "\xa0".repeat(4) + "Use * as a wildcard to perform a search"
+                        : "",
                     alwaysShow: true,
                     value: {
                         label: value,
@@ -229,11 +259,19 @@ async function pickFromProviderOrCustom(
             ];
         }
     );
-    /*const chosen = await vscode.window.showQuickPick(items, {
-        placeHolder: placeHolder,
-    });*/
+
     if (chosen?.description === customDescription && !chosen.value?.value) {
-        return showFilterTextInput("Enter a " + readableKey, currentValue);
+        return showFilterTextInput(
+            "Enter a " + readableKey,
+            currentValue ?? "",
+            getSearchResults
+        );
+    } else if (chosen?.label.startsWith("$(search)")) {
+        return showSearchResults(
+            chosen.value?.value ?? "*",
+            placeHolder,
+            getSearchResults
+        );
     }
     return chosen?.value;
 }
@@ -248,12 +286,23 @@ class UserFilter extends FilterItem<string> {
     }
 
     public async chooseValue(): Promise<SearchFilterValue<string> | undefined> {
+        const client = this._provider.client;
+        if (!client) {
+            throw new Error("No client selected");
+        }
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
-            this._provider.client,
-            this._provider.client?.userName,
-            "user"
+            client,
+            client.userName,
+            "user",
+            async (value) => {
+                const users = await p4.users(client.configSource, {
+                    max: 200,
+                    userFilters: [value.replace("*", "...")],
+                });
+                return users.map((u) => u.user);
+            }
         );
     }
 }
@@ -268,12 +317,23 @@ class ClientFilter extends FilterItem<string> {
     }
 
     public async chooseValue(): Promise<SearchFilterValue<string> | undefined> {
+        const client = this._provider.client;
+        if (!client) {
+            throw new Error("No client selected");
+        }
         return pickFromProviderOrCustom(
             this._filter.placeHolder,
             this.value,
             this._provider.client,
             this._provider.client?.clientName,
-            "perforce client"
+            "perforce client",
+            async (value) => {
+                const clients = await p4.clients(client.configSource, {
+                    max: 200,
+                    nameFilter: value,
+                });
+                return clients.map((c) => c.client);
+            }
         );
     }
 }

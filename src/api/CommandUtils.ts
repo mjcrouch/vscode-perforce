@@ -80,24 +80,38 @@ export function concatIfOutputIsDefined<T, R>(...fns: ((arg: T) => R | undefined
 
 export type CmdlineArgs = (string | undefined)[];
 
+function argWithValue(
+    flagName: string,
+    value: string,
+    options?: FlagOptions
+): CmdlineArgs {
+    if (options?.withoutSpace) {
+        return [flagName + value];
+    } else {
+        return [flagName, value];
+    }
+}
+
 function makeFlag(
     flag: string,
-    value: string | boolean | number | undefined
+    value: string | boolean | number | undefined,
+    options?: FlagOptions
 ): CmdlineArgs {
+    const flagName = "-" + flag;
     if (typeof value === "string") {
-        return value ? ["-" + flag, value] : [];
+        return argWithValue(flagName, value, options);
     } else if (typeof value === "number") {
-        return value ? ["-" + flag, value.toString()] : [];
+        return argWithValue(flagName, value.toString(), options);
     }
-    return value ? ["-" + flag] : [];
+    return value ? [flagName] : [];
 }
 
 export function makeFlags(
-    pairs: [string, string | boolean | number | undefined][],
+    pairs: [string, string | boolean | number | undefined, FlagOptions?][],
     lastArgs?: (string | undefined)[]
 ): CmdlineArgs {
     return pairs
-        .flatMap((pair) => makeFlag(pair[0], pair[1]))
+        .flatMap((pair) => makeFlag(pair[0], pair[1], pair[2]))
         .concat(...(lastArgs ?? []));
 }
 
@@ -140,6 +154,10 @@ type FlagMapperOptions = {
     ignoreRevisionFragments?: boolean;
 };
 
+type FlagOptions = {
+    withoutSpace?: boolean;
+};
+
 /**
  * Create a function that maps an object of type P into an array of command arguments
  * @param flagNames A set of tuples - flag name to output (e.g. "c" produces "-c") and key from the object to use.
@@ -149,7 +167,7 @@ type FlagMapperOptions = {
  * @param fixedPrefix A fixed set of args to always put first in the perforce command
  */
 export function flagMapper<P extends FlagDefinition<P>>(
-    flagNames: [string, keyof P][],
+    flagNames: [string, keyof P, FlagOptions?][],
     lastArg?: keyof P,
     fixedPrefix?: CmdlineArgs,
     options?: FlagMapperOptions
@@ -161,6 +179,7 @@ export function flagMapper<P extends FlagDefinition<P>>(
                     return [
                         fn[0],
                         params[fn[1]] as string | boolean | number | undefined,
+                        fn[2],
                     ];
                 }),
                 lastArg

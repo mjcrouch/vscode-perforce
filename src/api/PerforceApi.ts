@@ -8,4 +8,6 @@ export * from "./commands/filelog";
 export * from "./commands/changes";
 export * from "./commands/integrated";
 export * from "./commands/job";
+export * from "./commands/client";
+export * from "./commands/users";
 export * from "./CommonTypes";
