@@ -63,7 +63,6 @@ function addToRecentQuickPicks(qp: QuickPickInstance) {
     }
     recents = [qp, ...recents.slice(0, 49)];
 }
-
 export async function chooseRecentQuickPick() {
     const items = recents.map((r) => {
         return {

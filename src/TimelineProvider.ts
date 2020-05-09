@@ -1,19 +1,31 @@
 import * as vscode from "vscode";
 import * as p4 from "./api/PerforceApi";
-import { isDepotUri, getDepotPathFromDepotUri } from "./PerforceUri";
+import * as PerforceUri from "./PerforceUri";
+import * as DiffProvider from "./DiffProvider";
+import { showQuickPickForFile } from "./quickPick/FileQuickPick";
+import { isTruthy } from "./TsUtils";
+import { showQuickPickForChangelist } from "./quickPick/ChangeQuickPick";
+
+interface PerforceTimelineItem extends vscode.TimelineItem {
+    perforceUri: vscode.Uri;
+    logItem: p4.FileLogItem;
+    prevItem?: p4.FileLogItem;
+    latestItem: p4.FileLogItem;
+    localFile?: vscode.Uri;
+}
 
 type FileCache = {
-    file: vscode.Uri;
-    filelog: p4.FileLogItem[];
-    items: vscode.TimelineItem[];
+    items: PerforceTimelineItem[];
     isFullSet: boolean;
 };
 
 class PerforceTimelineProvider implements vscode.TimelineProvider {
     private _cached = new Map<string, FileCache>();
 
-    getCachedItems(uri: vscode.Uri, isInitialCall: boolean) {
-        const underlying = isDepotUri(uri) ? getDepotPathFromDepotUri(uri) : uri.fsPath;
+    private getCachedItems(uri: vscode.Uri, isInitialCall: boolean) {
+        const underlying = PerforceUri.isDepotUri(uri)
+            ? PerforceUri.getDepotPathFromDepotUri(uri)
+            : uri.fsPath;
         const cached = this._cached.get(underlying);
         if (!isInitialCall && !cached?.isFullSet) {
             // need more than we already have
@@ -22,38 +34,87 @@ class PerforceTimelineProvider implements vscode.TimelineProvider {
         return cached;
     }
 
-    setCachedItems(
+    private setCachedItems(
         uri: vscode.Uri,
-        filelog: p4.FileLogItem[],
-        items: vscode.TimelineItem[],
+        items: PerforceTimelineItem[],
         isFullSet: boolean
     ) {
-        const underlying = isDepotUri(uri) ? getDepotPathFromDepotUri(uri) : uri.fsPath;
-        this._cached.set(underlying, { file: uri, filelog, items, isFullSet });
+        const underlying = PerforceUri.isDepotUri(uri)
+            ? PerforceUri.getDepotPathFromDepotUri(uri)
+            : uri.fsPath;
+        this._cached.set(underlying, { items, isFullSet });
+    }
+
+    private async getLocalFile(uri: vscode.Uri) {
+        if (!PerforceUri.isDepotUri(uri)) {
+            return uri;
+        }
+        const have = await p4.have(uri, { file: uri });
+        return have?.localUri;
+    }
+
+    private makeContext(item: PerforceTimelineItem) {
+        const parts = [
+            item.latestItem !== item.logItem ? "nl" : undefined,
+            item.localFile ? "lf" : undefined,
+        ].filter(isTruthy);
+
+        return "p4:" + parts.join("-");
+    }
+
+    private makeTimelineItem(
+        uri: vscode.Uri,
+        localFile: vscode.Uri | undefined,
+        log: p4.FileLogItem,
+        latest: p4.FileLogItem,
+        prev?: p4.FileLogItem,
+        isOldFile?: boolean
+    ) {
+        const perforceUri = PerforceUri.fromDepotPath(uri, log.file, log.revision);
+
+        const command: vscode.Command = {
+            command: "perforce.timeline.diffPrevious",
+            title: "Diff against previous",
+            arguments: [],
+        };
+
+        const item: PerforceTimelineItem = {
+            timestamp: log.date?.getTime() ?? 0,
+            label: log.revision + ": " + log.description.split("\n")[0].slice(0, 64),
+            iconPath: new vscode.ThemeIcon(isOldFile ? "git-merge" : "git-commit"),
+            description: log.user,
+            detail: log.file + "#" + log.revision + "\n--------\n\n" + log.description,
+            id: log.chnum,
+            perforceUri: perforceUri,
+            logItem: log,
+            prevItem: prev,
+            latestItem: latest,
+            localFile,
+            contextValue: "p4",
+            command,
+        };
+        command.arguments = [item];
+        item.contextValue = this.makeContext(item);
+
+        return item;
     }
 
     async getHistoryAndItems(uri: vscode.Uri, max?: number) {
         const filelog = await p4.getFileHistory(uri, {
-            file: uri,
+            file: PerforceUri.fromUriWithRevision(uri, ""),
             followBranches: true,
             max,
         });
-        const items = filelog.map<vscode.TimelineItem>((h) => {
+
+        const localFile = await this.getLocalFile(uri);
+
+        const items = filelog.map<PerforceTimelineItem>((h, i, all) => {
             const isOldFile = h.file !== filelog[0].file;
-            return {
-                timestamp: h.date?.getTime() ?? 0,
-                label:
-                    (isOldFile ? "ᛦ" : "") +
-                    h.revision +
-                    ": " +
-                    h.description.split("\n")[0].slice(0, 64),
-                description: h.user,
-                detail: h.file + "#" + h.revision + "\n--------\n\n" + h.description,
-                id: h.chnum,
-            };
+            const prev = all[i + 1];
+            return this.makeTimelineItem(uri, localFile, h, all[0], prev, isOldFile);
         });
 
-        this.setCachedItems(uri, filelog, items, max === undefined);
+        this.setCachedItems(uri, items, max === undefined);
 
         return items;
     }
@@ -79,7 +140,7 @@ class PerforceTimelineProvider implements vscode.TimelineProvider {
 
         return {
             items,
-            paging: { cursor: isInitialCall ? "yes" : undefined },
+            paging: { cursor: isInitialCall && items.length === max ? "yes" : undefined },
         };
     }
 }
@@ -89,4 +150,67 @@ export function registerTimeline() {
         ["file", "perforce"],
         new PerforceTimelineProvider()
     );
+}
+
+export function openQuickPick(item: PerforceTimelineItem) {
+    showQuickPickForFile(item.perforceUri);
+}
+
+export function openChangeQuickPick(item: PerforceTimelineItem) {
+    showQuickPickForChangelist(item.perforceUri, item.logItem.chnum);
+}
+
+function getPreviousInfo(
+    uri: vscode.Uri,
+    log: p4.FileLogItem,
+    prevItem?: p4.FileLogItem
+) {
+    if (prevItem) {
+        // explicit previous item known, could be a different depot file
+        return {
+            leftFile: PerforceUri.fromDepotPath(uri, prevItem.file, prevItem.revision),
+        };
+    } else if (log.revision !== "1") {
+        // prev revisions that haven't been loaded yet
+        return {
+            leftFile: PerforceUri.fromDepotPath(
+                uri,
+                log.file,
+                (parseInt(log.revision) - 1).toString()
+            ),
+        };
+    }
+    // rev 1 and no previous revision, probably a new file
+    return {
+        leftFile: vscode.Uri.parse("perforce:EMPTY"),
+        title: DiffProvider.diffTitleForDepotPaths(log.file, "0", log.file, log.revision),
+    };
+}
+
+export async function diffPrevious(item: PerforceTimelineItem) {
+    const { leftFile, title } = getPreviousInfo(
+        item.perforceUri,
+        item.logItem,
+        item.prevItem
+    );
+
+    await DiffProvider.diffFiles(leftFile, item.perforceUri, title);
+}
+
+export async function diffLatest(item: PerforceTimelineItem) {
+    await DiffProvider.diffFiles(
+        item.perforceUri,
+        PerforceUri.fromDepotPath(
+            item.perforceUri,
+            item.latestItem.file,
+            item.latestItem.revision
+        )
+    );
+}
+
+export async function diffLocal(item: PerforceTimelineItem) {
+    if (!item.localFile) {
+        throw new Error("No local file for item");
+    }
+    await DiffProvider.diffFiles(item.perforceUri, item.localFile);
 }

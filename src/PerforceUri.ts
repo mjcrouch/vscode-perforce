@@ -63,7 +63,7 @@ export function fromDepotPath(
     const depotName = depotPath.split("/")[2];
     return fromUri(baseUri, {
         depot: true,
-        workspace: workspace.fsPath,
+        workspace: getUsableWorkspace(workspace)?.fsPath ?? workspace.fsPath,
         depotName,
         rev: revisionOrAtLabel,
     });
@@ -74,7 +74,7 @@ function hasTruthyArg(uri: vscode.Uri, arg: keyof UriArguments): boolean {
 }
 
 export function isDepotUri(uri: vscode.Uri): boolean {
-    return hasTruthyArg(uri, "depot");
+    return uri.scheme === "perforce" && hasTruthyArg(uri, "depot");
 }
 
 export function isUsableForWorkspace(uri: vscode.Uri): boolean {

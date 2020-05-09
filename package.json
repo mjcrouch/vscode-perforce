@@ -748,6 +748,31 @@
                 "command": "perforce.goToJob",
                 "title": "Go to job...",
                 "category": "Perforce"
+            },
+            {
+                "command": "perforce.timeline.openQuickPick",
+                "title": "More revision actions...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.timeline.openChangeQuickPick",
+                "title": "Changelist actions...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.timeline.diffPrevious",
+                "title": "Diff against previous",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.timeline.diffLatest",
+                "title": "Diff against latest",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.timeline.diffWorking",
+                "title": "Diff against local file",
+                "category": "Perforce"
             }
         ],
         "menus": {
@@ -934,6 +959,26 @@
                 },
                 {
                     "command": "perforce.explorer.delete",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.timeline.diffLatest",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.timeline.diffPrevious",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.timeline.diffWorking",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.timeline.openQuickPick",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.timeline.openChangeQuickPick",
                     "when": "0"
                 }
             ],
@@ -1223,6 +1268,33 @@
                     "command": "perforce.diffNext",
                     "group": "perforce@2",
                     "when": "isInDiffEditor && perforce.activation.hasScmProvider"
+                }
+            ],
+            "timeline/item/context": [
+                {
+                    "command": "perforce.timeline.diffPrevious",
+                    "group": "perforce@1",
+                    "when": "timelineItem =~ /p4:/"
+                },
+                {
+                    "command": "perforce.timeline.diffLatest",
+                    "group": "perforce@2",
+                    "when": "timelineItem =~ /p4:/ && timelineItem =~ /nl/"
+                },
+                {
+                    "command": "perforce.timeline.diffWorking",
+                    "group": "perforce@3",
+                    "when": "timelineItem =~ /p4:/ && timelineItem =~ /lf/"
+                },
+                {
+                    "command": "perforce.timeline.openQuickPick",
+                    "group": "perforce_2@1",
+                    "when": "timelineItem =~ /p4:/"
+                },
+                {
+                    "command": "perforce.timeline.openChangeQuickPick",
+                    "group": "perforce_2@2",
+                    "when": "timelineItem =~ /p4:/"
                 }
             ],
             "explorer/context": [

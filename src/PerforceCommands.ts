@@ -30,6 +30,7 @@ import {
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
+import * as Timeline from "./TimelineProvider";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -69,6 +70,17 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.login", login);
         commands.registerCommand("perforce.diffFiles", diffFiles);
         commands.registerCommand("perforce.menuFunctions", menuFunctions);
+        commands.registerCommand(
+            "perforce.timeline.openQuickPick",
+            Timeline.openQuickPick
+        );
+        commands.registerCommand(
+            "perforce.timeline.openChangeQuickPick",
+            Timeline.openChangeQuickPick
+        );
+        commands.registerCommand("perforce.timeline.diffPrevious", Timeline.diffPrevious);
+        commands.registerCommand("perforce.timeline.diffLatest", Timeline.diffLatest);
+        commands.registerCommand("perforce.timeline.diffWorking", Timeline.diffLocal);
     }
 
     export function registerImportantCommands(subscriptions: Disposable[]) {
@@ -674,8 +686,8 @@ export namespace PerforceCommands {
         await DiffProvider.diffNext(fromDoc);
     }
 
-    async function diffFiles(leftFile: string, rightFile: string) {
-        await DiffProvider.diffFiles(Uri.parse(leftFile), Uri.parse(rightFile));
+    async function diffFiles(leftFile: string, rightFile: string, title?: string) {
+        await DiffProvider.diffFiles(Uri.parse(leftFile), Uri.parse(rightFile), title);
     }
 
     function getOpenDocUri(): Uri | undefined {
