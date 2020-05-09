@@ -24,7 +24,7 @@
     "engines": {
         "vscode": "^1.44.0"
     },
-    "enableProposedApi": false,
+    "enableProposedApi": true,
     "keywords": [
         "vscode",
         "scm",

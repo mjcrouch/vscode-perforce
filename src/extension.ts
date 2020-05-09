@@ -17,6 +17,7 @@ import * as QuickPicks from "./quickPick/QuickPicks";
 import * as p4 from "./api/PerforceApi";
 import { isTruthy } from "./TsUtils";
 import { registerChangelistSearch } from "./search/ChangelistTreeView";
+import { registerTimeline } from "./TimelineProvider";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
@@ -502,6 +503,8 @@ function doOneTimeRegistration() {
 
         _perforceContentProvider = perforceContentProvider();
         _disposable.push(_perforceContentProvider);
+
+        registerTimeline();
 
         _disposable.push(
             AnnotationProvider.onWillLoadEditor((uri) =>
