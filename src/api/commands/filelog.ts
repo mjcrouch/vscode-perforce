@@ -12,12 +12,14 @@ export interface FilelogOptions {
     file: PerforceFile;
     followBranches?: boolean;
     omitNonContributoryIntegrations?: boolean;
+    max?: number;
 }
 
 const filelogFlags = flagMapper<FilelogOptions>(
     [
         ["i", "followBranches"],
         ["s", "omitNonContributoryIntegrations"],
+        ["m", "max"],
     ],
     "file",
     ["-l", "-t"]
