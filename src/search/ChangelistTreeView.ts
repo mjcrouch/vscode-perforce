@@ -359,6 +359,9 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
             const couldHaveShelved = this._results
                 .filter((r) => r.isPending)
                 .map((r) => r.chnum);
+            if (couldHaveShelved.length < 1) {
+                return;
+            }
             const shelvedDescriptions = await p4.describe(this._resource, {
                 omitDiffs: true,
                 chnums: couldHaveShelved,
