@@ -1,9 +1,9 @@
-import * as vscode from "vscode";
 import {
     flagMapper,
     makeSimpleCommand,
     sectionArrayBy,
     splitIntoLines,
+    asyncOuputHandler,
 } from "../CommandUtils";
 import { PerforceFile } from "../CommonTypes";
 import { isTruthy, parseDate } from "../../TsUtils";
@@ -125,7 +125,4 @@ function parseFilelogOutput(output: string) {
     return parseFileLogFiles(lines);
 }
 
-export async function getFileHistory(resource: vscode.Uri, options: FilelogOptions) {
-    const output = await filelog(resource, options);
-    return parseFilelogOutput(output);
-}
+export const getFileHistory = asyncOuputHandler(filelog, parseFilelogOutput);

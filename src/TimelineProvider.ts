@@ -100,11 +100,15 @@ class PerforceTimelineProvider implements vscode.TimelineProvider {
     }
 
     async getHistoryAndItems(uri: vscode.Uri, max?: number) {
-        const filelog = await p4.getFileHistory(uri, {
-            file: PerforceUri.fromUriWithRevision(uri, ""),
-            followBranches: true,
-            max,
-        });
+        const filelog = await p4.getFileHistory(
+            uri,
+            {
+                file: PerforceUri.fromUriWithRevision(uri, ""),
+                followBranches: true,
+                max,
+            },
+            { hideStdErr: true, stdErrIsOk: true }
+        );
 
         const localFile = await this.getLocalFile(uri);
 
