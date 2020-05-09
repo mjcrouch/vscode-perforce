@@ -340,7 +340,11 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
     }
 
     protected async populateChangeDetails() {
+        if (this._results.length < 1) {
+            return;
+        }
         const allChanges = this._results.map((r) => r.chnum);
+
         const descriptions = await p4.describe(this._resource, {
             omitDiffs: true,
             chnums: allChanges,
