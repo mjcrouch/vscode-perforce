@@ -5,7 +5,8 @@ import { TextEncoder } from "util";
 import { Display } from "./Display";
 import { PerforceSCMProvider } from "./ScmProvider";
 
-type SpecStore = { [key: string]: string };
+type SpecInstance = { resource: string; lastAccessed: number };
+type SpecStore = { [key: string]: SpecInstance };
 
 abstract class SpecEditor {
     private _state: vscode.Memento;
@@ -38,18 +39,45 @@ abstract class SpecEditor {
         text: string
     ): Promise<any>;
 
+    private get mapName() {
+        return this._type + "Map";
+    }
+
     private async setResource(specFile: vscode.Uri, resource: vscode.Uri) {
-        const cur = this._state.get<SpecStore>(this._type + "Map") ?? {};
-        cur[specFile.fsPath] = resource.fsPath;
-        await this._state.update(this._type + "Map", cur);
+        const cur = this._state.get<SpecStore>(this.mapName) ?? {};
+        cur[specFile.fsPath] = {
+            resource: resource.fsPath,
+            lastAccessed: new Date().getTime(),
+        };
+        await this._state.update(this.mapName, cur);
     }
 
     private getResource(file: vscode.Uri): vscode.Uri | undefined {
-        const cur = this._state.get<SpecStore>(this._type + "Map");
-        const fsPath = cur?.[file.fsPath];
+        const cur = this._state.get<SpecStore>(this.mapName);
+        const fsPath = cur?.[file.fsPath]?.resource;
         if (fsPath) {
             return vscode.Uri.file(fsPath);
         }
+    }
+
+    private clearCached(olderThan: number) {
+        const cur = this._state.get<SpecStore>(this.mapName) ?? {};
+        Object.keys(cur).forEach((file) => {
+            try {
+                if (cur[file].lastAccessed < olderThan) {
+                    vscode.workspace.fs.delete(vscode.Uri.file(file));
+                    delete cur[file];
+                }
+            } catch {}
+        });
+        this._state.update(this.mapName, cur);
+    }
+
+    public archiveOldItems() {
+        // ms sec min hours days
+        const timeAgo = 1000 * 60 * 60 * 24 * 5;
+        const olderThan = new Date().getTime() - timeAgo;
+        this.clearCached(olderThan);
     }
 
     private static async checkTabSettings() {
@@ -139,7 +167,9 @@ abstract class SpecEditor {
         const item = this.getSpecItemName(filename);
         const resource = this.getResource(file);
         if (!resource) {
-            throw new Error("Could not find workspace details for " + item + " " + item);
+            throw new Error(
+                "Could not find workspace details for " + this._type + " " + item
+            );
         }
         if (doc?.isDirty) {
             // don't ask about uploading, we're already doing that
@@ -240,4 +270,6 @@ export function createSpecEditor(context: vscode.ExtensionContext) {
     jobSpecEditor = new JobSpecEditor(context);
     context.subscriptions.push(changeSpecEditor);
     context.subscriptions.push(jobSpecEditor);
+    changeSpecEditor.archiveOldItems();
+    jobSpecEditor.archiveOldItems();
 }
