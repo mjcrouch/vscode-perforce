@@ -623,7 +623,7 @@
             },
             {
                 "command": "perforce.editChangespec",
-                "title": "Edit changelist",
+                "title": "Edit changelist spec",
                 "category": "Perforce",
                 "icon": "$(edit)"
             },
@@ -762,25 +762,25 @@
             },
             {
                 "command": "perforce.saveJobSpec",
-                "title": "Apply job spec",
+                "title": "Apply updates to job spec",
                 "category": "Perforce",
                 "icon": "$(cloud-upload)"
             },
             {
                 "command": "perforce.saveChangeSpec",
-                "title": "Apply change spec",
+                "title": "Apply updates to change spec",
                 "category": "Perforce",
                 "icon": "$(cloud-upload)"
             },
             {
                 "command": "perforce.refreshJobSpec",
-                "title": "Refresh job spec from perforce",
+                "title": "Refresh job spec from perforce (overwrites local edits)",
                 "category": "Perforce",
                 "icon": "$(refresh)"
             },
             {
                 "command": "perforce.refreshChangeSpec",
-                "title": "Refresh change spec from perforce",
+                "title": "Refresh change spec from perforce (overwrites local edits)",
                 "category": "Perforce",
                 "icon": "$(refresh)"
             }
