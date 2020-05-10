@@ -95,15 +95,25 @@ abstract class SpecEditor {
         return fullFile;
     }
 
-    async editSpec(resource: vscode.Uri, item: string) {
+    async editSpecImpl(resource: vscode.Uri, item: string) {
         const text = await this.getSpecText(resource, item);
         const withMessage =
             text +
-            "\n\n# When you are done editing, click the 'save spec' button\n# on this editor's toolbar to apply the edit on the perforce server";
+            "\n\n# When you are done editing, click the 'apply spec' button\n# on this editor's toolbar to apply the edit to the perforce server";
         const file = await this.createSpecFile(item, withMessage);
         await this.setResource(file, resource);
         await vscode.window.showTextDocument(file, { preview: false });
         SpecEditor.checkTabSettings();
+    }
+
+    async editSpec(resource: vscode.Uri, item: string) {
+        await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Window,
+                title: "Retrieving spec for " + this._type + " " + item,
+            },
+            () => this.editSpecImpl(resource, item)
+        );
     }
 
     private get specSuffix() {
@@ -143,7 +153,13 @@ abstract class SpecEditor {
     async inputSpec(doc: vscode.TextDocument) {
         try {
             const { item, resource, text } = await this.validateAndGetResource(doc);
-            await this.inputSpecText(resource, item, text);
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Window,
+                    title: "Uploading spec for " + this._type + " " + item,
+                },
+                () => this.inputSpecText(resource, item, text)
+            );
             // re-open with new values - old job specs are not valid because of the timestamp
             this.editSpec(resource, item);
         } catch (err) {
@@ -153,13 +169,7 @@ abstract class SpecEditor {
 
     async refreshSpec(doc: vscode.TextDocument) {
         const { item, resource } = await this.validateAndGetResource(doc);
-        await vscode.window.withProgress(
-            {
-                location: vscode.ProgressLocation.Window,
-                title: "Refreshing spec for " + this._type + " item",
-            },
-            () => this.editSpec(resource, item)
-        );
+        await this.editSpec(resource, item);
     }
 
     private async checkSavedDoc(event: vscode.TextDocumentWillSaveEvent) {

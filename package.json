@@ -762,25 +762,25 @@
             },
             {
                 "command": "perforce.saveJobSpec",
-                "title": "Save Job Spec",
+                "title": "Apply job spec",
                 "category": "Perforce",
                 "icon": "$(cloud-upload)"
             },
             {
                 "command": "perforce.saveChangeSpec",
-                "title": "Save Change Spec",
+                "title": "Apply change spec",
                 "category": "Perforce",
                 "icon": "$(cloud-upload)"
             },
             {
                 "command": "perforce.refreshJobSpec",
-                "title": "Refresh Job Spec from perforce",
+                "title": "Refresh job spec from perforce",
                 "category": "Perforce",
                 "icon": "$(refresh)"
             },
             {
                 "command": "perforce.refreshChangeSpec",
-                "title": "Refresh Change Spec from perforce",
+                "title": "Refresh change spec from perforce",
                 "category": "Perforce",
                 "icon": "$(refresh)"
             }
