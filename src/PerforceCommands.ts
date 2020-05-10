@@ -30,6 +30,7 @@ import {
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
 import { perforceContentProvider } from "./ContentProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
+import { changeSpecEditor, jobSpecEditor } from "./SpecEditor";
 
 // TODO resolve
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -69,6 +70,10 @@ export namespace PerforceCommands {
         commands.registerCommand("perforce.login", login);
         commands.registerCommand("perforce.diffFiles", diffFiles);
         commands.registerCommand("perforce.menuFunctions", menuFunctions);
+        commands.registerCommand("perforce.saveJobSpec", inputOpenJobSpec);
+        commands.registerCommand("perforce.saveChangeSpec", inputOpenChangeSpec);
+        commands.registerCommand("perforce.refreshJobSpec", refreshOpenJobSpec);
+        commands.registerCommand("perforce.refreshChangeSpec", refreshOpenChangeSpec);
     }
 
     export function registerImportantCommands(subscriptions: Disposable[]) {
@@ -843,6 +848,38 @@ export namespace PerforceCommands {
         if (ok) {
             PerforceSCMProvider.RefreshAll();
         }
+    }
+
+    async function inputOpenJobSpec() {
+        const doc = window.activeTextEditor?.document;
+        if (!doc) {
+            return;
+        }
+        await jobSpecEditor.inputSpec(doc);
+    }
+
+    async function inputOpenChangeSpec() {
+        const doc = window.activeTextEditor?.document;
+        if (!doc) {
+            return;
+        }
+        await changeSpecEditor.inputSpec(doc);
+    }
+
+    async function refreshOpenJobSpec() {
+        const doc = window.activeTextEditor?.document;
+        if (!doc) {
+            return;
+        }
+        await jobSpecEditor.refreshSpec(doc);
+    }
+
+    async function refreshOpenChangeSpec() {
+        const doc = window.activeTextEditor?.document;
+        if (!doc) {
+            return;
+        }
+        await changeSpecEditor.refreshSpec(doc);
     }
 
     function showFileHistory() {

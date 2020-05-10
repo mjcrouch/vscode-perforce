@@ -292,6 +292,10 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.EditChangelist.bind(this)
         );
         commands.registerCommand(
+            "perforce.editChangespec",
+            PerforceSCMProvider.EditChangespec.bind(this)
+        );
+        commands.registerCommand(
             "perforce.describe",
             PerforceSCMProvider.Describe.bind(this)
         );
@@ -543,6 +547,13 @@ export class PerforceSCMProvider {
         const model: Model = input.model;
         if (model) {
             await model.EditChangelist(input);
+        }
+    }
+
+    public static async EditChangespec(input: ResourceGroup) {
+        const model: Model = input.model;
+        if (model) {
+            await model.EditChangespec(input);
         }
     }
 

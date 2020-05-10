@@ -37,7 +37,7 @@ const jobFlags = flagMapper<JobOptions>([], "existingJob", ["-o"], {
     lastArgIsFormattedArray: true,
 });
 
-const outputJob = makeSimpleCommand("job", jobFlags);
+export const outputJob = makeSimpleCommand("job", jobFlags);
 
 export const getJob = asyncOuputHandler(outputJob, parseJobSpec);
 
@@ -82,3 +82,17 @@ const fixesFlags = flagMapper<FixesOptions>([["j", "job"]]);
 const fixesCommand = makeSimpleCommand("fixes", fixesFlags);
 
 export const fixes = asyncOuputHandler(fixesCommand, parseFixesOutuput);
+
+export type InputRawJobSpecOptions = {
+    input: string;
+};
+
+export const inputRawJobSpec = makeSimpleCommand(
+    "job",
+    () => ["-i"],
+    (options: InputRawJobSpecOptions) => {
+        return {
+            input: options.input,
+        };
+    }
+);

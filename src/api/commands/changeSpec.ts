@@ -38,7 +38,7 @@ const changeFlags = flagMapper<ChangeSpecOptions>([], "existingChangelist", ["-o
     lastArgIsFormattedArray: true,
 });
 
-const outputChange = makeSimpleCommand("change", changeFlags);
+export const outputChange = makeSimpleCommand("change", changeFlags);
 
 export const getChangeSpec = asyncOuputHandler(outputChange, parseChangeSpec);
 
@@ -70,6 +70,10 @@ export type InputChangeSpecOptions = {
     spec: ChangeSpec;
 };
 
+export type InputRawChangeSpecOptions = {
+    input: string;
+};
+
 export type CreatedChangelist = {
     rawOutput: string;
     chnum?: string;
@@ -82,6 +86,16 @@ function parseCreatedChangelist(createdStr: string): CreatedChangelist {
         chnum: matches?.[1],
     };
 }
+
+const inputRawChangeCommand = makeSimpleCommand(
+    "change",
+    () => ["-i"],
+    (options: InputRawChangeSpecOptions) => {
+        return {
+            input: options.input,
+        };
+    }
+);
 
 const inputChange = makeSimpleCommand(
     "change",
@@ -105,3 +119,7 @@ const inputChange = makeSimpleCommand(
 );
 
 export const inputChangeSpec = asyncOuputHandler(inputChange, parseCreatedChangelist);
+export const inputRawChangeSpec = asyncOuputHandler(
+    inputRawChangeCommand,
+    parseCreatedChangelist
+);

@@ -7,6 +7,7 @@ import * as qp from "./QuickPickProvider";
 import { showQuickPickForChangelist } from "./ChangeQuickPick";
 import { Job } from "../api/PerforceApi";
 import { Display } from "../Display";
+import { jobSpecEditor } from "../SpecEditor";
 
 const nbsp = "\xa0";
 
@@ -35,9 +36,14 @@ export const jobQuickPickProvider: qp.ActionableQuickPickProvider = {
                 vscode.window.showTextDocument(uri);
             },
         };
+        const editJobItem = {
+            label: "$(edit) Edit job",
+            description: "Edit the full job spec in the editor",
+            performAction: () => jobSpecEditor.editSpec(resource, job),
+        };
 
         return {
-            items: [...clipItems, showJobItem, ...fixItems],
+            items: [...clipItems, showJobItem, editJobItem, ...fixItems],
             placeHolder:
                 "Job " +
                 jobInfo.job +

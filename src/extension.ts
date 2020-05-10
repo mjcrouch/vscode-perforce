@@ -17,6 +17,7 @@ import * as QuickPicks from "./quickPick/QuickPicks";
 import * as p4 from "./api/PerforceApi";
 import { isTruthy } from "./TsUtils";
 import { registerChangelistSearch } from "./search/ChangelistTreeView";
+import { createSpecEditor } from "./SpecEditor";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
@@ -446,6 +447,7 @@ async function checkForSlevesque(ctx: vscode.ExtensionContext) {
 export async function activate(ctx: vscode.ExtensionContext) {
     // ALWAYS register the edit and save command
     PerforceCommands.registerImportantCommands(_disposable);
+    createSpecEditor(ctx);
 
     ctx.subscriptions.push(
         new vscode.Disposable(() => Disposable.from(..._disposable).dispose())

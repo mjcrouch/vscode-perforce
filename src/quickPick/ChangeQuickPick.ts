@@ -14,6 +14,7 @@ import { PerforceSCMProvider } from "../ScmProvider";
 import { pluralise, isTruthy } from "../TsUtils";
 import { showQuickPickForShelvedFile } from "./ShelvedFileQuickPick";
 import { showQuickPickForJob } from "./JobQuickPick";
+import { changeSpecEditor } from "../SpecEditor";
 
 const nbsp = "\xa0";
 
@@ -47,6 +48,7 @@ export const changeQuickPickProvider: qp.ActionableQuickPickProvider = {
         const actions = makeFocusPick(resource, change).concat(
             makeSwarmPick(change),
             makeClipboardPicks(resource, change),
+            makeEditPicks(resource, change),
             makeUnshelvePicks(resource, shelvedChange),
             makeJobPicks(resource, change),
             makeFilePicks(resource, change),
@@ -250,6 +252,21 @@ function makeSwarmPick(change: DescribedChangelist): qp.ActionableQuickPickItem[
         );
         return [];
     }
+}
+
+function makeEditPicks(
+    uri: vscode.Uri,
+    change: DescribedChangelist
+): qp.ActionableQuickPickItem[] {
+    return [
+        {
+            label: "$(edit) Edit changelist",
+            description: "Edit the full changelist spec in the editor",
+            performAction: () => {
+                changeSpecEditor.editSpec(uri, change.chnum);
+            },
+        },
+    ];
 }
 
 function makeClipboardPicks(
