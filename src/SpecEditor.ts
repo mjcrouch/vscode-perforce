@@ -190,7 +190,12 @@ abstract class SpecEditor {
                 },
                 () => this.inputSpecText(resource, item, text)
             );
-            if (newItem && newItem !== item) {
+
+            if (
+                newItem &&
+                newItem !== item &&
+                vscode.window.activeTextEditor?.document === doc
+            ) {
                 vscode.commands.executeCommand("workbench.action.closeActiveEditor");
             }
             // re-open with new values - old job specs are not valid because of the timestamp

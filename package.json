@@ -786,12 +786,12 @@
             },
             {
                 "command": "perforce.newChangeSpec",
-                "title": "New changelist in spec editor...",
+                "title": "Create changelist in editor...",
                 "category": "Perforce"
             },
             {
                 "command": "perforce.newJobSpec",
-                "title": "New job in spec editor...",
+                "title": "Create job in editor...",
                 "category": "Perforce"
             }
         ],
