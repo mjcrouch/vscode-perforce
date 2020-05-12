@@ -292,7 +292,7 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.EditChangelist.bind(this)
         );
         commands.registerCommand(
-            "perforce.editChangespec",
+            "perforce.editChangeSpec",
             PerforceSCMProvider.EditChangeSpec.bind(this)
         );
         commands.registerCommand(
