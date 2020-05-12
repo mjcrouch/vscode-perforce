@@ -32,7 +32,16 @@ abstract class SpecEditor {
         this._subscriptions.forEach((sub) => sub.dispose());
     }
 
+    /**
+     * Get the full spec text for the item
+     * @param item the id for the item (e.g. changelist or job), or "new" to create a new item
+     * @returns the full text of the object
+     */
     protected abstract getSpecText(resource: vscode.Uri, item: string): Promise<string>;
+    /**
+     * Input the spec text
+     * @returns The new item if it has changed - for example when creating a new changelist
+     */
     protected abstract inputSpecText(
         resource: vscode.Uri,
         item: string,
@@ -134,6 +143,11 @@ abstract class SpecEditor {
         SpecEditor.checkTabSettings();
     }
 
+    /**
+     * Open a new editor containing a spec to edit
+     * @param resource context for running perforce commands
+     * @param item the id of the item (e.g. changelist number of job)
+     */
     async editSpec(resource: vscode.Uri, item: string) {
         await vscode.window.withProgress(
             {
@@ -156,7 +170,7 @@ abstract class SpecEditor {
         return Path.basename(file).split(".")[0];
     }
 
-    async validateAndGetResource(doc: vscode.TextDocument) {
+    private async validateAndGetResource(doc: vscode.TextDocument) {
         const file = doc.uri;
         const filename = Path.basename(file.fsPath);
         if (!this.isValidSpecFilename(filename)) {
@@ -271,7 +285,6 @@ class JobSpecEditor extends SpecEditor {
     }
     protected async inputSpecText(resource: vscode.Uri, item: string, text: string) {
         const output = await p4.inputRawJobSpec(resource, { input: text });
-        // TODO parse job output ahnd return new job name
         Display.showMessage(output.rawOutput);
         return output.job ?? item;
     }
