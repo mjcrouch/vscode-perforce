@@ -293,7 +293,15 @@ export class PerforceSCMProvider {
         );
         commands.registerCommand(
             "perforce.editChangespec",
-            PerforceSCMProvider.EditChangespec.bind(this)
+            PerforceSCMProvider.EditChangeSpec.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.newChangeSpec",
+            PerforceSCMProvider.NewChangeSpec.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.newJobSpec",
+            PerforceSCMProvider.NewJobSpec.bind(this)
         );
         commands.registerCommand(
             "perforce.describe",
@@ -475,6 +483,20 @@ export class PerforceSCMProvider {
         await perforceProvider?._model.GoToJob();
     }
 
+    public static async NewChangeSpec(sourceControl?: SourceControl) {
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
+        await perforceProvider?._model.NewChangeSpec();
+    }
+
+    public static async NewJobSpec(sourceControl?: SourceControl) {
+        const perforceProvider = await PerforceSCMProvider.chooseScmProvider(
+            sourceControl
+        );
+        await perforceProvider?._model.NewJobSpec();
+    }
+
     public static async OpenFile(...resourceStates: SourceControlResourceState[]) {
         const selection = resourceStates.filter(
             (s) => s instanceof Resource
@@ -550,10 +572,10 @@ export class PerforceSCMProvider {
         }
     }
 
-    public static async EditChangespec(input: ResourceGroup) {
+    public static async EditChangeSpec(input: ResourceGroup) {
         const model: Model = input.model;
         if (model) {
-            await model.EditChangespec(input);
+            await model.EditChangeSpec(input);
         }
     }
 

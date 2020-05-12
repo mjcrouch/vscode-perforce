@@ -87,7 +87,21 @@ export type InputRawJobSpecOptions = {
     input: string;
 };
 
-export const inputRawJobSpec = makeSimpleCommand(
+export type CreatedJob = {
+    rawOutput: string;
+    job?: string;
+};
+
+function parseCreatedJob(createdStr: string): CreatedJob {
+    const matches = /Job (\S*) (saved|not changed)/.exec(createdStr);
+
+    return {
+        rawOutput: createdStr,
+        job: matches?.[1],
+    };
+}
+
+const inputRawJobCommand = makeSimpleCommand(
     "job",
     () => ["-i"],
     (options: InputRawJobSpecOptions) => {
@@ -96,3 +110,5 @@ export const inputRawJobSpec = makeSimpleCommand(
         };
     }
 );
+
+export const inputRawJobSpec = asyncOuputHandler(inputRawJobCommand, parseCreatedJob);

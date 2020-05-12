@@ -28,7 +28,7 @@ import { ChangeInfo, ChangeSpec } from "../api/CommonTypes";
 import { isTruthy, pluralise } from "../TsUtils";
 import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { showQuickPickForJob } from "../quickPick/JobQuickPick";
-import { changeSpecEditor } from "../SpecEditor";
+import { changeSpecEditor, jobSpecEditor } from "../SpecEditor";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -356,9 +356,17 @@ export class Model implements Disposable {
         this._sourceControl.inputBox.value = "#" + id + "\n" + change.description ?? "";
     }
 
-    public async EditChangespec(input: ResourceGroup): Promise<void> {
+    public async EditChangeSpec(input: ResourceGroup): Promise<void> {
         this.assertIsNotDefault(input);
         await changeSpecEditor.editSpec(this._workspaceUri, input.chnum);
+    }
+
+    public async NewChangeSpec(): Promise<void> {
+        await changeSpecEditor.editSpec(this._workspaceUri, "new");
+    }
+
+    public async NewJobSpec(): Promise<void> {
+        await jobSpecEditor.editSpec(this._workspaceUri, "new");
     }
 
     public async Describe(input: ResourceGroup): Promise<void> {

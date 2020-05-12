@@ -622,7 +622,7 @@
                 "icon": "$(edit)"
             },
             {
-                "command": "perforce.editChangespec",
+                "command": "perforce.editChangeSpec",
                 "title": "Edit changelist spec",
                 "category": "Perforce",
                 "icon": "$(edit)"
@@ -783,6 +783,16 @@
                 "title": "Refresh change spec from perforce (overwrites local edits)",
                 "category": "Perforce",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "perforce.newChangeSpec",
+                "title": "New changelist in spec editor...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.newJobSpec",
+                "title": "New job in spec editor...",
+                "category": "Perforce"
             }
         ],
         "menus": {
@@ -804,7 +814,7 @@
                     "when": "0"
                 },
                 {
-                    "command": "perforce.editChangespec",
+                    "command": "perforce.editChangeSpec",
                     "when": "0"
                 },
                 {
@@ -1034,23 +1044,33 @@
                     "when": "scmProvider == perforce"
                 },
                 {
+                    "command": "perforce.newChangeSpec",
+                    "group": "4_spec@1",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.newJobSpec",
+                    "group": "4_spec@2",
+                    "when": "scmProvider == perforce"
+                },
+                {
                     "command": "perforce.goToJob",
-                    "group": "4_more@1",
+                    "group": "5_more@1",
                     "when": "scmProvider == perforce"
                 },
                 {
                     "command": "perforce.goToChangelist",
-                    "group": "4_more@2",
+                    "group": "5_more@2",
                     "when": "scmProvider == perforce"
                 },
                 {
                     "command": "perforce.showLastQuickPick",
-                    "group": "4_more@3",
+                    "group": "5_more@3",
                     "when": "scmProvider == perforce"
                 },
                 {
                     "command": "perforce.showRecentQuickPick",
-                    "group": "4_more@4",
+                    "group": "5_more@4",
                     "when": "scmProvider == perforce"
                 }
             ],
@@ -1091,7 +1111,7 @@
                     "group": "1_modification@2"
                 },
                 {
-                    "command": "perforce.editChangespec",
+                    "command": "perforce.editChangeSpec",
                     "when": "scmProvider == perforce && scmResourceGroup != default",
                     "group": "1_modification@3"
                 },
