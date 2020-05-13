@@ -102,6 +102,14 @@ export class Model implements Disposable {
         return result.concat([...this._pendingGroups.values()].map((v) => v.group));
     }
 
+    private get hideDefaultNonWorkspace() {
+        return (
+            this._config.hideNonWorkspaceFiles ===
+                HideNonWorkspace.HIDE_CHANGELISTS_AND_DEFAULT_FILES ||
+            this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES
+        );
+    }
+
     public constructor(
         private _workspaceUri: vscode.Uri, // TODO better not to dupliate this with the scm provider
         private _clientName: string,
@@ -288,10 +296,7 @@ export class Model implements Disposable {
             existingChangelist,
         });
 
-        if (
-            this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES &&
-            changeFields.files
-        ) {
+        if (this.hideDefaultNonWorkspace && changeFields.files) {
             const infos = await p4.getFstatInfo(this._workspaceUri, {
                 depotPaths: changeFields.files.map((file) => file.depotPath),
             });
@@ -419,7 +424,7 @@ export class Model implements Disposable {
         }
 
         if (pick === "Submit") {
-            if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
+            if (this.hideDefaultNonWorkspace) {
                 // TODO - relies on state - i.e. that savetochangelist applies hideNonWorkspaceFiles
                 const changeListNr = await this.SaveToChangelist(descStr);
 
@@ -1059,7 +1064,12 @@ export class Model implements Disposable {
         const depotPath = Uri.file(fstatInfo["depotFile"]);
 
         const uri = Uri.file(clientFile);
-        if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES) {
+        if (
+            this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_FILES ||
+            (this._config.hideNonWorkspaceFiles ===
+                HideNonWorkspace.HIDE_CHANGELISTS_AND_DEFAULT_FILES &&
+                change === "default")
+        ) {
             if (!this.isUriInWorkspace(uri)) {
                 return;
             }

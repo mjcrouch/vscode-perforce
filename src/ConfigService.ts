@@ -4,6 +4,7 @@ export enum HideNonWorkspace {
     SHOW_ALL,
     HIDE_FILES,
     HIDE_CHANGELISTS,
+    HIDE_CHANGELISTS_AND_DEFAULT_FILES,
 }
 
 export enum FileShelveMode {
@@ -49,10 +50,16 @@ export class ConfigAccessor {
             if (val === "show all files") {
                 return HideNonWorkspace.SHOW_ALL;
             }
+            if (val === "hide changelists, hide files in default changelist") {
+                return HideNonWorkspace.HIDE_CHANGELISTS_AND_DEFAULT_FILES;
+            }
             if (val.startsWith("hide changelists")) {
                 return HideNonWorkspace.HIDE_CHANGELISTS;
             }
-            if (val.startsWith("show all changelists")) {
+            if (
+                val.startsWith("show all changelists") || // legacy name
+                val === "hide non workspace files"
+            ) {
                 return HideNonWorkspace.HIDE_FILES;
             }
         }

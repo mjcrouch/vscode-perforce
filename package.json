@@ -97,7 +97,7 @@
                         "autodetect",
                         "off"
                     ],
-                    "enumDescription": [
+                    "enumDescriptions": [
                         "Always try to activate the the SCM provider and P4 status icon",
                         "Only activate the SCM provider when a perforce client is found in the workspace",
                         "Never try to activate"
@@ -201,8 +201,9 @@
                         "all",
                         "off"
                     ],
-                    "enumDescription": [
-                        "Include all files in count (default)",
+                    "enumDescriptions": [
+                        "Include all files in count except for shelved files (default)",
+                        "Include all files in count",
                         "No badge counter"
                     ],
                     "default": "all-but-shelved"
@@ -240,11 +241,18 @@
                     "type": "string",
                     "enum": [
                         "show all files",
-                        "hide changelists that contain ONLY non-workspace files, but show non-workspace files in other changelists",
+                        "hide changelists",
+                        "hide changelists, hide files in default changelist",
+                        "hide non workspace files"
+                    ],
+                    "enumDescriptions": [
+                        "show all files",
+                        "hide changelists that contain ONLY non-workspace files. Show non-workspace files in other changelists",
+                        "hide changelists that contain ONLY non-workspace files. Show non-workspace files in other changelists, except the default changelist",
                         "show all changelists, but hide all non-workspace files within them (see WARNING)"
                     ],
                     "default": "show all files",
-                    "description": "Controls how files outside of the current VS Code workspace are shown in the SCM Provider. WARNING: If you select `hide all non-workspace files`, and submit changelists other than the default, it will submit files that are not visible! It is recommeded to hide changelists instead"
+                    "description": "Controls how files outside of the current VS Code workspace are shown in the SCM Provider.\n\nNote: even if you open non-workspace files in the editor, they will not be considered as workspace files.\n\nWARNING: If you select to hide all non-workspace files, and then submit changelists other than the default, it will submit files that are not visible! It is recommended to hide changelists instead"
                 },
                 "perforce.hideShelvedFiles": {
                     "type": "boolean",
@@ -258,12 +266,17 @@
                 },
                 "perforce.fileShelveMode": {
                     "type": "string",
-                    "description": "Controls the behaviour when shelving / unshelving an individual file\n\n`swap` - When shelving, always try to revert the open file. When unshelving, always try to delete the shelved file\n`keep both` - When shelving, never try to revert the open file. When unshelving, never try to delete the shelved file\n`prompt` - When shelving, prompt for whether to revert the open file. When unshelving, prompt for whether to delete the shelved file",
+                    "description": "Controls the behaviour when shelving / unshelving an individual file",
                     "default": "prompt",
                     "enum": [
                         "swap",
                         "keep both",
                         "prompt"
+                    ],
+                    "enumDescriptions": [
+                        "When shelving, always try to revert the open file. When unshelving, always try to delete the shelved file",
+                        "When shelving, never try to revert the open file. When unshelving, never try to delete the shelved file",
+                        "When shelving, prompt for whether to revert the open file. When unshelving, prompt for whether to delete the shelved file"
                     ]
                 },
                 "perforce.swarmHost": {
@@ -286,6 +299,11 @@
                         "All diffable files",
                         "Only on diffs",
                         "Never"
+                    ],
+                    "enumDescriptions": [
+                        "Show the previous button on all perforce files and files with a known status in perforce",
+                        "Only show the previous button when already looking at a diff (it's still possible to diff previous from the extended context menu)",
+                        "Never show the previous / next buttons (it's still possible to navigate diffs from the extended context menu)"
                     ],
                     "default": "All diffable files",
                     "description": "When to show buttons on the editor title menu for diffing the next / previous revision"
