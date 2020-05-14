@@ -527,8 +527,9 @@ export class Model implements Disposable {
                 );
                 return;
             }
-            opts.paths = [{ fsPath: input.resourceUri.fsPath }];
-            message += "to file " + Path.basename(input.resourceUri.fsPath) + "?";
+            opts.paths = [input.resourceUri];
+            message +=
+                "to file " + PerforceUri.basenameWithoutRev(input.resourceUri) + "?";
         } else if (isResourceGroup(input)) {
             opts.paths = ["//..."];
             opts.chnum = input.chnum;
@@ -682,7 +683,7 @@ export class Model implements Disposable {
     async showResolveWarningForFile(input: Resource) {
         const resolveButton = "Resolve file";
         const chosen = await vscode.window.showWarningMessage(
-            Path.basename(input.resourceUri.fsPath) +
+            PerforceUri.basenameWithoutRev(input.resourceUri) +
                 " was unshelved, but needs resolving",
             resolveButton
         );
@@ -700,7 +701,7 @@ export class Model implements Disposable {
         }
 
         if (mode === FileShelveMode.PROMPT) {
-            const file = Path.basename(input.resourceUri.fsPath);
+            const file = PerforceUri.basenameWithoutRev(input.resourceUri);
             const message = file + " was unshelved. Delete the shelved file?";
             const yes = "Delete " + file + "@=" + input.change;
             const always = "Always";
@@ -738,7 +739,7 @@ export class Model implements Disposable {
         }
 
         if (mode === FileShelveMode.PROMPT) {
-            const file = Path.basename(input.resourceUri.fsPath);
+            const file = PerforceUri.basenameWithoutRev(input.resourceUri);
             const message = file + " was shelved. Revert the open file?";
             const yes = "Revert " + file;
             const always = "Always";
@@ -783,7 +784,7 @@ export class Model implements Disposable {
         await p4.shelve(this._workspaceUri, {
             chnum: input.change,
             force: true,
-            paths: [{ fsPath: input.resourceUri.fsPath }],
+            paths: [input.resourceUri],
         });
         this.Refresh();
         await this.revertFileAfterUnshelve(input);
@@ -816,7 +817,8 @@ export class Model implements Disposable {
     public async DeleteShelvedFile(input: Resource): Promise<void> {
         if (!input.isShelved) {
             Display.showImportantError(
-                "Shelve cannot be used on normal file: " + Path.basename(input.uri.fsPath)
+                "Shelve cannot be used on normal file: " +
+                    PerforceUri.basenameWithoutRev(input.resourceUri)
             );
             return;
         }
@@ -1000,9 +1002,7 @@ export class Model implements Disposable {
         try {
             const output = await p4.reopenFiles(this._workspaceUri, {
                 chnum: chnum,
-                files: resources.map((resource) => {
-                    return { fsPath: resource.resourceUri.fsPath };
-                }),
+                files: resources.map((resource) => resource.resourceUri),
             });
             Display.channel.append(output);
         } catch (reason) {

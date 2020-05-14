@@ -503,7 +503,7 @@ export class PerforceSCMProvider {
         ) as Resource[];
         const preview = selection.length === 1;
         const promises = selection.map((resource) => {
-            return commands.executeCommand<void>("vscode.open", resource.resourceUri, {
+            return commands.executeCommand<void>("vscode.open", resource.openUri, {
                 preview,
             });
         });
@@ -804,7 +804,7 @@ export class PerforceSCMProvider {
         diffType?: DiffProvider.DiffType
     ): Promise<void> {
         if (resource.FileType.base === FileType.BINARY) {
-            const uri = PerforceUri.fromUri(resource.resourceUri, { command: "fstat" });
+            const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
             await workspace
                 .openTextDocument(uri)
                 .then((doc) => window.showTextDocument(doc));

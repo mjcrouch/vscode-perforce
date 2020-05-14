@@ -276,10 +276,12 @@ describe("Diff Provider", () => {
                 };
                 stubModel.have.resolves(have);
 
-                const expectedLeft = PerforceUri.withArgs(have.depotUri, {
-                    haveRev: "4",
-                    rev: "3",
-                }).with({ fragment: "3" });
+                const expectedLeft = PerforceUri.withArgs(
+                    PerforceUri.fromUriWithRevision(have.depotUri, "3"),
+                    {
+                        haveRev: "4",
+                    }
+                ).with({ fragment: "3" });
                 const expectedRight = PerforceUri.withArgs(have.depotUri, {
                     haveRev: "4",
                 });

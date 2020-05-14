@@ -1123,6 +1123,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(out).to.deep.equal(
                     basicFiles.add().localFile.with({
+                        path: basicFiles.add().localFile.path + "#have",
                         scheme: "perforce",
                         fragment: "have",
                         query: "command=print&p4Args=-q&rev=have",
@@ -1141,6 +1142,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(out).to.deep.equal(
                     vscode.Uri.parse(basicFiles.moveDelete().depotPath).with({
+                        path: "/testArea/testFolderOld/movedFrom.txt#4",
                         scheme: "perforce",
                         fragment: "4",
                         query:
@@ -1466,7 +1468,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                 });
 
                 expect(warn).to.have.been.calledOnce;
@@ -1489,7 +1491,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                 });
 
                 expect(warn).to.have.been.calledOnce;
@@ -1589,7 +1591,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                 });
                 expect(items.stubModel.revert).to.have.been.calledWithMatch(
                     workspaceUri,
@@ -1642,7 +1644,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                 });
 
                 expect(warn).not.to.have.been.called;
@@ -1692,7 +1694,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                 });
 
                 expect(warn).to.have.been.calledTwice;
@@ -1703,7 +1705,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(items.stubModel.shelve).to.have.been.calledWith(workspaceUri, {
                     chnum: "1",
                     force: true,
-                    paths: [{ fsPath: basicFiles.delete().localFile.fsPath }],
+                    paths: [
+                        sinon.match({ fsPath: basicFiles.delete().localFile.fsPath }),
+                    ],
                 });
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
                     paths: [
@@ -1786,7 +1790,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt#4 ⟷ a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath },
+                        { fsPath: file.localFile.fsPath + "#4" },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "#4"]
@@ -1814,7 +1818,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt#4 ⟷ a.txt"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file1.localFile.fsPath },
+                        { fsPath: file1.localFile.fsPath + "#4" },
                         "print",
                         sinon.match.any,
                         ["-q", file1.localFile.fsPath + "#4"]
@@ -1920,7 +1924,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
 
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath },
+                        { fsPath: file.localFile.fsPath + "#7" },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "#7"]
@@ -1989,7 +1993,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt@=1 ⟷ a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath },
+                        { fsPath: file.localFile.fsPath + "@=1" },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "@=1"]
@@ -2497,8 +2501,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                     {
                         chnum: "2",
                         files: [
-                            { fsPath: basicFiles.add().localFile.fsPath },
-                            { fsPath: basicFiles.edit().localFile.fsPath },
+                            sinon.match({ fsPath: basicFiles.add().localFile.fsPath }),
+                            sinon.match({ fsPath: basicFiles.edit().localFile.fsPath }),
                         ],
                     }
                 );
@@ -2519,7 +2523,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                     workspaceUri,
                     {
                         chnum: "default",
-                        files: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                        files: [
+                            sinon.match({ fsPath: basicFiles.edit().localFile.fsPath }),
+                        ],
                     }
                 );
             });
@@ -2557,8 +2563,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                     {
                         chnum: "99",
                         files: [
-                            { fsPath: basicFiles.add().localFile.fsPath },
-                            { fsPath: basicFiles.edit().localFile.fsPath },
+                            sinon.match({ fsPath: basicFiles.add().localFile.fsPath }),
+                            sinon.match({ fsPath: basicFiles.edit().localFile.fsPath }),
                         ],
                     }
                 );
@@ -2743,7 +2749,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                 await PerforceSCMProvider.Revert(resource as Resource);
 
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                     unchanged: undefined,
                 });
             });
@@ -2767,11 +2773,13 @@ describe("Model & ScmProvider modules (integration)", () => {
                 expect(warn).to.have.been.calledTwice;
 
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.add().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.add().localFile.fsPath })],
                     unchanged: undefined,
                 });
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.delete().localFile.fsPath }],
+                    paths: [
+                        sinon.match({ fsPath: basicFiles.delete().localFile.fsPath }),
+                    ],
                     unchanged: undefined,
                 });
             });
@@ -2792,7 +2800,9 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(items.stubModel.revert).to.have.been.calledOnce;
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.moveAdd().localFile.fsPath }],
+                    paths: [
+                        sinon.match({ fsPath: basicFiles.moveAdd().localFile.fsPath }),
+                    ],
                     unchanged: undefined,
                 });
 
@@ -2814,7 +2824,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(warn).not.to.have.been.called;
                 expect(items.stubModel.revert).to.have.been.calledWith(workspaceUri, {
-                    paths: [{ fsPath: basicFiles.edit().localFile.fsPath }],
+                    paths: [sinon.match({ fsPath: basicFiles.edit().localFile.fsPath })],
                     unchanged: true,
                 });
             });

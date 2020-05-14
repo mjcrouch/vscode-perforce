@@ -97,10 +97,7 @@ export default class FileSystemActions {
         this._eventsDisposable.dispose();
     }
 
-    private static onWillSaveFile(
-        doc: TextDocument,
-        reason: TextDocumentSaveReason
-    ): Promise<boolean> {
+    private static onWillSaveFile(doc: TextDocument, reason: TextDocumentSaveReason) {
         if (
             FileSystemActions._lastSavedFileUri?.fsPath === doc.uri.fsPath &&
             reason !== TextDocumentSaveReason.Manual
@@ -147,7 +144,7 @@ export default class FileSystemActions {
     // configurable and/or the operation should be cancellable
     // in future releases.
     // https://github.com/stef-levesque/vscode-perforce/issues/110
-    private static tryEditFile(uri: Uri): Promise<boolean> {
+    private static tryEditFile(uri: Uri) {
         if (
             PerforceSCMProvider.hasOpenFile(uri) &&
             !PerforceSCMProvider.mayHaveConflictForFile(uri)

@@ -181,7 +181,7 @@ export function fragmentAsSuffix(
     if (ignoreRevisionFragments) {
         return "";
     }
-    return fragment ? (fragment.startsWith("@") ? fragment : "#" + fragment) : "";
+    return PerforceUri.revOrLabelAsSuffix(fragment);
 }
 
 function fileSpecToArg(fileSpec: FileSpec, ignoreRevisionFragments?: boolean) {
@@ -194,8 +194,9 @@ function fileSpecToArg(fileSpec: FileSpec, ignoreRevisionFragments?: boolean) {
             )
         );
     }
+    // TODO don't really like this bit
     return (
-        Utils.expansePath(fileSpec.fsPath) +
+        Utils.expansePath(PerforceUri.withoutRev(fileSpec.fsPath, fileSpec.fragment)) +
         fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
     );
 }

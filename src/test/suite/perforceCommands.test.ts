@@ -84,6 +84,7 @@ describe("Perforce Command Module (integration)", () => {
             await PerforceCommands.diff(5);
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
                 PerforceUri.fromUri(localFile).with({
+                    path: localFile.path + "#5",
                     fragment: "5",
                 }),
                 localFile,

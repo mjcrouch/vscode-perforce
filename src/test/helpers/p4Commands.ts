@@ -32,6 +32,7 @@ function resourceToString(resource: Resource) {
             status: resource.status,
             isShelved: resource.isShelved,
             resourceUri: resource.resourceUri?.toString(),
+            openUri: resource.openUri?.toString(),
             underlyingUri: resource.underlyingUri?.toString(),
             fromFile: resource.fromFile?.toString(),
         },
@@ -152,6 +153,13 @@ export default function (chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
 
             assertP4UriMatches(
                 Assertion,
+                resource.openUri,
+                expected.localFile,
+                "Resource " + i + " resource URI : " + resourceToString(resource)
+            );
+
+            assertP4UriMatches(
+                Assertion,
                 resource.resourceUri,
                 expected.localFile,
                 "Resource " + i + " resource URI : " + resourceToString(resource)
@@ -193,6 +201,18 @@ export default function (chai: Chai.ChaiStatic, _utils: Chai.ChaiUtils) {
             assertP4UriMatches(
                 Assertion,
                 resource.resourceUri,
+                PerforceUri.fromDepotPath(
+                    expected.suppressFstatClientFile
+                        ? resource.model.workspaceUri
+                        : expected.localFile,
+                    expected.depotPath,
+                    ""
+                ),
+                "Resource " + i + " resource URI : " + resourceToString(resource)
+            );
+            assertP4UriMatches(
+                Assertion,
+                resource.openUri,
                 PerforceUri.fromDepotPath(
                     expected.suppressFstatClientFile
                         ? resource.model.workspaceUri

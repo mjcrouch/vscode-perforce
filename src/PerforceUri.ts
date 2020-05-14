@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as Path from "path";
 
 export type UriArguments = {
     workspace?: string;
@@ -20,7 +21,7 @@ export function isSameFileOrDepotPath(a: vscode.Uri, b: vscode.Uri) {
     if (isDepotUri(a) && isDepotUri(b)) {
         return getDepotPathFromDepotUri(a) === getDepotPathFromDepotUri(b);
     } else {
-        return a.fsPath === b.fsPath;
+        return fsPathWithoutRev(a) === fsPathWithoutRev(b);
     }
 }
 
@@ -28,9 +29,45 @@ export function getRevOrAtLabel(uri: vscode.Uri) {
     return uri.fragment;
 }
 
+export function revOrLabelAsSuffix(revOrAtLabel: string | undefined) {
+    return revOrAtLabel
+        ? revOrAtLabel.startsWith("@")
+            ? revOrAtLabel
+            : "#" + revOrAtLabel
+        : "";
+}
+
+export function withoutRev(path: string, revOrAtLabel: string | undefined) {
+    const revStr = revOrLabelAsSuffix(revOrAtLabel);
+    if (revStr && path.endsWith(revStr)) {
+        return path.slice(0, -revStr.length);
+    }
+    return path;
+}
+
+function uriWithoutRev(uri: vscode.Uri) {
+    const path = withoutRev(uri.path, getRevOrAtLabel(uri));
+    return uri.with({ path: path });
+}
+
+export function fsPathWithoutRev(uri: vscode.Uri) {
+    return uriWithoutRev(uri).fsPath;
+}
+
+export function basenameWithoutRev(uri: vscode.Uri) {
+    return Path.basename(fsPathWithoutRev(uri));
+}
+
+function uriWithRev(uri: vscode.Uri, revOrAtLabel: string | undefined) {
+    return uri.with({
+        path: uri.path + revOrLabelAsSuffix(revOrAtLabel),
+        fragment: revOrAtLabel,
+    });
+}
+
 export function getDepotPathFromDepotUri(uri: vscode.Uri): string {
     const args = decodeUriQuery(uri.query);
-    return "//" + (args.depotName ?? uri.authority) + uri.path;
+    return "//" + (args.depotName ?? uri.authority) + uriWithoutRev(uri).path;
 }
 
 function encodeParam(param: string, value?: string | boolean) {
@@ -39,6 +76,34 @@ function encodeParam(param: string, value?: string | boolean) {
     } else if (value === undefined || value) {
         return encodeURIComponent(param);
     }
+}
+
+export function parse(uri: string) {
+    // because we're adding fragment identifiers to strings, we need to customise parsing
+    // the URI might look like this for revision 1
+    // perforce:/my/path#1?a=b#1
+    // standard uri parsing produces { path: /my/path, fragment: #1?a=b#1 }
+    // we want: path: /my/path#1 query: a=b, fragment: #1
+    const parsed = vscode.Uri.parse(uri);
+    const queryIndex = parsed.fragment.indexOf("?");
+    const fragmentIndex = parsed.fragment.indexOf("#");
+    if (queryIndex >= 0 || fragmentIndex >= 0) {
+        return parsed.with({
+            path:
+                parsed.path +
+                "#" +
+                parsed.fragment.slice(0, queryIndex >= 0 ? queryIndex : fragmentIndex),
+            fragment: fragmentIndex > 0 ? parsed.fragment.slice(fragmentIndex + 1) : "",
+            query:
+                queryIndex >= 0
+                    ? parsed.fragment.slice(
+                          queryIndex + 1,
+                          fragmentIndex > 0 ? fragmentIndex : undefined
+                      )
+                    : undefined,
+        });
+    }
+    return parsed;
 }
 
 /*
@@ -57,13 +122,15 @@ export function fromDepotPath(
     depotPath: string,
     revisionOrAtLabel: string | undefined
 ) {
-    const baseUri = vscode.Uri.parse("perforce:" + depotPath).with({
-        fragment: revisionOrAtLabel,
-    });
+    const baseUri = uriWithRev(
+        vscode.Uri.parse("perforce:" + depotPath),
+        revisionOrAtLabel
+    );
+
     const depotName = depotPath.split("/")[2];
     return fromUri(baseUri, {
         depot: true,
-        workspace: workspace.fsPath,
+        workspace: (getUsableWorkspace(workspace) ?? workspace).fsPath,
         depotName,
         rev: revisionOrAtLabel,
     });
@@ -88,7 +155,7 @@ export function getWorkspaceFromQuery(uri: vscode.Uri) {
 
 export function getUsableWorkspace(uri: vscode.Uri) {
     return !isDepotUri(uri) && !!uri.fsPath
-        ? vscode.Uri.file(uri.fsPath)
+        ? vscode.Uri.file(uriWithoutRev(uri).fsPath)
         : getWorkspaceFromQuery(uri);
 }
 
@@ -116,9 +183,12 @@ export function fromUri(uri: vscode.Uri, otherArgs?: UriArguments) {
 }
 
 export function fromUriWithRevision(perforceUri: vscode.Uri, revisionOrAtLabel: string) {
-    return fromUri(perforceUri.with({ fragment: revisionOrAtLabel }), {
-        rev: revisionOrAtLabel,
-    });
+    return uriWithRev(
+        fromUri(uriWithoutRev(perforceUri), {
+            rev: revisionOrAtLabel,
+        }),
+        revisionOrAtLabel
+    );
 }
 
 /**
@@ -144,7 +214,7 @@ export function withArgs(
                   ...args,
               });
     return revisionOrAtLabel !== undefined
-        ? uri.with({ query: newQuery, fragment: revisionOrAtLabel })
+        ? uriWithRev(uriWithoutRev(uri).with({ query: newQuery }), revisionOrAtLabel)
         : uri.with({ query: newQuery });
 }
 

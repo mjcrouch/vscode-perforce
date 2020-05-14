@@ -422,7 +422,7 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
         }
         const filePath = PerforceUri.isDepotUri(openUri)
             ? PerforceUri.getDepotPathFromDepotUri(openUri)
-            : openUri.fsPath;
+            : PerforceUri.fsPathWithoutRev(openUri);
         return filePath;
     }
 

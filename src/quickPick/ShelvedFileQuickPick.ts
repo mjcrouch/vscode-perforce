@@ -10,7 +10,6 @@ import { isTruthy } from "../TsUtils";
 import { GetStatus, operationCreatesFile, Status } from "../scm/Status";
 import * as ChangeQuickPick from "./ChangeQuickPick";
 import { showQuickPickForFile } from "./FileQuickPick";
-import * as Path from "path";
 
 const nbsp = "\xa0";
 
@@ -178,7 +177,7 @@ async function makeDiffPicks(
         !operationCreatesFile(status)
             ? {
                   label: "$(list-flat) Go to source revision",
-                  description: Path.basename(uri.fsPath) + "#" + operation.revision,
+                  description: PerforceUri.fsPathWithoutRev(uri),
                   performAction: () => showQuickPickForFile(uri),
               }
             : undefined,
@@ -186,7 +185,7 @@ async function makeDiffPicks(
             ? {
                   label: "$(list-flat) Go to moved-from revision",
                   description:
-                      Path.basename(movedFrom.fsPath) +
+                      PerforceUri.basenameWithoutRev(movedFrom) +
                       "#" +
                       PerforceUri.getRevOrAtLabel(movedFrom),
                   performAction: () => showQuickPickForFile(movedFrom),

@@ -61,7 +61,9 @@ const revertFlags = flagMapper<RevertOptions>(
         ["a", "unchanged"],
         ["c", "chnum"],
     ],
-    "paths"
+    "paths",
+    undefined,
+    { ignoreRevisionFragments: true }
 );
 
 export const revert = makeSimpleCommand("revert", revertFlags, () => {
@@ -341,7 +343,9 @@ export type AddOptions = {
     chnum?: string;
     files: PerforceFile[];
 };
-const addFlags = flagMapper<AddOptions>([["c", "chnum"]], "files");
+const addFlags = flagMapper<AddOptions>([["c", "chnum"]], "files", undefined, {
+    ignoreRevisionFragments: true,
+});
 
 export const add = makeSimpleCommand("add", addFlags, () => {
     return { logStdOut: true };
@@ -351,7 +355,9 @@ export type EditOptions = {
     chnum?: string;
     files: PerforceFile[];
 };
-const editFlags = flagMapper<EditOptions>([["c", "chnum"]], "files");
+const editFlags = flagMapper<EditOptions>([["c", "chnum"]], "files", undefined, {
+    ignoreRevisionFragments: true,
+});
 
 export const edit = makeSimpleCommand("edit", editFlags, () => {
     return { logStdOut: true };

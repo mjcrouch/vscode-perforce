@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
 import { isTruthy } from "../TsUtils";
 import { Display } from "../Display";
+import * as PerforceUri from "../PerforceUri";
 
 export function asUri(uri: vscode.Uri | string) {
     if (typeof uri === "string") {
-        return vscode.Uri.parse(uri);
+        return PerforceUri.parse(uri);
     }
     return uri;
 }

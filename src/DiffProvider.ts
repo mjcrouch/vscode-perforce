@@ -76,11 +76,11 @@ function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
         const rightRev = PerforceUri.getRevOrAtLabel(rightFile);
         return (
             pathWithRev(
-                Path.basename(leftFile.fsPath),
+                PerforceUri.basenameWithoutRev(leftFile),
                 PerforceUri.getRevOrAtLabel(leftFile)
             ) +
             " ⟷ " +
-            pathWithRev(Path.basename(rightFile.fsPath), rightRev, true)
+            pathWithRev(PerforceUri.basenameWithoutRev(rightFile), rightRev, true)
         );
     }
     const leftPath = PerforceUri.getDepotPathFromDepotUri(leftFile);
@@ -186,7 +186,7 @@ function diffPreviousUsingLeftInfo(fromDoc: Uri): boolean | Promise<void> {
     if (!args.leftUri) {
         return false;
     }
-    const rightUri = PerforceUri.withArgs(Uri.parse(args.leftUri), {
+    const rightUri = PerforceUri.withArgs(PerforceUri.parse(args.leftUri), {
         diffStartFile: args.diffStartFile,
     });
     return diffPreviousFrom(rightUri);
@@ -232,7 +232,7 @@ export async function diffNext(fromDoc: Uri) {
     const atHaveRev = args.haveRev && parseInt(args.haveRev) === rev;
     const rightUri =
         atHaveRev && args.diffStartFile
-            ? Uri.parse(args.diffStartFile)
+            ? PerforceUri.parse(args.diffStartFile)
             : PerforceUri.fromUriWithRevision(fromDoc, (rev + 1).toString());
 
     await diffFiles(leftUri, rightUri);
@@ -243,7 +243,7 @@ export async function diffDefault(
     diffType?: DiffType
 ): Promise<void> {
     if (resource.FileType.base === FileType.BINARY) {
-        const uri = PerforceUri.fromUri(resource.resourceUri, { command: "fstat" });
+        const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
         await workspace.openTextDocument(uri).then((doc) => window.showTextDocument(doc));
         return;
     }
@@ -298,15 +298,13 @@ function getLeftResource(
             case Status.INTEGRATE:
             case Status.MOVE_ADD:
             case Status.BRANCH:
+                const leftUri = PerforceUri.fromUriWithRevision(
+                    resource.openUri,
+                    "@=" + resource.change // still need to specify because the resource could be either the open or workspace file
+                );
                 return {
-                    title:
-                        Path.basename(resource.resourceUri.fsPath) +
-                        "@=" +
-                        resource.change,
-                    uri: PerforceUri.fromUriWithRevision(
-                        resource.resourceUri,
-                        "@=" + resource.change
-                    ),
+                    title: Path.basename(leftUri.fsPath),
+                    uri: leftUri,
                 };
             case Status.DELETE:
             case Status.MOVE_DELETE:
@@ -318,16 +316,14 @@ function getLeftResource(
             case Status.ADD:
             case Status.BRANCH:
                 return {
-                    title: Path.basename(resource.resourceUri.fsPath) + "#0",
+                    title: PerforceUri.basenameWithoutRev(resource.openUri) + "#0",
                     uri: emptyDoc,
                 };
             case Status.MOVE_ADD:
                 // diff against the old file if it is known (always a depot path)
                 return {
                     title: resource.fromFile
-                        ? Path.basename(resource.fromFile.fsPath) +
-                          "#" +
-                          resource.fromEndRev
+                        ? Path.basename(resource.fromFile.fsPath)
                         : "Depot Version",
                     uri: resource.fromFile ?? emptyDoc,
                 };
@@ -335,15 +331,13 @@ function getLeftResource(
             case Status.EDIT:
             case Status.DELETE:
             case Status.MOVE_DELETE:
+                const leftUri = PerforceUri.fromUriWithRevision(
+                    resource.openUri,
+                    resource.workingRevision
+                );
                 return {
-                    title:
-                        Path.basename(resource.resourceUri.fsPath) +
-                        "#" +
-                        resource.workingRevision,
-                    uri: PerforceUri.fromUriWithRevision(
-                        resource.resourceUri,
-                        resource.workingRevision
-                    ),
+                    title: Path.basename(leftUri.fsPath),
+                    uri: leftUri,
                 };
         }
     }
@@ -359,7 +353,7 @@ function getRightResource(resource: Resource, diffType: DiffType): Uri | undefin
             case Status.MOVE_ADD:
             case Status.INTEGRATE:
             case Status.BRANCH:
-                return resource.resourceUri;
+                return resource.openUri;
         }
     } else {
         const exists =
@@ -377,12 +371,13 @@ function getRightResource(resource: Resource, diffType: DiffType): Uri | undefin
 }
 
 function getTitle(resource: Resource, leftTitle: string, diffType: DiffType): string {
-    const basename = Path.basename(resource.resourceUri.fsPath);
+    const basename = PerforceUri.basenameWithoutRev(resource.openUri);
+    const basenameWithRev = Path.basename(resource.openUri.fsPath);
 
     let text = "";
     switch (diffType) {
         case DiffType.SHELVE_V_DEPOT:
-            text = leftTitle + " ⟷ " + basename + "@=" + resource.change;
+            text = leftTitle + " ⟷ " + basenameWithRev;
             break;
         case DiffType.WORKSPACE_V_SHELVE:
             text = leftTitle + " ⟷ " + basename + " (workspace)";

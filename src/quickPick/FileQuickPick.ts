@@ -29,7 +29,7 @@ export const fileQuickPickProvider: qp.ActionableQuickPickProvider = {
         return {
             items: actions,
             placeHolder: makeRevisionSummary(changes.current),
-            recentKey: "file:" + uri.fsPath,
+            recentKey: "file:" + PerforceUri.fsPathWithoutRev(uri),
         };
     },
 };

@@ -16,7 +16,6 @@ import * as Path from "path";
 import { PerforceService } from "./PerforceService";
 import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
-import { Utils } from "./Utils";
 import * as PerforceUri from "./PerforceUri";
 import { PerforceSCMProvider } from "./ScmProvider";
 import * as AnnotationProvider from "./annotations/AnnotationProvider";
@@ -98,19 +97,13 @@ export namespace PerforceCommands {
         p4add(editor.document.uri);
     }
 
-    export function p4add(fileUri: Uri) {
-        const args = [Utils.expansePath(fileUri.fsPath)];
-        PerforceService.execute(
-            fileUri,
-            "add",
-            (err, stdout, stderr) => {
-                PerforceService.handleCommonServiceResponse(err, stdout, stderr);
-                if (!err) {
-                    Display.showMessage("file opened for add");
-                }
-            },
-            args
-        );
+    export async function p4add(fileUri: Uri) {
+        try {
+            await p4.add(fileUri, { files: [fileUri] });
+            Display.showMessage("File opened for add");
+            Display.updateEditor();
+        } catch {}
+        PerforceSCMProvider.RefreshAll();
     }
 
     function editOpenFile() {
@@ -149,22 +142,13 @@ export namespace PerforceCommands {
         }
     }
 
-    export function p4edit(fileUri: Uri): Promise<boolean> {
-        return new Promise((resolve) => {
-            const args = [Utils.expansePath(fileUri.fsPath)];
-            PerforceService.execute(
-                fileUri,
-                "edit",
-                (err, stdout, stderr) => {
-                    PerforceService.handleCommonServiceResponse(err, stdout, stderr);
-                    if (!err && !stderr) {
-                        Display.showMessage("file opened for edit");
-                    }
-                    resolve(!err);
-                },
-                args
-            );
-        });
+    export async function p4edit(fileUri: Uri) {
+        try {
+            await p4.edit(fileUri, { files: [fileUri] });
+            Display.showMessage("File opened for edit");
+            Display.updateEditor();
+        } catch {}
+        PerforceSCMProvider.RefreshAll();
     }
 
     export async function deleteOpenFile() {
@@ -185,7 +169,7 @@ export namespace PerforceCommands {
         const deleteOpts: p4.DeleteOptions = { paths: [fileUri] };
         try {
             await p4.del(resource ?? fileUri, deleteOpts);
-            Display.showMessage(fileUri.fsPath + " deleted.");
+            Display.showMessage(PerforceUri.fsPathWithoutRev(fileUri) + " deleted.");
             Display.updateEditor();
             PerforceSCMProvider.RefreshAll();
         } catch (err) {
@@ -206,7 +190,7 @@ export namespace PerforceCommands {
 
         const fileUri = editor.document.uri;
 
-        const filename = Path.basename(fileUri.fsPath);
+        const filename = PerforceUri.basenameWithoutRev(fileUri);
         const ok = await Display.requestConfirmation(
             "Are you sure you want to revert " + filename + "?",
             "Revert " + filename
@@ -221,7 +205,7 @@ export namespace PerforceCommands {
         const revertOpts: p4.RevertOptions = { paths: [fileUri] };
         try {
             await p4.revert(resource ?? fileUri, revertOpts);
-            Display.showMessage(fileUri.fsPath + " reverted.");
+            Display.showMessage(PerforceUri.basenameWithoutRev(fileUri) + " reverted.");
             Display.updateEditor();
             PerforceSCMProvider.RefreshAll();
         } catch (err) {
@@ -251,7 +235,7 @@ export namespace PerforceCommands {
         const description = await window.showInputBox({
             prompt:
                 "Enter a changelist description to submit '" +
-                Path.basename(file.fsPath) +
+                PerforceUri.fsPathWithoutRev(file) +
                 "'",
             validateInput: (input) => {
                 if (!input.trim()) {
@@ -455,7 +439,7 @@ export namespace PerforceCommands {
 
     function consolidateUris(file: Uri | string, all?: Uri[]) {
         const allUris = all ?? [];
-        const resource = typeof file === "string" ? Uri.parse(file) : file;
+        const resource = typeof file === "string" ? PerforceUri.parse(file) : file;
         return [resource, ...allUris.filter((f) => f.fsPath !== resource.fsPath)];
     }
 
@@ -680,7 +664,10 @@ export namespace PerforceCommands {
     }
 
     async function diffFiles(leftFile: string, rightFile: string) {
-        await DiffProvider.diffFiles(Uri.parse(leftFile), Uri.parse(rightFile));
+        await DiffProvider.diffFiles(
+            PerforceUri.parse(leftFile),
+            PerforceUri.parse(rightFile)
+        );
     }
 
     function getOpenDocUri(): Uri | undefined {
@@ -708,7 +695,7 @@ export namespace PerforceCommands {
     }
 
     export async function annotate(file?: string) {
-        const uri = file ? Uri.parse(file) : getOpenDocUri();
+        const uri = file ? PerforceUri.parse(file) : getOpenDocUri();
 
         if (!uri) {
             return false;
