@@ -32,6 +32,7 @@ function resourceToString(resource: Resource) {
             status: resource.status,
             isShelved: resource.isShelved,
             resourceUri: resource.resourceUri?.toString(),
+            actionUriNoRev: resource.actionUriNoRev?.toString(),
             openUri: resource.openUri?.toString(),
             underlyingUri: resource.underlyingUri?.toString(),
             fromFile: resource.fromFile?.toString(),

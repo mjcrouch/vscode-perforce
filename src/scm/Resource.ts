@@ -61,11 +61,30 @@ export class Resource implements SourceControlResourceState {
      * Resource URI *should* be the underlying file, but for shelved files, a depot path is used.
      * This is used for display in the SCM provider - so the depot path does not include a revision
      *
+     * **DO NOT USE** this function - so we are free to change the display without impacting other areas.
+     * Use `actionUriNoRev` instead
+     *
      * this keeps them together in the workspace tree, and for some operations there may not be a matching file in the workspace
      */
     get resourceUri(): Uri {
         return this._resourceUri;
     }
+
+    /**
+     * The file to use for performing perforce actions that don't require a revision,
+     * could be depot or local file
+     *
+     * Currently, resource URI has no rev, but this should be used instead of
+     * resource URI for clarity and so we can change the display in future
+     */
+    get actionUriNoRev(): Uri {
+        return this._resourceUri;
+    }
+
+    get basenameWithoutRev(): string {
+        return PerforceUri.basenameWithoutRev(this.uri);
+    }
+
     get decorations(): SourceControlResourceDecorations {
         return DecorationProvider.getDecorations(
             this._statuses,
