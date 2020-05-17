@@ -184,9 +184,7 @@ class RunSearch extends SelfExpandingTreeItem<any> {
 }
 
 interface Diffable {
-    canDiff: boolean;
-    diff: () => void;
-    open: () => void;
+    perforceUri: vscode.Uri;
 }
 
 class SearchResultShelvedFile extends SelfExpandingTreeItem<any> implements Diffable {
@@ -230,36 +228,11 @@ class SearchResultShelvedFile extends SelfExpandingTreeItem<any> implements Diff
         return !operationDeletesFile(status);
     }
 
-    async diff() {
-        /*
-        const status = GetStatus(this._file.operation);
-        if (operationCreatesFile(status)) {
-            return await DiffProvider.diffFiles(
-                PerforceUri.emptyFileUri(),
-                PerforceUri.fromDepotPath(
-                    this._resource,
-                    this._file.depotPath,
-                    "@=" + this._chnum
-                )
-            );
-        }
-        */
-        return await DiffProvider.diffPrevious(
-            PerforceUri.fromDepotPath(
-                this._resource,
-                this._file.depotPath,
-                "@=" + this._chnum
-            )
-        );
-    }
-
-    async open() {
-        await vscode.window.showTextDocument(
-            PerforceUri.fromDepotPath(
-                this._resource,
-                this._file.depotPath,
-                "@=" + this._chnum
-            )
+    get perforceUri() {
+        return PerforceUri.fromDepotPath(
+            this._resource,
+            this._file.depotPath,
+            "@=" + this._chnum
         );
     }
 
@@ -329,23 +302,11 @@ class SearchResultFile extends SelfExpandingTreeItem<any> implements Diffable {
         return !operationDeletesFile(status);
     }
 
-    async diff() {
-        await DiffProvider.diffPrevious(
-            PerforceUri.fromDepotPath(
-                this._resource,
-                this._file.depotPath,
-                this._file.revision
-            )
-        );
-    }
-
-    async open() {
-        await vscode.window.showTextDocument(
-            PerforceUri.fromDepotPath(
-                this._resource,
-                this._file.depotPath,
-                this._file.revision
-            )
+    get perforceUri() {
+        return PerforceUri.fromDepotPath(
+            this._resource,
+            this._file.depotPath,
+            this._file.revision
         );
     }
 
@@ -757,12 +718,12 @@ export function registerChangelistSearch() {
     );
 
     vscode.commands.registerCommand("perforce.changeSearch.diffResult", (arg: Diffable) =>
-        arg.diff()
+        DiffProvider.diffPrevious(arg.perforceUri)
     );
 
     vscode.commands.registerCommand(
         "perforce.changeSearch.openResultDoc",
-        (arg: Diffable) => arg.open()
+        (arg: Diffable) => vscode.window.showTextDocument(arg.perforceUri)
     );
 
     changelistTree = new ChangelistTreeRoot();
