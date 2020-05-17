@@ -1,5 +1,13 @@
 # Change log
 
+## [4.8.0] - 2020-05-17
+
+* Add the ability to create a new changelist or job using the spec editor - accessible from the SCM context menu and the command palette
+* When opening a specific revision in the editor, (and not in a diff), the revision number is now included in the editor title
+  * This is a more complex / wide-reaching change than you might expect, so if you see revisions or labels popping up in unexpected places please raise an issue
+* Add a new mode for `perforce.hideNonWorkspaceFiles` that hides pending changelists that ONLY contain non-workspace files, but also hides non-workspace files in the default changelist
+* Fixed a few dodgy setting names / descriptions
+
 ## [4.7.0] - 2020-05-11
 
 * Add the ability to edit the full change spec for a changelist in the editor - accessible from the SCM context menu and the changelist quick pick
