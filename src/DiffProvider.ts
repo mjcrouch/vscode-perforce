@@ -310,7 +310,7 @@ function getLeftResource(
             case Status.MOVE_DELETE:
         }
     } else {
-        const emptyDoc = Uri.parse("perforce:EMPTY");
+        const emptyDoc = PerforceUri.emptyFileUri();
         // left hand side is the depot version
         switch (resource.status) {
             case Status.ADD:
@@ -345,7 +345,7 @@ function getLeftResource(
 
 // Gets the uri for the current version of the file (or the shelved version depending on the diff type).
 function getRightResource(resource: Resource, diffType: DiffType): Uri | undefined {
-    const emptyDoc = Uri.parse("perforce:EMPTY");
+    const emptyDoc = PerforceUri.emptyFileUri();
     if (diffType === DiffType.SHELVE_V_DEPOT) {
         switch (resource.status) {
             case Status.ADD:

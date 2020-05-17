@@ -37,6 +37,10 @@ export function revOrLabelAsSuffix(revOrAtLabel: string | undefined) {
         : "";
 }
 
+export function emptyFileUri() {
+    return vscode.Uri.parse("perforce:EMPTY");
+}
+
 export function withoutRev(path: string, revOrAtLabel: string | undefined) {
     const revStr = revOrLabelAsSuffix(revOrAtLabel);
     if (revStr && path.endsWith(revStr)) {
