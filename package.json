@@ -988,6 +988,14 @@
                     "when": "0"
                 },
                 {
+                    "command": "perforce.changeSearch.diffResult",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.changeSearch.openResultDoc",
+                    "when": "0"
+                },
+                {
                     "command": "perforce.explorer.syncPath",
                     "when": "0"
                 },
