@@ -37,11 +37,13 @@ export function revOrLabelAsSuffix(revOrAtLabel: string | undefined) {
         : "";
 }
 
-export function withoutRev(path: string, revOrAtLabel: string | undefined) {
-    const revStr = revOrLabelAsSuffix(revOrAtLabel);
+export function withoutRev(path: string, _revOrAtLabel: string | undefined) {
+    // removed as it prevents syntax highlighting on the opened file - TODO: consider an option
+    /*const revStr = revOrLabelAsUriSuffix(revOrAtLabel);
     if (revStr && path.endsWith(revStr)) {
         return path.slice(0, -revStr.length);
     }
+    return path;*/
     return path;
 }
 
@@ -58,9 +60,19 @@ export function basenameWithoutRev(uri: vscode.Uri) {
     return Path.basename(fsPathWithoutRev(uri));
 }
 
+export function basenameWithRev(uri: vscode.Uri, overrideRev?: string) {
+    return (
+        Path.basename(fsPathWithoutRev(uri)) +
+        revOrLabelAsSuffix(overrideRev ?? getRevOrAtLabel(uri))
+    );
+}
+
 function uriWithRev(uri: vscode.Uri, revOrAtLabel: string | undefined) {
+    /*return uri.with({
+        path: uri.path + revOrLabelAsUriSuffix(revOrAtLabel),
+        fragment: revOrAtLabel,
+    });*/
     return uri.with({
-        path: uri.path + revOrLabelAsSuffix(revOrAtLabel),
         fragment: revOrAtLabel,
     });
 }

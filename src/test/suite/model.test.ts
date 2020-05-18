@@ -1123,7 +1123,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(out).to.deep.equal(
                     basicFiles.add().localFile.with({
-                        path: basicFiles.add().localFile.path + "#have",
+                        path: basicFiles.add().localFile.path,
                         scheme: "perforce",
                         fragment: "have",
                         query: "command=print&p4Args=-q&rev=have",
@@ -1142,7 +1142,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                 expect(out).to.deep.equal(
                     vscode.Uri.parse(basicFiles.moveDelete().depotPath).with({
-                        path: "/testArea/testFolderOld/movedFrom.txt#4",
+                        path: "/testArea/testFolderOld/movedFrom.txt",
                         scheme: "perforce",
                         fragment: "4",
                         query:
@@ -1790,7 +1790,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt#4 ⟷ a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath + "#4" },
+                        { fsPath: file.localFile.fsPath },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "#4"]
@@ -1818,7 +1818,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt#4 ⟷ a.txt"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file1.localFile.fsPath + "#4" },
+                        { fsPath: file1.localFile.fsPath },
                         "print",
                         sinon.match.any,
                         ["-q", file1.localFile.fsPath + "#4"]
@@ -1924,7 +1924,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     );
 
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath + "#7" },
+                        { fsPath: file.localFile.fsPath },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "#7"]
@@ -1993,7 +1993,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         "a.txt@=1 ⟷ a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: file.localFile.fsPath + "@=1" },
+                        { fsPath: file.localFile.fsPath },
                         "print",
                         sinon.match.any,
                         ["-q", file.localFile.fsPath + "@=1"]

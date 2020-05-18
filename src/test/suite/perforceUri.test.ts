@@ -64,7 +64,7 @@ describe("Perforce Uris", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             expect(uri.scheme).to.equal("perforce");
             expect(uri.authority).to.equal("depot");
-            expect(uri.path).to.equal("/my/path/file.txt#2");
+            expect(uri.path).to.equal("/my/path/file.txt");
             expect(uri.query).to.equal(
                 "command=print&p4Args=-q&depot&" + workspaceArg + "&depotName=depot&rev=2"
             );
@@ -85,7 +85,7 @@ describe("Perforce Uris", () => {
         it("Produces a perforce URI with an added revision / label fragment", () => {
             const uri = PerforceUri.fromUriWithRevision(localUri, "@=99");
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.fsPath).to.equal(localUri.fsPath + "@=99");
+            expect(uri.fsPath).to.equal(localUri.fsPath);
             expect(uri.query).to.equal("command=print&p4Args=-q&rev=%40%3D99");
             expect(uri.fragment).to.equal("@=99");
         });
@@ -230,7 +230,7 @@ describe("Perforce Uris", () => {
             expect(uri.path).to.equal("/a/myFile");
         });
     });
-    describe("withoutRev", () => {
+    /*describe("withoutRev", () => {
         it("Removes a revision from a path if it matches the fragment", () => {
             const path = "/my/path#2";
             expect(PerforceUri.withoutRev(path, "2")).to.equal("/my/path");
@@ -262,5 +262,5 @@ describe("Perforce Uris", () => {
             const withoutRev = PerforceUri.fsPathWithoutRev(uri);
             expect(withoutRev).to.equal(uri.fsPath);
         });
-    });
+    });*/
 });

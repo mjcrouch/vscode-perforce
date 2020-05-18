@@ -303,7 +303,7 @@ function getLeftResource(
                     "@=" + resource.change // still need to specify because the resource could be either the open or workspace file
                 );
                 return {
-                    title: Path.basename(leftUri.fsPath),
+                    title: PerforceUri.basenameWithRev(leftUri, "@=" + resource.change),
                     uri: leftUri,
                 };
             case Status.DELETE:
@@ -323,7 +323,7 @@ function getLeftResource(
                 // diff against the old file if it is known (always a depot path)
                 return {
                     title: resource.fromFile
-                        ? Path.basename(resource.fromFile.fsPath)
+                        ? PerforceUri.basenameWithRev(resource.fromFile)
                         : "Depot Version",
                     uri: resource.fromFile ?? emptyDoc,
                 };
@@ -336,7 +336,7 @@ function getLeftResource(
                     resource.workingRevision
                 );
                 return {
-                    title: Path.basename(leftUri.fsPath),
+                    title: PerforceUri.basenameWithRev(leftUri),
                     uri: leftUri,
                 };
         }
@@ -372,7 +372,7 @@ function getRightResource(resource: Resource, diffType: DiffType): Uri | undefin
 
 function getTitle(resource: Resource, leftTitle: string, diffType: DiffType): string {
     const basename = PerforceUri.basenameWithoutRev(resource.openUri);
-    const basenameWithRev = Path.basename(resource.openUri.fsPath);
+    const basenameWithRev = PerforceUri.basenameWithRev(resource.openUri);
 
     let text = "";
     switch (diffType) {
