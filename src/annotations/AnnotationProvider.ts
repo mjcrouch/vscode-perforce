@@ -100,7 +100,10 @@ export class AnnotationProvider {
     private async loadEditor() {
         AnnotationProvider._onWillLoadEditor.fire(this._p4Uri);
         const ranges = await this.getOpenFileRangesIfSameFile();
-        this._editor = await vscode.window.showTextDocument(this._p4Uri);
+        this._editor = await vscode.window.showTextDocument(this._p4Uri, {
+            label: "hello",
+            description: "hello",
+        } as vscode.TextDocumentShowOptions);
 
         if (ranges) {
             this._editor.revealRange(ranges[0]);

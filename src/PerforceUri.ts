@@ -10,6 +10,7 @@ export type UriArguments = {
     haveRev?: string;
     diffStartFile?: string;
     depotName?: string;
+    authority?: string;
     rev?: string;
 };
 
@@ -49,7 +50,8 @@ export function withoutRev(path: string, _revOrAtLabel: string | undefined) {
 
 function uriWithoutRev(uri: vscode.Uri) {
     const path = withoutRev(uri.path, getRevOrAtLabel(uri));
-    return uri.with({ path: path });
+    const authority = decodeUriQuery(uri.query).authority ?? uri.authority;
+    return uri.with({ path: path, authority: authority });
 }
 
 export function fsPathWithoutRev(uri: vscode.Uri) {
@@ -72,8 +74,12 @@ function uriWithRev(uri: vscode.Uri, revOrAtLabel: string | undefined) {
         path: uri.path + revOrLabelAsUriSuffix(revOrAtLabel),
         fragment: revOrAtLabel,
     });*/
+    const args = decodeUriQuery(uri.query);
+    const authority = args.authority ?? uri.authority;
     return uri.with({
+        authority: revOrLabelAsSuffix(revOrAtLabel),
         fragment: revOrAtLabel,
+        query: encodeQuery({ ...args, authority }),
     });
 }
 
@@ -97,7 +103,7 @@ export function parse(uri: string) {
     // standard uri parsing produces { path: /my/path, fragment: #1?a=b#1 }
     // we want: path: /my/path#1 query: a=b, fragment: #1
     const parsed = vscode.Uri.parse(uri);
-    const queryIndex = parsed.fragment.indexOf("?");
+    /*const queryIndex = parsed.fragment.indexOf("?");
     const fragmentIndex = parsed.fragment.indexOf("#");
     if (queryIndex >= 0 || fragmentIndex >= 0) {
         return parsed.with({
@@ -114,7 +120,7 @@ export function parse(uri: string) {
                       )
                     : undefined,
         });
-    }
+    }*/
     return parsed;
 }
 

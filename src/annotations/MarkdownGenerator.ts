@@ -73,7 +73,7 @@ function makeQuickPickChangeURI(underlying: vscode.Uri, change: p4.FileLogItem) 
 }
 
 export function makeAnnotateURI(underlying: vscode.Uri, change: p4.FileLogItem) {
-    const args = makePerforceURI(underlying, change).toString();
+    const args = makePerforceURI(underlying, change);
     return (
         makeCommandURI("perforce.annotate", args) +
         ' "Show annotations for ' +

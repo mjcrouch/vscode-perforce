@@ -1,7 +1,7 @@
 "use strict";
 
 import { PerforceCommands } from "./PerforceCommands";
-import { PerforceContentProvider, perforceContentProvider } from "./ContentProvider";
+import { perforceContentProvider, PerforceFileSystemProvider } from "./ContentProvider";
 import FileSystemActions from "./FileSystemActions";
 import { PerforceSCMProvider } from "./ScmProvider";
 import { PerforceService } from "./PerforceService";
@@ -21,7 +21,7 @@ import { createSpecEditor } from "./SpecEditor";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
-let _perforceContentProvider: PerforceContentProvider | undefined;
+let _perforceContentProvider: PerforceFileSystemProvider | undefined;
 const _dirsWithNoClient = new Set<string>();
 
 function logInitProgress(uri: vscode.Uri, message: string) {

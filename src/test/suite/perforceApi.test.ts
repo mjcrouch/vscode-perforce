@@ -1298,7 +1298,7 @@ describe("Perforce API", () => {
         });
     });
     describe("integrated", () => {
-        it("Uses the correct arguements", async () => {
+        it("Uses the correct arguments", async () => {
             execute.callsFake(
                 execWithStdOut(
                     "//depot/branches/branch1/newFile.txt#1 - edit into //depot/branches/branch2/newFile.txt#2"

@@ -1588,7 +1588,17 @@
                 "command": "perforce.submitSingle",
                 "when": "editorTextFocus"
             }
-        ]
+        ],
+        "resourceLabelFormatters": [
+            {
+              "scheme": "perforce",
+              "formatting": {
+                "label": "${path}${authority}",
+                "separator": "/",
+                "workspaceSuffix": "Perforce"
+              }
+            }
+          ]
     },
     "dependencies": {},
     "devDependencies": {
