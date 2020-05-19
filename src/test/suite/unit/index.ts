@@ -6,6 +6,7 @@ export function run(): Promise<void> {
     // Create the mocha test
     const mocha = new Mocha({
         ui: "bdd",
+        color: true,
     });
     mocha.reporter("cypress-multi-reporters", {
         reporterEnabled: "mocha-junit-reporter, spec",
@@ -13,7 +14,6 @@ export function run(): Promise<void> {
             mochaFile: "./reports/junit-unit.xml",
         },
     });
-    mocha.useColors(true);
 
     const testsRoot = __dirname;
 
