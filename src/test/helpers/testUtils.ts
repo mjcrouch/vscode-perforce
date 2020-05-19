@@ -68,9 +68,7 @@ export function perforceLocalUriMatcher(file: StubFile) {
     if (!file.localFile) {
         throw new Error("Can't make a local file matcher without a local file");
     }
-    return PerforceUri.fromUri(file.localFile).with({
-        fragment: file.depotRevision.toString(),
-    });
+    return PerforceUri.fromUriWithRevision(file.localFile, file.depotRevision.toString());
 }
 
 /**
@@ -97,20 +95,6 @@ export function perforceFromFileUriMatcher(file: StubFile) {
         file.localFile,
         file.resolveFromDepotPath,
         file.resolveEndFromRev?.toString()
-    );
-}
-
-/**
- * Matches against a perforce URI, using the depot path for the file AND containing a fragment for the shelved changelist number
- * @param file
- * @param chnum
- */
-export function perforceShelvedUriMatcher(file: StubFile, chnum: string) {
-    return PerforceUri.fromUri(
-        vscode.Uri.parse("perforce:" + file.depotPath).with({
-            fragment: "@=" + chnum,
-        }),
-        { depot: true, workspace: getWorkspaceUri().fsPath }
     );
 }
 

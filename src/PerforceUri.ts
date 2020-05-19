@@ -38,20 +38,10 @@ export function revOrLabelAsSuffix(revOrAtLabel: string | undefined) {
         : "";
 }
 
-export function withoutRev(path: string, _revOrAtLabel: string | undefined) {
-    // removed as it prevents syntax highlighting on the opened file - TODO: consider an option
-    /*const revStr = revOrLabelAsUriSuffix(revOrAtLabel);
-    if (revStr && path.endsWith(revStr)) {
-        return path.slice(0, -revStr.length);
-    }
-    return path;*/
-    return path;
-}
-
 function uriWithoutRev(uri: vscode.Uri) {
-    const path = withoutRev(uri.path, getRevOrAtLabel(uri));
-    const authority = decodeUriQuery(uri.query).authority ?? uri.authority;
-    return uri.with({ path: path, authority: authority });
+    const queryAuth = decodeUriQuery(uri.query).authority;
+    const authority = queryAuth === "null" ? "" : queryAuth ?? uri.authority;
+    return uri.with({ authority: authority });
 }
 
 export function fsPathWithoutRev(uri: vscode.Uri) {
@@ -70,16 +60,12 @@ export function basenameWithRev(uri: vscode.Uri, overrideRev?: string) {
 }
 
 function uriWithRev(uri: vscode.Uri, revOrAtLabel: string | undefined) {
-    /*return uri.with({
-        path: uri.path + revOrLabelAsUriSuffix(revOrAtLabel),
-        fragment: revOrAtLabel,
-    });*/
     const args = decodeUriQuery(uri.query);
-    const authority = args.authority ?? uri.authority;
+    const origAuthority = args.authority ?? uri.authority ?? "";
     return uri.with({
         authority: revOrLabelAsSuffix(revOrAtLabel),
         fragment: revOrAtLabel,
-        query: encodeQuery({ ...args, authority }),
+        query: encodeQuery({ ...args, authority: origAuthority || "null" }),
     });
 }
 
@@ -97,43 +83,12 @@ function encodeParam(param: string, value?: string | boolean) {
 }
 
 export function parse(uri: string) {
-    // because we're adding fragment identifiers to strings, we need to customise parsing
-    // the URI might look like this for revision 1
-    // perforce:/my/path#1?a=b#1
-    // standard uri parsing produces { path: /my/path, fragment: #1?a=b#1 }
-    // we want: path: /my/path#1 query: a=b, fragment: #1
+    // this function is here if needed - provides a common location for this
+    // so that we can customise parsing if needed later
     const parsed = vscode.Uri.parse(uri);
-    /*const queryIndex = parsed.fragment.indexOf("?");
-    const fragmentIndex = parsed.fragment.indexOf("#");
-    if (queryIndex >= 0 || fragmentIndex >= 0) {
-        return parsed.with({
-            path:
-                parsed.path +
-                "#" +
-                parsed.fragment.slice(0, queryIndex >= 0 ? queryIndex : fragmentIndex),
-            fragment: fragmentIndex > 0 ? parsed.fragment.slice(fragmentIndex + 1) : "",
-            query:
-                queryIndex >= 0
-                    ? parsed.fragment.slice(
-                          queryIndex + 1,
-                          fragmentIndex > 0 ? fragmentIndex : undefined
-                      )
-                    : undefined,
-        });
-    }*/
+
     return parsed;
 }
-
-/*
-export function fromFsOrDepotPath(
-    workspace: vscode.Uri,
-    fsOrDepotPath: string,
-    revision: string | undefined,
-    isDepotPath: boolean
-) {
-    return isDepotPath ? fromDepotPath(workspace, fsOrDepotPath, revision) : fromUr;
-}
-*/
 
 export function fromDepotPath(
     workspace: vscode.Uri,

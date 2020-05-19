@@ -1,7 +1,10 @@
 "use strict";
 
 import { PerforceCommands } from "./PerforceCommands";
-import { perforceContentProvider, PerforceFileSystemProvider } from "./ContentProvider";
+import {
+    PerforceFileSystemProvider,
+    initPerforceContentProvider,
+} from "./ContentProvider";
 import FileSystemActions from "./FileSystemActions";
 import { PerforceSCMProvider } from "./ScmProvider";
 import { PerforceService } from "./PerforceService";
@@ -490,7 +493,14 @@ export async function activate(ctx: vscode.ExtensionContext) {
 }
 
 function doOneTimeRegistration() {
-    if (!_isRegistered) {
+    // don't activate all the 'standard' stuff when running from the test framework
+    // any required modules are stubbed or constructed within the tests, we can't
+    // stub the modules loaded here due to webpack
+    const inTestMode = vscode.workspace
+        .getConfiguration("perforce")
+        .get("testModeNoActivate");
+
+    if (!_isRegistered && !inTestMode) {
         _isRegistered = true;
 
         QuickPicks.registerQuickPicks();
@@ -502,7 +512,7 @@ function doOneTimeRegistration() {
         Display.initialize(_disposable);
         ContextVars.initialize(_disposable);
 
-        _perforceContentProvider = perforceContentProvider();
+        _perforceContentProvider = initPerforceContentProvider();
         _disposable.push(_perforceContentProvider);
 
         _disposable.push(

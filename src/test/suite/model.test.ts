@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 
 import sinon from "sinon";
 import { PerforceSCMProvider } from "../../ScmProvider";
-import { PerforceContentProvider } from "../../ContentProvider";
+import { initPerforceContentProvider } from "../../ContentProvider";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../../Display";
 import * as PerforceUri from "../../PerforceUri";
 import { Resource } from "../../scm/Resource";
@@ -20,7 +20,6 @@ import {
     getLocalFile,
     perforceLocalUriMatcher,
     perforceDepotUriMatcher,
-    perforceShelvedUriMatcher,
     perforceFromFileUriMatcher,
     perforceLocalShelvedUriMatcher,
 } from "../helpers/testUtils";
@@ -211,15 +210,10 @@ describe("Model & ScmProvider modules (integration)", () => {
 
     let items: TestItems;
     let subscriptions: vscode.Disposable[] = [];
-    const outerSubs: vscode.Disposable[] = [];
 
     before(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-        const doc = new PerforceContentProvider();
-        outerSubs.push(doc);
-    });
-    after(() => {
-        outerSubs.forEach((d) => d.dispose());
+        initPerforceContentProvider();
     });
     describe("Refresh / Initialize", function () {
         let stubModel: StubPerforceModel;
@@ -1126,7 +1120,8 @@ describe("Model & ScmProvider modules (integration)", () => {
                         path: basicFiles.add().localFile.path,
                         scheme: "perforce",
                         fragment: "have",
-                        query: "command=print&p4Args=-q&rev=have",
+                        authority: "#have",
+                        query: "command=print&p4Args=-q&rev=have&authority=null",
                     })
                 );
             });
@@ -1145,8 +1140,9 @@ describe("Model & ScmProvider modules (integration)", () => {
                         path: "/testArea/testFolderOld/movedFrom.txt",
                         scheme: "perforce",
                         fragment: "4",
+                        authority: "#4",
                         query:
-                            "command=print&p4Args=-q&depot&workspace=" +
+                            "command=print&p4Args=-q&authority=depot&depot&workspace=" +
                             encodeURIComponent(basicFiles.moveAdd().localFile.fsPath) +
                             "&depotName=depot&rev=4",
                     })
@@ -1941,11 +1937,17 @@ describe("Model & ScmProvider modules (integration)", () => {
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
                         perforceDepotUriMatcher(file),
-                        perforceShelvedUriMatcher(file, "1"),
+                        PerforceUri.fromDepotPath(file.localFile, file.depotPath, "@=1"),
                         "a.txt#1 ⟷ a.txt@=1"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: perforceShelvedUriMatcher(file, "1").fsPath },
+                        {
+                            fsPath: PerforceUri.fromDepotPath(
+                                file.localFile,
+                                file.depotPath,
+                                "@=1"
+                            ).fsPath,
+                        },
                         "print",
                         sinon.match.any,
                         ["-q", file.depotPath + "@=1"]
@@ -1967,12 +1969,18 @@ describe("Model & ScmProvider modules (integration)", () => {
                     await PerforceSCMProvider.OpenvShelved(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                        perforceShelvedUriMatcher(file, "1"),
+                        PerforceUri.fromDepotPath(file.localFile, file.depotPath, "@=1"),
                         file.localFile,
                         "a.txt@=1 ⟷ a.txt (workspace)"
                     );
                     expect(items.execute).to.be.calledWithMatch(
-                        { fsPath: perforceShelvedUriMatcher(file, "1").fsPath },
+                        {
+                            fsPath: PerforceUri.fromDepotPath(
+                                file.localFile,
+                                file.depotPath,
+                                "@=1"
+                            ).fsPath,
+                        },
                         "print",
                         sinon.match.any,
                         ["-q", file.depotPath + "@=1"]

@@ -276,7 +276,7 @@ export namespace PerforceCommands {
     }
 
     function didChangeHaveRev(uri: Uri) {
-        perforceContentProvider().requestUpdatedDocument(
+        perforceContentProvider()?.requestUpdatedDocument(
             PerforceUri.fromUriWithRevision(uri, "have")
         );
     }
