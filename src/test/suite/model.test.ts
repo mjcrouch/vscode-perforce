@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 
 import sinon from "sinon";
 import { PerforceSCMProvider } from "../../ScmProvider";
-import { initPerforceContentProvider } from "../../ContentProvider";
+import { initPerforceFsProvider } from "../../FileSystemProvider";
 import { Display, ActiveStatusEvent, ActiveEditorStatus } from "../../Display";
 import * as PerforceUri from "../../PerforceUri";
 import { Resource } from "../../scm/Resource";
@@ -213,7 +213,7 @@ describe("Model & ScmProvider modules (integration)", () => {
 
     before(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-        initPerforceContentProvider();
+        initPerforceFsProvider();
     });
     describe("Refresh / Initialize", function () {
         let stubModel: StubPerforceModel;

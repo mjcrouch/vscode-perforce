@@ -9,6 +9,7 @@ import {
     FileType,
     FileSystemError,
     FileChangeType,
+    FileStat,
 } from "vscode";
 import { Display } from "./Display";
 import * as PerforceUri from "./PerforceUri";
@@ -42,8 +43,9 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
             },
         };
     }
-    stat(_uri: Uri): import("vscode").FileStat | Thenable<import("vscode").FileStat> {
+    stat(_uri: Uri): FileStat {
         const now = new Date().getTime();
+        // TODO not ideal - empty size may cause hidden problems but don't want to get the file content twice..
         return { type: FileType.File, ctime: now, mtime: now, size: 0 };
     }
     readDirectory(_uri: Uri): [string, FileType][] {
@@ -116,17 +118,17 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
     }
 }
 
-let _perforceContentProvider: PerforceFileSystemProvider | undefined;
-export function perforceContentProvider() {
-    if (!_perforceContentProvider) {
-        _perforceContentProvider = new PerforceFileSystemProvider();
+let _perforceFileSystemProvider: PerforceFileSystemProvider | undefined;
+export function perforceFsProvider() {
+    if (!_perforceFileSystemProvider) {
+        _perforceFileSystemProvider = new PerforceFileSystemProvider();
     }
-    return _perforceContentProvider;
+    return _perforceFileSystemProvider;
 }
 
-export function initPerforceContentProvider() {
-    if (!_perforceContentProvider) {
-        _perforceContentProvider = new PerforceFileSystemProvider();
+export function initPerforceFsProvider() {
+    if (!_perforceFileSystemProvider) {
+        _perforceFileSystemProvider = new PerforceFileSystemProvider();
     }
-    return _perforceContentProvider;
+    return _perforceFileSystemProvider;
 }

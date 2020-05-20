@@ -27,7 +27,7 @@ import {
     chooseRecentQuickPick,
 } from "./quickPick/QuickPickProvider";
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
-import { perforceContentProvider } from "./ContentProvider";
+import { perforceFsProvider } from "./FileSystemProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
 import { changeSpecEditor, jobSpecEditor } from "./SpecEditor";
 
@@ -276,7 +276,7 @@ export namespace PerforceCommands {
     }
 
     function didChangeHaveRev(uri: Uri) {
-        perforceContentProvider()?.requestUpdatedDocument(
+        perforceFsProvider()?.requestUpdatedDocument(
             PerforceUri.fromUriWithRevision(uri, "have")
         );
     }

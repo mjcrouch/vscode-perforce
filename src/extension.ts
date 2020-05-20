@@ -1,10 +1,7 @@
 "use strict";
 
 import { PerforceCommands } from "./PerforceCommands";
-import {
-    PerforceFileSystemProvider,
-    initPerforceContentProvider,
-} from "./ContentProvider";
+import { PerforceFileSystemProvider, initPerforceFsProvider } from "./FileSystemProvider";
 import FileSystemActions from "./FileSystemActions";
 import { PerforceSCMProvider } from "./ScmProvider";
 import { PerforceService } from "./PerforceService";
@@ -512,7 +509,7 @@ function doOneTimeRegistration() {
         Display.initialize(_disposable);
         ContextVars.initialize(_disposable);
 
-        _perforceContentProvider = initPerforceContentProvider();
+        _perforceContentProvider = initPerforceFsProvider();
         _disposable.push(_perforceContentProvider);
 
         _disposable.push(

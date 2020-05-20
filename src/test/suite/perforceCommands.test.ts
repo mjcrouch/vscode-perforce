@@ -10,7 +10,7 @@ import { stubExecute, StubPerforceModel } from "../helpers/StubPerforceModel";
 import p4Commands from "../helpers/p4Commands";
 import { PerforceCommands } from "../../PerforceCommands";
 import * as PerforceUri from "../../PerforceUri";
-import { initPerforceContentProvider } from "../../ContentProvider";
+import { initPerforceFsProvider } from "../../FileSystemProvider";
 import { Display } from "../../Display";
 import { getLocalFile } from "../helpers/testUtils";
 import { PerforceSCMProvider } from "../../ScmProvider";
@@ -35,7 +35,7 @@ describe("Perforce Command Module (integration)", () => {
 
     before(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-        initPerforceContentProvider();
+        initPerforceFsProvider();
     });
 
     beforeEach(() => {
