@@ -27,7 +27,7 @@ import {
     chooseRecentQuickPick,
 } from "./quickPick/QuickPickProvider";
 import { splitBy, pluralise, isTruthy } from "./TsUtils";
-import { perforceContentProvider } from "./ContentProvider";
+import { perforceFsProvider } from "./FileSystemProvider";
 import { showRevChooserForFile } from "./quickPick/FileQuickPick";
 import { changeSpecEditor, jobSpecEditor } from "./SpecEditor";
 
@@ -276,7 +276,7 @@ export namespace PerforceCommands {
     }
 
     function didChangeHaveRev(uri: Uri) {
-        perforceContentProvider().requestUpdatedDocument(
+        perforceFsProvider()?.requestUpdatedDocument(
             PerforceUri.fromUriWithRevision(uri, "have")
         );
     }
@@ -663,11 +663,8 @@ export namespace PerforceCommands {
         await DiffProvider.diffNext(fromDoc);
     }
 
-    async function diffFiles(leftFile: string, rightFile: string) {
-        await DiffProvider.diffFiles(
-            PerforceUri.parse(leftFile),
-            PerforceUri.parse(rightFile)
-        );
+    async function diffFiles(leftFile: Uri, rightFile: Uri) {
+        await DiffProvider.diffFiles(leftFile, rightFile);
     }
 
     function getOpenDocUri(): Uri | undefined {
@@ -694,8 +691,8 @@ export namespace PerforceCommands {
         await QuickPicks.showQuickPickForFile(fromDoc);
     }
 
-    export async function annotate(file?: string) {
-        const uri = file ? PerforceUri.parse(file) : getOpenDocUri();
+    export async function annotate(file?: Uri) {
+        const uri = file ?? getOpenDocUri();
 
         if (!uri) {
             return false;

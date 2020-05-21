@@ -63,20 +63,24 @@ describe("Perforce Uris", () => {
         it("Produces a URI for a depot path, including the depot parameter", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.authority).to.equal("depot");
-            expect(uri.path).to.equal("/my/path/file.txt#2");
+            expect(uri.authority).to.equal("#2");
+            expect(uri.path).to.equal("/my/path/file.txt");
             expect(uri.query).to.equal(
-                "command=print&p4Args=-q&depot&" + workspaceArg + "&depotName=depot&rev=2"
+                "command=print&p4Args=-q&authority=depot&depot&" +
+                    workspaceArg +
+                    "&depotName=depot&rev=2"
             );
             expect(uri.fragment).to.equal("2");
         });
         it("Has an optional revision", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, undefined);
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.authority).to.equal("depot");
+            expect(uri.authority).to.equal("");
             expect(uri.path).to.equal("/my/path/file.txt");
             expect(uri.query).to.equal(
-                "command=print&p4Args=-q&depot&" + workspaceArg + "&depotName=depot"
+                "command=print&p4Args=-q&authority=depot&depot&" +
+                    workspaceArg +
+                    "&depotName=depot"
             );
             expect(uri.fragment).to.equal("");
         });
@@ -85,9 +89,23 @@ describe("Perforce Uris", () => {
         it("Produces a perforce URI with an added revision / label fragment", () => {
             const uri = PerforceUri.fromUriWithRevision(localUri, "@=99");
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.fsPath).to.equal(localUri.fsPath + "@=99");
-            expect(uri.query).to.equal("command=print&p4Args=-q&rev=%40%3D99");
+            expect(uri.fsPath).to.equal(localUri.fsPath);
+            expect(uri.authority).to.equal("@=99");
+            expect(uri.query).to.equal(
+                "command=print&p4Args=-q&rev=%40%3D99&authority=null"
+            );
             expect(uri.fragment).to.equal("@=99");
+        });
+        it("Does not override the authority with a new one", () => {
+            const start = PerforceUri.fromUriWithRevision(localUri, "@=99");
+            const uri = PerforceUri.fromUriWithRevision(start, "@=98");
+            expect(uri.scheme).to.equal("perforce");
+            expect(uri.fsPath).to.equal(localUri.fsPath);
+            expect(uri.authority).to.equal("@=98");
+            expect(uri.query).to.equal(
+                "command=print&p4Args=-q&rev=%40%3D98&authority=null"
+            );
+            expect(uri.fragment).to.equal("@=98");
         });
     });
     describe("withArgs", () => {
@@ -96,7 +114,7 @@ describe("Perforce Uris", () => {
             const left = PerforceUri.fromUriWithRevision(localUri, "1");
             const augmented = PerforceUri.withArgs(uri, { leftUri: left.toString() });
             expect(augmented.query).to.equal(
-                "command=print&p4Args=-q&depot&" +
+                "command=print&p4Args=-q&authority=depot&depot&" +
                     workspaceArg +
                     "&depotName=depot&rev=2" +
                     "&leftUri=" +
@@ -107,7 +125,7 @@ describe("Perforce Uris", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" });
             expect(augmented.query).to.equal(
-                "command=print&p4Args=hello&depot&" +
+                "command=print&p4Args=hello&authority=depot&depot&" +
                     workspaceArg +
                     "&depotName=depot&rev=2"
             );
@@ -115,8 +133,9 @@ describe("Perforce Uris", () => {
         it("Accepts an optional revision", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" }, "3");
+            expect(augmented.authority).to.equal("#3");
             expect(augmented.query).to.equal(
-                "command=print&p4Args=hello&depot&" +
+                "command=print&p4Args=hello&authority=depot&depot&" +
                     workspaceArg +
                     "&depotName=depot&rev=3"
             );
@@ -125,8 +144,9 @@ describe("Perforce Uris", () => {
         it("Does not override the fragment if no revision supplied", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" });
+            expect(augmented.authority).to.equal("#2");
             expect(augmented.query).to.equal(
-                "command=print&p4Args=hello&depot&" +
+                "command=print&p4Args=hello&authority=depot&depot&" +
                     workspaceArg +
                     "&depotName=depot&rev=2"
             );
@@ -200,52 +220,8 @@ describe("Perforce Uris", () => {
             expect(PerforceUri.getDepotPathFromDepotUri(depotUri)).to.be.equal(path);
         });
     });
-    describe("parse", () => {
-        it("Parses a URI with an embedded revision", () => {
-            const uri = PerforceUri.parse("perforce://depot/a/myFile#2?a=b#2");
-            expect(uri.authority).to.equal("depot");
-            expect(uri.fragment).to.equal("2");
-            expect(uri.query).to.equal("a=b");
-            expect(uri.path).to.equal("/a/myFile#2");
-        });
-        it("Handles an embedded revision without an actual fragment", () => {
-            const uri = PerforceUri.parse("perforce://depot/a/myFile#2?a=b");
-            expect(uri.authority).to.equal("depot");
-            expect(uri.fragment).to.equal("");
-            expect(uri.query).to.equal("a=b");
-            expect(uri.path).to.equal("/a/myFile#2");
-        });
-        it("Handles an embedded revision without a query", () => {
-            const uri = PerforceUri.parse("perforce://depot/a/myFile#2#2");
-            expect(uri.authority).to.equal("depot");
-            expect(uri.fragment).to.equal("2");
-            expect(uri.query).to.equal("");
-            expect(uri.path).to.equal("/a/myFile#2");
-        });
-        it("Parses a file without a query string or fragment normally", () => {
-            const uri = PerforceUri.parse("perforce://depot/a/myFile#2");
-            expect(uri.authority).to.equal("depot");
-            expect(uri.fragment).to.equal("2");
-            expect(uri.query).to.equal("");
-            expect(uri.path).to.equal("/a/myFile");
-        });
-    });
-    describe("withoutRev", () => {
-        it("Removes a revision from a path if it matches the fragment", () => {
-            const path = "/my/path#2";
-            expect(PerforceUri.withoutRev(path, "2")).to.equal("/my/path");
-        });
-        it("Handles labels", () => {
-            const path = "/my/path@=99";
-            expect(PerforceUri.withoutRev(path, "@=99")).to.equal("/my/path");
-        });
-        it("Does not remove different values", () => {
-            const path = "/my/path#2";
-            expect(PerforceUri.withoutRev(path, "3")).to.equal("/my/path#2");
-        });
-    });
     describe("fsPathWithoutRev", () => {
-        it("Removes a revision from a path if it matches the fragment", () => {
+        it("Does not include a revision", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const withoutRev = PerforceUri.fsPathWithoutRev(uri);
             expect(withoutRev).to.equal(path.sep + path.join("my", "path", "file.txt"));
@@ -255,12 +231,52 @@ describe("Perforce Uris", () => {
             const withoutRev = PerforceUri.fsPathWithoutRev(uri);
             expect(withoutRev).to.equal(path.sep + path.join("my", "path", "file.txt"));
         });
-        it("Does not remove non-matching parts", () => {
-            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2").with({
-                fragment: "3",
-            });
+        it("Works for local file paths with a reviison", () => {
+            const uri = PerforceUri.fromUriWithRevision(localUri, "2");
             const withoutRev = PerforceUri.fsPathWithoutRev(uri);
-            expect(withoutRev).to.equal(uri.fsPath);
+            expect(withoutRev).to.equal(localUri.fsPath);
+        });
+        it("Works for local files without a revision", () => {
+            const uri = PerforceUri.fromUri(localUri);
+            const withoutRev = PerforceUri.fsPathWithoutRev(uri);
+            expect(withoutRev).to.equal(localUri.fsPath);
+        });
+        it("Works for local non-perforce-scheme files", () => {
+            expect(PerforceUri.fsPathWithoutRev(localUri)).to.equal(localUri.fsPath);
+        });
+    });
+    describe("basenameWithoutRev", () => {
+        it("Does not include a revision", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
+            const withoutRev = PerforceUri.basenameWithoutRev(uri);
+            expect(withoutRev).to.equal("file.txt");
+        });
+        it("Does not include a shelved label", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "@=2");
+            const withoutRev = PerforceUri.basenameWithoutRev(uri);
+            expect(withoutRev).to.equal("file.txt");
+        });
+        it("Nothing changes when no revision", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "");
+            const withRev = PerforceUri.basenameWithoutRev(uri);
+            expect(withRev).to.equal("file.txt");
+        });
+    });
+    describe("basenameWithRev", () => {
+        it("Includes a revision", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
+            const withRev = PerforceUri.basenameWithRev(uri);
+            expect(withRev).to.equal("file.txt#2");
+        });
+        it("Includes a shelved label", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "@=2");
+            const withRev = PerforceUri.basenameWithRev(uri);
+            expect(withRev).to.equal("file.txt@=2");
+        });
+        it("Nothing is appended when no revision", () => {
+            const uri = PerforceUri.fromDepotPath(localUri, depotPath, "");
+            const withRev = PerforceUri.basenameWithRev(uri);
+            expect(withRev).to.equal("file.txt");
         });
     });
 });

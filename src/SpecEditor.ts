@@ -132,14 +132,30 @@ abstract class SpecEditor {
         return fullFile;
     }
 
-    async editSpecImpl(resource: vscode.Uri, item: string) {
+    private static selectNewDescription(editor: vscode.TextEditor) {
+        const text = editor.document.getText();
+        const lines = text.split(/\r?\n/);
+        const index = lines.findIndex((val) => val.includes("<enter description here>"));
+        if (index >= 0) {
+            const startChar = lines[index].indexOf("<");
+            const endChar = lines[index].indexOf(">");
+            editor.selection = new vscode.Selection(index, startChar, index, endChar + 1);
+        }
+    }
+
+    private async editSpecImpl(resource: vscode.Uri, item: string) {
         const text = await this.getSpecText(resource, item);
         const withMessage =
             text +
             "\n\n# When you are done editing, click the 'apply spec' button\n# on this editor's toolbar to apply the edit to the perforce server";
         const file = await this.createSpecFile(item, withMessage);
         await this.setResource(file, resource);
-        await vscode.window.showTextDocument(file, { preview: item === "new" });
+        const editor = await vscode.window.showTextDocument(file, {
+            preview: item === "new",
+        });
+        if (item === "new") {
+            SpecEditor.selectNewDescription(editor);
+        }
         SpecEditor.checkTabSettings();
     }
 

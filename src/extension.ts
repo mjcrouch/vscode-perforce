@@ -1,7 +1,7 @@
 "use strict";
 
 import { PerforceCommands } from "./PerforceCommands";
-import { PerforceContentProvider, perforceContentProvider } from "./ContentProvider";
+import { PerforceFileSystemProvider, initPerforceFsProvider } from "./FileSystemProvider";
 import FileSystemActions from "./FileSystemActions";
 import { PerforceSCMProvider } from "./ScmProvider";
 import { PerforceService } from "./PerforceService";
@@ -21,7 +21,7 @@ import { createSpecEditor } from "./SpecEditor";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
-let _perforceContentProvider: PerforceContentProvider | undefined;
+let _perforceContentProvider: PerforceFileSystemProvider | undefined;
 const _dirsWithNoClient = new Set<string>();
 
 function logInitProgress(uri: vscode.Uri, message: string) {
@@ -490,7 +490,14 @@ export async function activate(ctx: vscode.ExtensionContext) {
 }
 
 function doOneTimeRegistration() {
-    if (!_isRegistered) {
+    // don't activate all the 'standard' stuff when running from the test framework
+    // any required modules are stubbed or constructed within the tests, we can't
+    // stub the modules loaded here due to webpack
+    const inTestMode = vscode.workspace
+        .getConfiguration("perforce")
+        .get("testModeNoActivate");
+
+    if (!_isRegistered && !inTestMode) {
         _isRegistered = true;
 
         QuickPicks.registerQuickPicks();
@@ -502,7 +509,7 @@ function doOneTimeRegistration() {
         Display.initialize(_disposable);
         ContextVars.initialize(_disposable);
 
-        _perforceContentProvider = perforceContentProvider();
+        _perforceContentProvider = initPerforceFsProvider();
         _disposable.push(_perforceContentProvider);
 
         _disposable.push(

@@ -10,7 +10,7 @@ import { stubExecute, StubPerforceModel } from "../helpers/StubPerforceModel";
 import p4Commands from "../helpers/p4Commands";
 import { PerforceCommands } from "../../PerforceCommands";
 import * as PerforceUri from "../../PerforceUri";
-import { PerforceContentProvider } from "../../ContentProvider";
+import { initPerforceFsProvider } from "../../FileSystemProvider";
 import { Display } from "../../Display";
 import { getLocalFile } from "../helpers/testUtils";
 import { PerforceSCMProvider } from "../../ScmProvider";
@@ -33,13 +33,9 @@ describe("Perforce Command Module (integration)", () => {
 
     let refresh: sinon.SinonSpy;
 
-    const doc = new PerforceContentProvider();
-
     before(async () => {
         await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-    });
-    after(() => {
-        doc.dispose();
+        initPerforceFsProvider();
     });
 
     beforeEach(() => {
@@ -83,10 +79,7 @@ describe("Perforce Command Module (integration)", () => {
             await vscode.window.showTextDocument(localFile);
             await PerforceCommands.diff(5);
             expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                PerforceUri.fromUri(localFile).with({
-                    path: localFile.path + "#5",
-                    fragment: "5",
-                }),
+                PerforceUri.fromUriWithRevision(localFile, "5"),
                 localFile,
                 "new.txt#5 ⟷ new.txt (workspace)"
             );

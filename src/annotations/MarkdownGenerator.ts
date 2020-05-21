@@ -53,19 +53,14 @@ function makeQuickPickFileURI(underlying: vscode.Uri, change: p4.FileLogItem) {
         makeCommandURI(
             "perforce.showQuickPick",
             "file",
-            makePerforceURI(underlying, change).toString()
+            makePerforceURI(underlying, change)
         ) + ' "Show more actions for this file"'
     );
 }
 
 function makeQuickPickChangeURI(underlying: vscode.Uri, change: p4.FileLogItem) {
     return (
-        makeCommandURI(
-            "perforce.showQuickPick",
-            "change",
-            underlying.toString(),
-            change.chnum
-        ) +
+        makeCommandURI("perforce.showQuickPick", "change", underlying, change.chnum) +
         ' "Show actions for changelist ' +
         change.chnum +
         '"'
@@ -73,7 +68,7 @@ function makeQuickPickChangeURI(underlying: vscode.Uri, change: p4.FileLogItem) 
 }
 
 export function makeAnnotateURI(underlying: vscode.Uri, change: p4.FileLogItem) {
-    const args = makePerforceURI(underlying, change).toString();
+    const args = makePerforceURI(underlying, change);
     return (
         makeCommandURI("perforce.annotate", args) +
         ' "Show annotations for ' +

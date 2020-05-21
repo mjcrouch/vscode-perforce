@@ -1,5 +1,14 @@
 # Change log
 
+## [4.8.2] - 2020-05-20
+
+* Re-add revision numbers / labels, using a new, more correct approach (#150)
+
+## [4.8.1] - 2020-05-18
+
+* Revert the change to add revision nubmers / labels as it prevented syntax highlighting from working (#150)
+* Select the description when creating a new changelist / job
+
 ## [4.8.0] - 2020-05-17
 
 * Add the ability to create a new changelist or job using the spec editor - accessible from the SCM context menu and the command palette
@@ -391,6 +400,9 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.8.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.8.1...4.8.2
+[4.8.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.8.0...4.8.1
+[4.8.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.7.0...4.8.0
 [4.7.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.6.0...4.7.0
 [4.6.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.5.0...4.6.0
 [4.5.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.4.2...4.5.0
