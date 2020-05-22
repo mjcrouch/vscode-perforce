@@ -278,7 +278,7 @@ describe("Perforce API", () => {
     describe("fstat", () => {
         it("Uses the correct arguments", async () => {
             execute.callsFake(execWithStdOut(""));
-            await p4.getFstatInfo(ws, {
+            await p4.getFstatInfoMapped(ws, {
                 depotPaths: ["a", "b", "c"],
                 chnum: "99",
                 limitToShelved: true,
@@ -335,7 +335,7 @@ describe("Perforce API", () => {
                 )
             );
 
-            const output = await p4.getFstatInfo(ws, {
+            const output = await p4.getFstatInfoMapped(ws, {
                 chnum: "38",
                 depotPaths: [
                     "//depot/testArea/ireallylikenewfiles",
@@ -385,7 +385,7 @@ describe("Perforce API", () => {
             const secondPortion = paths.slice(32);
 
             await expect(
-                p4.getFstatInfo(ws, { depotPaths: paths })
+                p4.getFstatInfoMapped(ws, { depotPaths: paths })
             ).to.eventually.deep.equal(expected);
 
             expect(execute).to.have.been.calledWith(

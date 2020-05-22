@@ -6,12 +6,12 @@ import {
     mergeAll,
     splitIntoSections,
 } from "../CommandUtils";
-import { FstatInfo } from "../CommonTypes";
+import { FstatInfo, PerforceFile } from "../CommonTypes";
 import { isTruthy } from "../../TsUtils";
 import { splitIntoLines } from "../CommandUtils";
 
 export interface FstatOptions {
-    depotPaths: string[];
+    depotPaths: PerforceFile[];
     chnum?: string;
     limitToShelved?: boolean;
     outputPendingRecord?: boolean;
@@ -35,11 +35,11 @@ function parseFstatSection(file: string) {
     return mergeAll({ depotFile: "" }, ...parseZTagBlock(file)) as FstatInfo;
 }
 
-function parseFstatOutput(expectedFiles: string[], fstatOutput: string) {
+function parseFstatOutput(fstatOutput: string) {
     const all = splitIntoSections(fstatOutput.trim()).map((file) =>
         parseFstatSection(file)
     );
-    return expectedFiles.map((file) => all.find((fs) => fs["depotFile"] === file));
+    return all;
 }
 
 const fstatFlags = flagMapper<FstatOptions>(
@@ -60,5 +60,15 @@ export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) 
     );
 
     const fstats = await Promise.all(promises);
-    return fstats.flatMap((output, i) => parseFstatOutput(chunks[i], output));
+    return fstats.flatMap((output) => parseFstatOutput(output));
+}
+
+/**
+ * perform an fstat and map the results back to the right files
+ * ONLY WORKS IF THE PASSED IN PATHS ARE DEPOT PATH STRINGS without any revision specifiers
+ * (TODO - this whole module could be reworked to something better...)
+ */
+export async function getFstatInfoMapped(resource: vscode.Uri, options: FstatOptions) {
+    const all = await getFstatInfo(resource, options);
+    return options.depotPaths.map((file) => all.find((fs) => fs["depotFile"] === file));
 }

@@ -95,7 +95,7 @@ async function getMovedFromFile(
     operation: p4.DepotFileOperation,
     change: p4.ChangeInfo
 ) {
-    const fstat = await p4.getFstatInfo(resource, {
+    const fstat = await p4.getFstatInfoMapped(resource, {
         depotPaths: [operation.depotPath],
         limitToShelved: true,
         outputPendingRecord: true,

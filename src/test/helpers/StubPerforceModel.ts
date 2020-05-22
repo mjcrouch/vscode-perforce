@@ -8,6 +8,7 @@ import {
     FixedJob,
     FstatInfo,
     isUri,
+    PerforceFile,
 } from "../../api/CommonTypes";
 import { Status } from "../../scm/Status";
 import { PerforceService } from "../../PerforceService";
@@ -80,7 +81,7 @@ export class StubPerforceModel {
     public getChangeSpec: sinon.SinonStub<any>;
     public getChangelists: sinon.SinonStub<any>;
     public getFixedJobs: sinon.SinonStub<any>;
-    public getFstatInfo: sinon.SinonStub<any>;
+    public getFstatInfoMapped: sinon.SinonStub<any>;
     public getInfo: sinon.SinonStub<any>;
     public getOpenedFiles: sinon.SinonStub<any>;
     public getShelvedFiles: sinon.SinonStub<any>;
@@ -115,8 +116,8 @@ export class StubPerforceModel {
         this.getFixedJobs = sinon
             .stub(p4, "getFixedJobs")
             .callsFake(this.resolveFixedJobs.bind(this));
-        this.getFstatInfo = sinon
-            .stub(p4, "getFstatInfo")
+        this.getFstatInfoMapped = sinon
+            .stub(p4, "getFstatInfoMapped")
             .callsFake(this.fstatFiles.bind(this));
         this.getInfo = sinon.stub(p4, "getInfo").callsFake(makeDefaultInfo);
         this.getOpenedFiles = sinon
@@ -258,7 +259,7 @@ export class StubPerforceModel {
     }
 
     fstatFile(
-        depotPath: string,
+        depotPath: PerforceFile,
         chnum?: string,
         shelved?: boolean
     ): FstatInfo | undefined {

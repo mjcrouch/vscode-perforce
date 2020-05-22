@@ -296,7 +296,7 @@ export class Model implements Disposable {
         });
 
         if (this.hideDefaultNonWorkspace && changeFields.files) {
-            const infos = await p4.getFstatInfo(this._workspaceUri, {
+            const infos = await p4.getFstatInfoMapped(this._workspaceUri, {
                 depotPaths: changeFields.files.map((file) => file.depotPath),
             });
 
@@ -1220,7 +1220,7 @@ export class Model implements Disposable {
         files: p4.ShelvedChangeInfo[]
     ): Promise<Resource[]> {
         const proms = files.map((f) =>
-            p4.getFstatInfo(this._workspaceUri, {
+            p4.getFstatInfoMapped(this._workspaceUri, {
                 depotPaths: f.paths,
                 limitToShelved: true,
                 outputPendingRecord: true,
@@ -1240,7 +1240,7 @@ export class Model implements Disposable {
     private async getDepotOpenedResources(): Promise<Resource[]> {
         const depotPaths = await this.getDepotOpenedFilePaths();
         const fstatInfo = (
-            await p4.getFstatInfo(this._workspaceUri, {
+            await p4.getFstatInfoMapped(this._workspaceUri, {
                 depotPaths,
                 outputPendingRecord: true,
             })
