@@ -196,7 +196,7 @@ function fileSpecToArg(fileSpec: vscode.Uri, ignoreRevisionFragments?: boolean) 
     }
     return (
         Utils.expansePath(PerforceUri.fsPathWithoutRev(fileSpec)) +
-        fragmentAsSuffix(fileSpec.fragment, ignoreRevisionFragments)
+        fragmentAsSuffix(PerforceUri.getRevOrAtLabel(fileSpec), ignoreRevisionFragments)
     );
 }
 

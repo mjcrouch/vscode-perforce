@@ -17,7 +17,7 @@ export const integrationQuickPickProvider: qp.ActionableQuickPickProvider = {
                 "Choose integration for " +
                 PerforceUri.getDepotPathFromDepotUri(uri) +
                 "#" +
-                uri.fragment,
+                PerforceUri.getRevOrAtLabel(uri),
         };
     },
 };
@@ -34,12 +34,12 @@ function isInRevRange(rev: number, startRev: string | undefined, endRev: string)
 }
 
 async function makeIntegrationPicks(uri: vscode.Uri) {
-    const rev = parseInt(uri.fragment);
+    const rev = parseInt(PerforceUri.getRevOrAtLabel(uri));
 
     const integs = await p4.integrated(uri, {
         file: uri,
         intoOnly: true,
-        startingChnum: uri.fragment,
+        startingChnum: PerforceUri.getRevOrAtLabel(uri),
     });
 
     return integs
