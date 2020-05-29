@@ -1848,7 +1848,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     await PerforceSCMProvider.Open(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                        vscode.Uri.parse("perforce:EMPTY"),
+                        vscode.Uri.parse("perforce:/EMPTY"),
                         file.localFile,
                         "new.txt#0 ⟷ new.txt (workspace)"
                     );
@@ -1899,7 +1899,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                     await PerforceSCMProvider.Open(resource);
 
                     expect(execCommand.lastCall).to.be.vscodeDiffCall(
-                        vscode.Uri.parse("perforce:EMPTY"),
+                        vscode.Uri.parse("perforce:/EMPTY"),
                         file.localFile,
                         "branched.txt#0 ⟷ branched.txt (workspace)"
                     );

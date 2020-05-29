@@ -92,7 +92,7 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
     }
 
     public async provideTextDocumentContent(uri: Uri): Promise<string> {
-        if (uri.path === "EMPTY") {
+        if (uri.path === "/EMPTY") {
             return "";
         }
 

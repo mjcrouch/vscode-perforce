@@ -38,7 +38,7 @@ export function revOrLabelAsSuffix(revOrAtLabel: string | undefined) {
         : "";
 }
 export function emptyFileUri() {
-    return vscode.Uri.parse("perforce:EMPTY");
+    return vscode.Uri.parse("perforce:/EMPTY");
 }
 
 function uriWithoutRev(uri: vscode.Uri) {
