@@ -517,7 +517,9 @@ export class PerforceSCMProvider {
         ) as Resource[];
         const promises = [];
         for (const resource of selection) {
-            promises.push(PerforceSCMProvider.open(resource));
+            promises.push(
+                PerforceSCMProvider.open(resource, undefined, selection.length === 1)
+            );
         }
         await Promise.all(promises);
     }
@@ -531,7 +533,8 @@ export class PerforceSCMProvider {
             promises.push(
                 PerforceSCMProvider.open(
                     resource,
-                    DiffProvider.DiffType.WORKSPACE_V_SHELVE
+                    DiffProvider.DiffType.WORKSPACE_V_SHELVE,
+                    selection.length === 1
                 )
             );
         }
@@ -801,7 +804,8 @@ export class PerforceSCMProvider {
 
     private static async open(
         resource: Resource,
-        diffType?: DiffProvider.DiffType
+        diffType?: DiffProvider.DiffType,
+        preview: boolean = true
     ): Promise<void> {
         if (resource.FileType.base === FileType.BINARY) {
             const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
@@ -811,6 +815,6 @@ export class PerforceSCMProvider {
             return;
         }
 
-        await DiffProvider.diffDefault(resource, diffType);
+        await DiffProvider.diffDefault(resource, diffType, preview);
     }
 }

@@ -94,7 +94,12 @@ function diffTitleForFiles(leftFile: Uri, rightFile: Uri) {
     );
 }
 
-export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
+export async function diffFiles(
+    leftFile: Uri,
+    rightFile: Uri,
+    title?: string,
+    preview: boolean = true
+) {
     // ensure we don't keep stacking left files
     const leftFileWithoutLeftFiles = PerforceUri.withArgs(leftFile, {
         leftUri: undefined,
@@ -118,7 +123,8 @@ export async function diffFiles(leftFile: Uri, rightFile: Uri, title?: string) {
         "vscode.diff",
         leftFileWithoutLeftFiles,
         rightUriWithLeftInfo,
-        fullTitle
+        fullTitle,
+        { preview }
     );
 }
 
@@ -256,7 +262,8 @@ export async function diffNext(fromDoc: Uri) {
 
 export async function diffDefault(
     resource: Resource,
-    diffType?: DiffType
+    diffType?: DiffType,
+    preview: boolean = true
 ): Promise<void> {
     if (resource.FileType.base === FileType.BINARY) {
         const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
@@ -297,7 +304,7 @@ export async function diffDefault(
             : PerforceUri.withArgs(right, {
                   haveRev: resource.workingRevision,
               });
-    await diffFiles(leftUri, rightUri, getTitle(resource, left.title, diffType));
+    await diffFiles(leftUri, rightUri, getTitle(resource, left.title, diffType), preview);
     return;
 }
 
