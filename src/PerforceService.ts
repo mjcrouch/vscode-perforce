@@ -37,10 +37,20 @@ export namespace PerforceService {
         return dir === "none" ? undefined : dir;
     }
 
-    function getPerforceCmdPath(): string {
+    function expandCmdPath(path: string, resource: Uri): string {
+        if (path.includes("${workspaceFolder}")) {
+            const ws =
+                workspace.getWorkspaceFolder(resource) ?? workspace.workspaceFolders?.[0];
+            const sub = ws?.uri.fsPath ?? "";
+            return path.replace("${workspaceFolder}", sub);
+        }
+        return path;
+    }
+
+    function getPerforceCmdPath(resource: Uri): string {
         let p4Path = workspace.getConfiguration("perforce").get("command", "none");
 
-        if (p4Path === "none") {
+        if (p4Path === "none" || p4Path === "") {
             const isWindows = process.platform.startsWith("win");
             p4Path = isWindows ? "p4.exe" : "p4";
         } else {
@@ -55,7 +65,7 @@ export namespace PerforceService {
                 return uncPath;
             };
 
-            p4Path = toUNC(p4Path);
+            p4Path = toUNC(expandCmdPath(p4Path, resource));
         }
         return p4Path;
     }
@@ -157,7 +167,7 @@ export namespace PerforceService {
         useTerminal?: boolean
     ) {
         const actualResource = PerforceUri.getUsableWorkspace(resource) ?? resource;
-        const cmd = getPerforceCmdPath();
+        const cmd = getPerforceCmdPath(actualResource);
 
         const allArgs: string[] = getPerforceCmdParams(actualResource);
         allArgs.push(command);
