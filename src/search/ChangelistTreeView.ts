@@ -31,6 +31,7 @@ import { DescribedChangelist } from "../api/PerforceApi";
 import * as PerforceUri from "../PerforceUri";
 import { operationCreatesFile, GetStatus, operationDeletesFile } from "../scm/Status";
 import * as DiffProvider from "../DiffProvider";
+import { MementoItem } from "../MementoItem";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem<any> {
     constructor(private _providerSelection: ProviderSelection) {
@@ -145,9 +146,12 @@ class GoToChangelist extends SelfExpandingTreeItem<any> {
 class RunSearch extends SelfExpandingTreeItem<any> {
     private _autoRefresh: boolean;
 
-    constructor(private _root: ChangelistTreeRoot) {
-        super(RunSearch.makeLabel(false));
-        this._autoRefresh = false;
+    constructor(
+        private _root: ChangelistTreeRoot,
+        private _memento: MementoItem<boolean>
+    ) {
+        super(RunSearch.makeLabel(!!_memento.value));
+        this._autoRefresh = !!_memento.value;
     }
 
     private static makeLabel(autoRefresh: boolean) {
@@ -162,6 +166,7 @@ class RunSearch extends SelfExpandingTreeItem<any> {
         this._autoRefresh = autoRefresh;
         this.label = RunSearch.makeLabel(this._autoRefresh);
         this.didChange();
+        this._memento.save(autoRefresh);
     }
 
     get command(): vscode.Command {
@@ -581,14 +586,17 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
     private _providerSelection: ProviderSelection;
     private _runSearch: RunSearch;
 
-    constructor() {
+    constructor(memento: vscode.Memento) {
         super();
         this._providerSelection = new ProviderSelection();
         this._subscriptions.push(this._providerSelection);
         this._chooseProvider = new ChooseProviderTreeItem(this._providerSelection);
-        this._filterRoot = new FilterRootItem(this._providerSelection);
+        this._filterRoot = new FilterRootItem(this._providerSelection, memento);
         this._allResults = new AllResultsTree();
-        this._runSearch = new RunSearch(this);
+        this._runSearch = new RunSearch(
+            this,
+            new MementoItem("changeSearch.autoRefresh", memento)
+        );
         this._subscriptions.push(
             this._filterRoot.onDidChangeFilters(() => {
                 if (this._runSearch.autoRefresh) {
@@ -636,7 +644,7 @@ export function focusChangelist(resource: vscode.Uri, described: DescribedChange
     changelistTree.focusChangelist(resource, described);
 }
 
-export function registerChangelistSearch() {
+export function registerChangelistSearch(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
         "perforce.changeSearch.chooseProvider",
         (arg: ChooseProviderTreeItem) => arg.chooseProvider()
@@ -726,7 +734,7 @@ export function registerChangelistSearch() {
         (arg: Diffable) => vscode.window.showTextDocument(arg.perforceUri)
     );
 
-    changelistTree = new ChangelistTreeRoot();
+    changelistTree = new ChangelistTreeRoot(context.workspaceState);
     const treeDataProvider = new SelfExpandingTreeProvider(changelistTree);
     const treeView = vscode.window.createTreeView("perforce.searchChangelists", {
         treeDataProvider,

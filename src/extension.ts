@@ -444,7 +444,10 @@ async function checkForSlevesque(ctx: vscode.ExtensionContext) {
     }
 }
 
+let _context: vscode.ExtensionContext;
+
 export async function activate(ctx: vscode.ExtensionContext) {
+    _context = ctx;
     // ALWAYS register the edit and save command
     PerforceCommands.registerImportantCommands(_disposable);
     createSpecEditor(ctx);
@@ -524,7 +527,7 @@ function doOneTimeRegistration() {
         // todo: fix dependency / order of operations issues
         PerforceCommands.registerCommands();
         PerforceSCMProvider.registerCommands();
-        registerChangelistSearch();
+        registerChangelistSearch(_context);
     }
 }
 
