@@ -1407,8 +1407,18 @@
                     "when": "view == perforce.searchChangelists && viewItem == filterRoot"
                 },
                 {
+                    "command": "perforce.changeSearch.resetFilters",
+                    "group": "1_cs@1",
+                    "when": "view == perforce.searchChangelists && viewItem == filterRoot"
+                },
+                {
                     "command": "perforce.changeSearch.resetFilter",
                     "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == filterItem-val"
+                },
+                {
+                    "command": "perforce.changeSearch.resetFilter",
+                    "group": "1_cs@1",
                     "when": "view == perforce.searchChangelists && viewItem == filterItem-val"
                 },
                 {
@@ -1417,8 +1427,18 @@
                     "when": "view == perforce.searchChangelists && viewItem == fileFilters"
                 },
                 {
+                    "command": "perforce.changeSearch.addFileFilter",
+                    "group": "1_cs@1",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilters"
+                },
+                {
                     "command": "perforce.changeSearch.editFileFilter",
                     "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
+                {
+                    "command": "perforce.changeSearch.editFileFilter",
+                    "group": "1_cs@1",
                     "when": "view == perforce.searchChangelists && viewItem == fileFilter"
                 },
                 {
@@ -1427,8 +1447,18 @@
                     "when": "view == perforce.searchChangelists && viewItem == fileFilter"
                 },
                 {
+                    "command": "perforce.changeSearch.removeFileFilter",
+                    "group": "1_cs@2",
+                    "when": "view == perforce.searchChangelists && viewItem == fileFilter"
+                },
+                {
                     "command": "perforce.changeSearch.enableAutoRefresh",
                     "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem == searchNow-manual"
+                },
+                {
+                    "command": "perforce.changeSearch.enableAutoRefresh",
+                    "group": "1_cs@0",
                     "when": "view == perforce.searchChangelists && viewItem == searchNow-manual"
                 },
                 {
@@ -1437,8 +1467,18 @@
                     "when": "view == perforce.searchChangelists && viewItem == searchNow-auto"
                 },
                 {
+                    "command": "perforce.changeSearch.disableAutoRefresh",
+                    "group": "1_cs@0",
+                    "when": "view == perforce.searchChangelists && viewItem == searchNow-auto"
+                },
+                {
                     "command": "perforce.changeSearch.refresh",
                     "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
+                },
+                {
+                    "command": "perforce.changeSearch.refresh",
+                    "group": "1_cs@0",
                     "when": "view == perforce.searchChangelists && viewItem =~ /results/"
                 },
                 {
@@ -1447,8 +1487,18 @@
                     "when": "view == perforce.searchChangelists && viewItem == results-unpinned"
                 },
                 {
+                    "command": "perforce.changeSearch.pin",
+                    "group": "1_cs@1",
+                    "when": "view == perforce.searchChangelists && viewItem == results-unpinned"
+                },
+                {
                     "command": "perforce.changeSearch.unpin",
                     "group": "inline@2",
+                    "when": "view == perforce.searchChangelists && viewItem == results-pinned"
+                },
+                {
+                    "command": "perforce.changeSearch.unpin",
+                    "group": "1_cs@2",
                     "when": "view == perforce.searchChangelists && viewItem == results-pinned"
                 },
                 {
@@ -1457,8 +1507,18 @@
                     "when": "view == perforce.searchChangelists && viewItem =~ /results/"
                 },
                 {
+                    "command": "perforce.changeSearch.delete",
+                    "group": "1_cs@3",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
+                },
+                {
                     "command": "perforce.changeSearch.showInQuickPick",
                     "group": "inline@0",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /results/"
+                },
+                {
+                    "command": "perforce.changeSearch.showInQuickPick",
+                    "group": "1_cs@0",
                     "when": "view == perforce.searchChangelists && viewItem =~ /results/"
                 },
                 {
@@ -1467,8 +1527,18 @@
                     "when": "view == perforce.searchChangelists && viewItem =~ /fileResult/ && viewItem =~ /openable/"
                 },
                 {
+                    "command": "perforce.changeSearch.openResultDoc",
+                    "group": "1_cs@0",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /fileResult/ && viewItem =~ /openable/"
+                },
+                {
                     "command": "perforce.changeSearch.diffResult",
                     "group": "inline@1",
+                    "when": "view == perforce.searchChangelists && viewItem =~ /fileResult/ && viewItem =~ /diffable/"
+                },
+                {
+                    "command": "perforce.changeSearch.diffResult",
+                    "group": "1_cs@1",
                     "when": "view == perforce.searchChangelists && viewItem =~ /fileResult/ && viewItem =~ /diffable/"
                 }
             ]
