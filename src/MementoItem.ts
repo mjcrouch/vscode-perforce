@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-// keys for workspace mementos - any global ones should use a different enum
+// keys for workspace level mementos
 export enum MementoKeys {
     SEARCH_STATUS = "changeSearch.statusFilter",
     SEARCH_USER = "changeSearch.userFilter",
@@ -9,6 +9,7 @@ export enum MementoKeys {
     SEARCH_AUTO_REFRESH = "changeSearch.autoRefresh",
 }
 
+// keys for global mementos
 export enum GlobalMementoKeys {
     SPEC_CHANGELIST_MAP = "changeMap",
     SPEC_JOB_MAP = "jobMap",

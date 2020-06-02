@@ -426,7 +426,6 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
         this.loadFromMemento();
     }
 
-    // needs to happen after constructor is done!
     private loadFromMemento() {
         this._memento.value?.forEach((saved) =>
             this.addSelectedFilterWithoutEvent(new FileFilterValue(saved))
