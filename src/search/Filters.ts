@@ -11,7 +11,7 @@ import { configAccessor } from "../ConfigService";
 import { showComboBoxInput } from "../ComboBoxInput";
 import * as p4 from "../api/PerforceApi";
 import { Display } from "../Display";
-import { MementoItem } from "../MementoItem";
+import { MementoItem, MementoKeys } from "../MementoItem";
 
 type SearchFilterValue<T> = {
     label: string;
@@ -633,22 +633,22 @@ export class FilterRootItem extends SelfExpandingTreeItem<any> {
     constructor(provider: ProviderSelection, memento: vscode.Memento) {
         super("Filters", vscode.TreeItemCollapsibleState.Expanded);
         this._statusFilter = new StatusFilter(
-            new MementoItem("changeSearch.statusFilter", memento)
+            new MementoItem(MementoKeys.SEARCH_STATUS, memento)
         );
         this.addChild(this._statusFilter);
         this._userFilter = new UserFilter(
             provider,
-            new MementoItem("changeSearch.userFilter", memento)
+            new MementoItem(MementoKeys.SEARCH_USER, memento)
         );
         this.addChild(this._userFilter);
         this._clientFilter = new ClientFilter(
             provider,
-            new MementoItem("changeSearch.clientFilter", memento)
+            new MementoItem(MementoKeys.SEARCH_CLIENT, memento)
         );
         this.addChild(this._clientFilter);
         this._fileFilter = new FileFilterRoot(
             provider,
-            new MementoItem("changeSearch.fileFilters", memento)
+            new MementoItem(MementoKeys.SEARCH_FILES, memento)
         );
         this.addChild(this._fileFilter);
         this._didChangeFilters = new vscode.EventEmitter();

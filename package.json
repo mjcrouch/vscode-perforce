@@ -823,6 +823,11 @@
                 "command": "perforce.newJobSpec",
                 "title": "Create job in editor...",
                 "category": "Perforce"
+            },
+            {
+                "command": "perforce.clearMementos",
+                "title": "Clear persisted memento data",
+                "category": "Perforce"
             }
         ],
         "menus": {

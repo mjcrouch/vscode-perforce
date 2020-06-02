@@ -31,7 +31,7 @@ import { DescribedChangelist } from "../api/PerforceApi";
 import * as PerforceUri from "../PerforceUri";
 import { operationCreatesFile, GetStatus, operationDeletesFile } from "../scm/Status";
 import * as DiffProvider from "../DiffProvider";
-import { MementoItem } from "../MementoItem";
+import { MementoItem, MementoKeys } from "../MementoItem";
 
 class ChooseProviderTreeItem extends SelfExpandingTreeItem<any> {
     constructor(private _providerSelection: ProviderSelection) {
@@ -595,7 +595,7 @@ class ChangelistTreeRoot extends SelfExpandingTreeRoot<any> {
         this._allResults = new AllResultsTree();
         this._runSearch = new RunSearch(
             this,
-            new MementoItem("changeSearch.autoRefresh", memento)
+            new MementoItem(MementoKeys.SEARCH_AUTO_REFRESH, memento)
         );
         this._subscriptions.push(
             this._filterRoot.onDidChangeFilters(() => {

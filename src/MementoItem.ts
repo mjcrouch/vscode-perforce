@@ -1,5 +1,19 @@
 import * as vscode from "vscode";
 
+// keys for workspace mementos - any global ones should use a different enum
+export enum MementoKeys {
+    SEARCH_STATUS = "changeSearch.statusFilter",
+    SEARCH_USER = "changeSearch.userFilter",
+    SEARCH_CLIENT = "changeSearch.clientFilter",
+    SEARCH_FILES = "changeSearch.fileFilters",
+    SEARCH_AUTO_REFRESH = "changeSearch.autoRefresh",
+}
+
+export enum GlobalMementoKeys {
+    SPEC_CHANGELIST_MAP = "changeMap",
+    SPEC_JOB_MAP = "jobMap",
+}
+
 export class MementoItem<T> {
     constructor(private _key: string, private _memento: vscode.Memento) {}
 
@@ -10,4 +24,18 @@ export class MementoItem<T> {
     public get value() {
         return this._memento.get<T>(this._key);
     }
+}
+
+export async function clearAllMementos(
+    memento: vscode.Memento,
+    globalMemento: vscode.Memento
+) {
+    await Promise.all(
+        Object.values(MementoKeys).map((key) => memento.update(key, undefined))
+    );
+    await Promise.all(
+        Object.values(GlobalMementoKeys).map((key) =>
+            globalMemento.update(key, undefined)
+        )
+    );
 }
