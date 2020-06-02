@@ -449,6 +449,11 @@ let _context: vscode.ExtensionContext;
 
 export async function activate(ctx: vscode.ExtensionContext) {
     _context = ctx;
+    // register FIRST in case any memento state causes exceptions later, preventing it
+    // from being registered
+    _disposable.push(
+        vscode.commands.registerCommand("perforce.clearMementos", () => clearMementos())
+    );
     // ALWAYS register the edit and save command
     PerforceCommands.registerImportantCommands(_disposable);
     createSpecEditor(ctx);
@@ -458,10 +463,6 @@ export async function activate(ctx: vscode.ExtensionContext) {
     );
 
     checkForSlevesque(ctx);
-    _disposable.push(
-        vscode.commands.registerCommand("perforce.clearMementos", () => clearMementos())
-    );
-
     const activationMode = vscode.workspace
         .getConfiguration("perforce")
         .get("activationMode");
