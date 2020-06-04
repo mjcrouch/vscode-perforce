@@ -136,7 +136,7 @@ export function getUsableWorkspace(uri: vscode.Uri) {
 }
 
 export function forCommand(resource: vscode.Uri, command: string, p4Args: string) {
-    return fromUri(vscode.Uri.parse("perforce:"), {
+    return fromUri(vscode.Uri.parse("perforce:/Command_Output"), {
         command: command,
         p4Args: p4Args,
         workspace: resource.fsPath,

@@ -18,6 +18,8 @@ import { isTruthy } from "./TsUtils";
 import { TextEncoder } from "util";
 
 export class PerforceFileSystemProvider implements FileSystemProvider, Disposable {
+    static cmdWhitelist = ["print", "describe", "job", "change", "fstat"];
+
     private _onDidChangeFileEmitter = new EventEmitter<FileChangeEvent[]>();
     constructor() {
         this.disposables.push(
@@ -100,6 +102,10 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
         const args = ((allArgs["p4Args"] as string) ?? "-q").split(" ");
         const command = (allArgs["command"] as string) ?? "print";
 
+        if (!PerforceFileSystemProvider.cmdWhitelist.includes(command)) {
+            throw new Error("Illegal command " + command);
+        }
+
         const resource = this.getResourceForUri(uri);
 
         if (!resource) {
@@ -111,7 +117,10 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
 
         // TODO - don't export this stuff from the API,
         // change the uri scheme so that it's not just running arbitrary commands
-        const fileArgs = uri.fsPath ? pathsToArgs([uri]).filter(isTruthy) : [];
+        const fileArgs =
+            uri.fsPath && uri.path !== "/Command_Output"
+                ? pathsToArgs([uri]).filter(isTruthy)
+                : [];
         const allP4Args = args.concat(fileArgs);
 
         return runPerforceCommand(resource, command, allP4Args, { hideStdErr: true });

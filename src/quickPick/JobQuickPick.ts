@@ -30,9 +30,7 @@ export const jobQuickPickProvider: qp.ActionableQuickPickProvider = {
             label: "$(file) Show job",
             description: "Open the full job spec in the editor",
             performAction: () => {
-                const uri = PerforceUri.forCommand(resource, "job", "-o").with({
-                    path: job,
-                });
+                const uri = PerforceUri.forCommand(resource, "job", "-o " + job);
                 vscode.window.showTextDocument(uri);
             },
         };

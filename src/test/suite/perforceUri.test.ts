@@ -55,7 +55,7 @@ describe("Perforce Uris", () => {
         it("Produces a URI for an arbitrary command", () => {
             const uri = PerforceUri.forCommand(localUri, "set", "-q");
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.fsPath).to.equal("");
+            expect(uri.path).to.equal("/Command_Output");
             expect(uri.query).to.equal("command=set&p4Args=-q&" + workspaceArg);
         });
     });
