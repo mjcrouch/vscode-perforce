@@ -14,7 +14,7 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
     private _isDisposed: boolean;
 
     private _onDisposed: vscode.EventEmitter<void>;
-    private _onChanged: vscode.EventEmitter<SelfExpandingTreeItem<any>>;
+    private _onChanged: vscode.EventEmitter<SelfExpandingTreeItem<any> | undefined>;
     private _onRevealRequested: vscode.EventEmitter<
         [SelfExpandingTreeItem<any>, TreeRevealOptions | undefined]
     >;
@@ -31,7 +31,7 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
     }
 
     protected didChange() {
-        this._onChanged.fire();
+        this._onChanged.fire(undefined);
     }
 
     private setParent(parent: SelfExpandingTreeItem<any>) {
