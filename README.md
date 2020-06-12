@@ -144,7 +144,7 @@ But there is still lots more to do. [Feedback](https://github.com/mjcrouch/vscod
 
 ## Requirements
 
-* Visual Studio Code v1.44
+* Visual Studio Code v1.46
 * The perforce command line client must be installed on your computer
 * Access to a perforce server
 
