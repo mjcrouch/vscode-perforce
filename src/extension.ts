@@ -47,8 +47,17 @@ async function findClientRoot(uri: vscode.Uri): Promise<ClientRoot | undefined> 
             const clientName = info.get("Client name") ?? "unknown";
             const serverAddress = info.get("Server address") ?? "";
             const userName = info.get("User name") ?? "";
-            const isInRoot = isInClientRoot(uri, Utils.normalize(rootStr));
-            const isAboveRoot = isClientRootIn(uri, Utils.normalize(rootStr));
+            const caseInsensitive = info.get("Case Handling") === "insensitive";
+            const isInRoot = isInClientRoot(
+                uri,
+                Utils.normalize(rootStr),
+                caseInsensitive
+            );
+            const isAboveRoot = isClientRootIn(
+                uri,
+                Utils.normalize(rootStr),
+                caseInsensitive
+            );
             return {
                 configSource: uri,
                 clientRoot: vscode.Uri.file(rootStr),
@@ -67,14 +76,29 @@ function setActivationContext(key: string, reason: string | boolean) {
     vscode.commands.executeCommand("setContext", "perforce.activation." + key, reason);
 }
 
-function isInClientRoot(testFile: vscode.Uri, rootFsPath: string) {
-    const wksRootN = Utils.normalize(testFile.fsPath);
-    return wksRootN.startsWith(rootFsPath);
+function startsWithInsensitive(a: string, b: string, caseInsensitive: boolean) {
+    if (caseInsensitive) {
+        return a.toUpperCase().startsWith(b.toUpperCase());
+    }
+    return a.startsWith(b);
 }
 
-function isClientRootIn(workspace: vscode.Uri, rootFsPath: string) {
+function isInClientRoot(
+    testFile: vscode.Uri,
+    rootFsPath: string,
+    caseInsensitive: boolean
+) {
+    const wksRootN = Utils.normalize(testFile.fsPath);
+    return startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive);
+}
+
+function isClientRootIn(
+    workspace: vscode.Uri,
+    rootFsPath: string,
+    caseInsensitive: boolean
+) {
     const wksRootN = Utils.normalize(workspace.fsPath);
-    return rootFsPath.startsWith(wksRootN);
+    return startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive);
 }
 
 async function findP4ConfigFiles(
