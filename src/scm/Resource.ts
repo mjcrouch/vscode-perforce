@@ -31,6 +31,10 @@ export class Resource implements SourceControlResourceState {
     private _isUnresolved: boolean;
     private _isReresolvable: boolean;
 
+    get contextValue() {
+        return this._isShelved ? "shelved" : "opened";
+    }
+
     /**
      * The working revision of the file if open (it should be)
      *

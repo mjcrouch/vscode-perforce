@@ -1232,7 +1232,7 @@
                 },
                 {
                     "command": "perforce.revertFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState == opened",
                     "group": "inline"
                 },
                 {
@@ -1262,7 +1262,7 @@
                 },
                 {
                     "command": "perforce.revertFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState == opened",
                     "group": "1_modification@1"
                 },
                 {
