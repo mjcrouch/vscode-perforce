@@ -364,6 +364,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer
 |`perforce.ignoredChangelistPrefix` |`string`   |Specifies the prefix of the changelists to be ignored.
 |`perforce.hideNonWorkspaceFiles`   |`enum`     |Controls how files outside of the current VS Code workspace are shown in the SCM Provider
+|`perforce.syncMode`                |`enum`     |Controls whether to sync the whole perforce client or just the VS code workspace when using the default sync command
 |`perforce.fileShelveMode`          |`enum`     |Controls behaviour when shelving or unshelving an individual file from the SCM view
 |`perforce.hideShelvedFiles`        |`boolean`  |Hide shelved files in the SCM Explorer.
 |`perforce.hideEmptyChangelists`    |`boolean`  |Hide changelists with no file in the SCM Explorer.

@@ -264,7 +264,7 @@
                         "Only sync the workspace folder(s) that are open in VS Code (i.e. perform a p4 sync with a set of paths). NOTE: If you open a file from the same client but outside of the VS Code workspace, this will NOT be synced. If you open a file from another perforce client and the SCM provider is auto detected, the WHOLE perforce client will be synced"
                     ],
                     "default": "whole client",
-                    "description": "Controls the set of files to sync when using the default sync command. If you use a very large perforce client workspace and only open a small part of the workspace, this can prevent accidentally syncing a large number of files"
+                    "description": "Controls the set of files to sync when using the default sync command. If you use a very large perforce client workspace and only open a small part of it in VS Code, this can prevent accidentally syncing a large number of files"
                 },
                 "perforce.hideShelvedFiles": {
                     "type": "boolean",
