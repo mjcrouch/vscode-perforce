@@ -195,7 +195,7 @@ export class Model implements Disposable {
         }
     }
 
-    public async Sync(): Promise<void> {
+    public async Sync(paths?: Uri[]): Promise<void> {
         const loggedin = await p4.isLoggedIn(this._workspaceUri);
         if (!loggedin) {
             return;
@@ -206,7 +206,7 @@ export class Model implements Disposable {
                 location: ProgressLocation.SourceControl,
                 title: "Syncing...",
             },
-            () => this.syncUpdate()
+            () => this.syncUpdate(paths)
         );
     }
 
@@ -1022,9 +1022,11 @@ export class Model implements Disposable {
         this._onDidChange.fire();
     }
 
-    private async syncUpdate(): Promise<void> {
+    private async syncUpdate(paths?: Uri[]): Promise<void> {
         try {
-            const output = await p4.sync(this._workspaceUri, {});
+            const output = await p4.sync(this._workspaceUri, {
+                files: paths,
+            });
             Display.channel.append(output);
             this.Refresh();
         } catch (reason) {

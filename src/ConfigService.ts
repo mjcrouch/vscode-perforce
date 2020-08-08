@@ -13,6 +13,11 @@ export enum FileShelveMode {
     PROMPT,
 }
 
+export enum SyncMode {
+    WHOLE_CLIENT,
+    WORKSPACE_ONLY,
+}
+
 export class ConfigAccessor {
     constructor() {
         /**/
@@ -152,6 +157,15 @@ export class ConfigAccessor {
 
     public get annotateFollowBranches(): boolean {
         return this.getConfigItem("annotate.followBranches") ?? false;
+    }
+
+    public get syncMode(): SyncMode {
+        const mode = this.getConfigItem<string>("syncMode");
+        if (mode === "whole client") {
+            return SyncMode.WHOLE_CLIENT;
+        } else {
+            return SyncMode.WORKSPACE_ONLY;
+        }
     }
 }
 
