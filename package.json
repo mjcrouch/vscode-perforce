@@ -373,6 +373,11 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.closeScm",
+                "title": "Close Perforce Client",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.loginScm",
                 "title": "Log in to Perforce",
                 "category": "Perforce"
@@ -1043,6 +1048,17 @@
                 {
                     "command": "perforce.refreshChangeSpec",
                     "when": "resourceExtname == .changespec"
+                },
+                {
+                    "command": "perforce.closeScm",
+                    "when": "0"
+                }
+            ],
+            "scm/sourceControl": [
+                {
+                    "command": "perforce.closeScm",
+                    "group": "navigation",
+                    "when": "scmProvider == perforce"
                 }
             ],
             "scm/title": [

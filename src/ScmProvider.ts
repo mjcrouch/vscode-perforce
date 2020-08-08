@@ -259,6 +259,21 @@ export class PerforceSCMProvider {
         return this.instances.length;
     }
 
+    public static forceClose(sourceControl?: any) {
+        const scmProvider = this.GetInstance(sourceControl);
+        if (!scmProvider) {
+            return;
+        }
+        Display.channel.appendLine(
+            "Closing perforce client " +
+                scmProvider.clientRoot.clientName +
+                " @ " +
+                scmProvider.clientRoot.clientRoot.fsPath
+        );
+        scmProvider.dispose();
+        this._onDidChangeScmProviders.fire();
+    }
+
     public static registerCommands() {
         // SCM commands
         commands.registerCommand(
@@ -394,6 +409,10 @@ export class PerforceSCMProvider {
         commands.registerCommand(
             "perforce.openReviewTool",
             PerforceSCMProvider.OpenChangelistInReviewTool.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.closeScm",
+            PerforceSCMProvider.forceClose.bind(this)
         );
     }
 
