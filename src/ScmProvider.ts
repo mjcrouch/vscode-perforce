@@ -17,7 +17,7 @@ import { Resource } from "./scm/Resource";
 import { Status } from "./scm/Status";
 import { mapEvent } from "./Utils";
 import { FileType } from "./scm/FileTypes";
-import { configAccessor } from "./ConfigService";
+import { configAccessor, SyncMode } from "./ConfigService";
 import * as DiffProvider from "./DiffProvider";
 import * as PerforceUri from "./PerforceUri";
 import { ClientRoot } from "./extension";
@@ -562,7 +562,15 @@ export class PerforceSCMProvider {
 
     public static Sync(sourceControl: SourceControl) {
         const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
-        perforceProvider?._model.Sync();
+        if (perforceProvider) {
+            const dirs =
+                this._config.syncMode === SyncMode.WORKSPACE_ONLY
+                    ? [...perforceProvider._contributingDirs].map((dir) =>
+                          Uri.file(Path.join(dir, "..."))
+                      )
+                    : undefined;
+            perforceProvider._model.Sync(dirs);
+        }
     }
 
     public static async Refresh(sourceControl: SourceControl) {
