@@ -161,10 +161,10 @@ export class ConfigAccessor {
 
     public get syncMode(): SyncMode {
         const mode = this.getConfigItem<string>("syncMode");
-        if (mode === "whole client") {
-            return SyncMode.WHOLE_CLIENT;
-        } else {
+        if (mode === "workspace only") {
             return SyncMode.WORKSPACE_ONLY;
+        } else {
+            return SyncMode.WHOLE_CLIENT;
         }
     }
 }

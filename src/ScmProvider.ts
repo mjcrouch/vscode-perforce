@@ -550,7 +550,7 @@ export class PerforceSCMProvider {
                           Uri.file(Path.join(dir, "..."))
                       )
                     : undefined;
-            perforceProvider?._model.Sync(dirs);
+            perforceProvider._model.Sync(dirs);
         }
     }
 
