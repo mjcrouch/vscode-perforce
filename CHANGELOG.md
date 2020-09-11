@@ -1,5 +1,15 @@
 # Change log
 
+## [4.12.0] - 2020-08-09
+
+* Add an option `perforce.syncMode`. This controls the set of files to sync when using the "sync" command on the SCM provider. You can either sync the whole perforce client area, or just the part that is contained in the VS code workspace (#169)
+  * The default is the existing behaviour: sync the whole perforce client area.
+  * There are some caveats to syncing the just the vs code workspace, depending on your setup:
+    * If you just opened a file from a different VS code workspace and it auto detected the perforce client for that area, it will sync the whole of the perforce client area, since we can only know about the workspace you have open
+    * If you forced a perforce client to activate using `perforce.activationMode`, and the perforce client location does not relate to the current workspace, you will most likely end up syncing nothing
+* Add a command to "close" a perforce client when there are multiple SCM providers in the workspace - right click on the header for the perforce client you want to close (#174)
+* Shorten the name of the configuration section to "Perforce" (this does not affect the names of the settings themselves, just the category in the settings view) - Thanks @NSExceptional
+
 ## [4.11.0] - 2020-06-25
 
 * Add an icon to the changelist search view that will be visible if the view is dragged to its own container in the sidebar
@@ -424,6 +434,7 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.12.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.11.0...4.12.0
 [4.11.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.10.0...4.11.0
 [4.10.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.9.0...4.10.0
 [4.9.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.8.2...4.9.0

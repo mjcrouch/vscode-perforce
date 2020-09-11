@@ -17,7 +17,7 @@ import { Resource } from "./scm/Resource";
 import { Status } from "./scm/Status";
 import { mapEvent } from "./Utils";
 import { FileType } from "./scm/FileTypes";
-import { configAccessor } from "./ConfigService";
+import { configAccessor, SyncMode } from "./ConfigService";
 import * as DiffProvider from "./DiffProvider";
 import * as PerforceUri from "./PerforceUri";
 import { ClientRoot } from "./extension";
@@ -259,6 +259,21 @@ export class PerforceSCMProvider {
         return this.instances.length;
     }
 
+    public static forceClose(sourceControl?: any) {
+        const scmProvider = this.GetInstance(sourceControl);
+        if (!scmProvider) {
+            return;
+        }
+        Display.channel.appendLine(
+            "Closing perforce client " +
+                scmProvider.clientRoot.clientName +
+                " @ " +
+                scmProvider.clientRoot.clientRoot.fsPath
+        );
+        scmProvider.dispose();
+        this._onDidChangeScmProviders.fire();
+    }
+
     public static registerCommands() {
         // SCM commands
         commands.registerCommand(
@@ -394,6 +409,10 @@ export class PerforceSCMProvider {
         commands.registerCommand(
             "perforce.openReviewTool",
             PerforceSCMProvider.OpenChangelistInReviewTool.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.closeScm",
+            PerforceSCMProvider.forceClose.bind(this)
         );
     }
 
@@ -543,7 +562,15 @@ export class PerforceSCMProvider {
 
     public static Sync(sourceControl: SourceControl) {
         const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
-        perforceProvider?._model.Sync();
+        if (perforceProvider) {
+            const dirs =
+                this._config.syncMode === SyncMode.WORKSPACE_ONLY
+                    ? [...perforceProvider._contributingDirs].map((dir) =>
+                          Uri.file(Path.join(dir, "..."))
+                      )
+                    : undefined;
+            perforceProvider._model.Sync(dirs);
+        }
     }
 
     public static async Refresh(sourceControl: SourceControl) {
