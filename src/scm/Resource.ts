@@ -10,6 +10,7 @@ import { GetStatuses, Status } from "./Status";
 import { IFileType, GetFileType } from "./FileTypes";
 import { Model, FstatInfo } from "./Model";
 import * as PerforceUri from "../PerforceUri";
+import { isTruthy } from "../TsUtils";
 
 /**
  * An SCM resource represents a state of an underlying workspace resource
@@ -32,7 +33,15 @@ export class Resource implements SourceControlResourceState {
     private _isReresolvable: boolean;
 
     get contextValue() {
-        return this._isShelved ? "shelved" : "opened";
+        const keys: [boolean, string | undefined, string | undefined][] = [
+            [this._isShelved, "shelved", "opened"],
+            [this._isUnresolved, "unres", undefined],
+            [this._isReresolvable, "reres", undefined],
+        ];
+        return keys
+            .map(([val, trueKey, falseKey]) => (val ? trueKey : falseKey))
+            .filter(isTruthy)
+            .join("-");
     }
 
     /**

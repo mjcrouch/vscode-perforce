@@ -359,6 +359,14 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.ShelveOrUnshelve.bind(this)
         );
         commands.registerCommand(
+            "perforce.shelve",
+            PerforceSCMProvider.Shelve.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.unshelve",
+            PerforceSCMProvider.Unshelve.bind(this)
+        );
+        commands.registerCommand(
             "perforce.deleteShelvedFile",
             PerforceSCMProvider.DeleteShelvedFile.bind(this)
         );
@@ -718,6 +726,24 @@ export class PerforceSCMProvider {
             (s) => s instanceof Resource
         ) as Resource[];
         await selection[0]?.model.ShelveOrUnshelveMultiple(selection);
+    }
+
+    public static async Shelve(
+        ...resourceStates: SourceControlResourceState[]
+    ): Promise<void> {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.ShelveMultiple(selection);
+    }
+
+    public static async Unshelve(
+        ...resourceStates: SourceControlResourceState[]
+    ): Promise<void> {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.UnshelveMultiple(selection);
     }
 
     public static async DeleteShelvedFile(

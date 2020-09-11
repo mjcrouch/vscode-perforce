@@ -799,6 +799,38 @@ export class Model implements Disposable {
         }
     }
 
+    public async ShelveMultiple(input: Resource[]) {
+        if (input.some((r) => r.isShelved)) {
+            Display.showModalMessage(
+                "Some selected files are already shelved. Please select only unshelved files"
+            );
+            return;
+        }
+        const promises = input.map((r) => this.shelveOpenFile(r));
+        try {
+            await Promise.all(promises);
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
+            this.Refresh();
+        }
+    }
+
+    public async UnshelveMultiple(input: Resource[]) {
+        if (input.some((r) => !r.isShelved)) {
+            Display.showModalMessage(
+                "Some selected files are not shelved. Please select only shelved files"
+            );
+            return;
+        }
+        const promises = input.map((r) => this.unshelveShelvedFile(r));
+        try {
+            await Promise.all(promises);
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
+            this.Refresh();
+        }
+    }
+
     public async ShelveOrUnshelveMultiple(input: Resource[]) {
         if (input.some((r) => r.isShelved !== input[0].isShelved)) {
             Display.showModalMessage(
