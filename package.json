@@ -1199,12 +1199,12 @@
                 },
                 {
                     "command": "perforce.resolveChangelist",
-                    "when": "scmProvider == perforce && scmResourceGroup =~ /unres/",
+                    "when": "scmProvider == perforce && scmResourceGroup in perforce.changes.resolvable",
                     "group": "1_resolve@1"
                 },
                 {
                     "command": "perforce.reresolveChangelist",
-                    "when": "scmProvider == perforce && scmResourceGroup =~ /reres/",
+                    "when": "scmProvider == perforce && scmResourceGroup in perforce.changes.reresolvable",
                     "group": "1_resolve@2"
                 },
                 {

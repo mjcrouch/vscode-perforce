@@ -44,7 +44,36 @@ export interface ResourceGroup extends SourceControlResourceGroup {
     isDefault: boolean;
 }
 
+class ChangelistContext {
+    private _val: { [key: string]: true };
+
+    constructor(private _type: string) {
+        this._val = {};
+    }
+
+    private updateContext() {
+        vscode.commands.executeCommand(
+            "setContext",
+            "perforce.changes." + this._type,
+            this._val
+        );
+    }
+
+    removeChangelists(chnums: string[]) {
+        chnums.forEach((change) => delete this._val["pending:" + change]);
+        this.updateContext();
+    }
+
+    addChangelists(chnums: string[]) {
+        chnums.forEach((change) => (this._val["pending:" + change] = true));
+        this.updateContext();
+    }
+}
+
 export class Model implements Disposable {
+    private static _resolvable = new ChangelistContext("resolvable");
+    private static _reResolvable = new ChangelistContext("reresolvable");
+
     private _disposables: Disposable[] = [];
     private _config: ConfigAccessor;
 
@@ -65,7 +94,7 @@ export class Model implements Disposable {
 
     private _defaultGroup?: ResourceGroup;
     private _pendingGroups = new Map<
-        number,
+        string,
         { description: string; group: ResourceGroup }
     >();
     private _openResourcesByPath = new Map<string, Resource>();
@@ -970,8 +999,8 @@ export class Model implements Disposable {
         items.push({ id: "new", label: "New Changelist...", description: "" });
         this._pendingGroups.forEach((value, key) => {
             items.push({
-                id: key.toString(),
-                label: "#" + key.toString(),
+                id: key,
+                label: "#" + key,
                 description: value.description,
             });
         });
@@ -1006,20 +1035,27 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
-    private clean() {
+    private cleanCaches() {
         this._openResourcesByPath.clear();
         this._conflictsByPath.clear();
         this._knownHaveListByPath.clear();
+    }
+
+    private cleanPendingGroups() {
+        this._pendingGroups.forEach((value) => value.group.dispose());
+        this._pendingGroups.clear();
+        this._onDidChange.fire();
+    }
+
+    private clean() {
+        this.cleanCaches();
 
         if (this._defaultGroup) {
             this._defaultGroup.dispose();
             this._defaultGroup = undefined;
         }
 
-        this._pendingGroups.forEach((value) => value.group.dispose());
-        this._pendingGroups.clear();
-
-        this._onDidChange.fire();
+        this.cleanPendingGroups();
     }
 
     private async syncUpdate(paths?: Uri[]): Promise<void> {
@@ -1085,68 +1121,128 @@ export class Model implements Disposable {
         return resource;
     }
 
-    private static makeGroupId(resources: Resource[], change: ChangeInfo) {
-        const items = [
-            "pending",
-            resources.some((r) => r.isUnresolved) ? "unres" : undefined,
-            resources.some((r) => r.isReresolvable) ? "reres" : undefined,
-        ].filter(isTruthy);
-        return items.join("_") + ":" + change.chnum;
+    private static getChangelistsWhereSome(
+        groups: ResourceGroup[],
+        predicate: (resource: Resource) => boolean
+    ) {
+        return groups
+            .filter((group) => group.resourceStates.some((r) => predicate(r as Resource)))
+            .map((group) => group.chnum);
+    }
+
+    private static updateContextVars(groups: ResourceGroup[]) {
+        this._resolvable.addChangelists(
+            this.getChangelistsWhereSome(groups, (r) => r.isUnresolved)
+        );
+        this._reResolvable.addChangelists(
+            this.getChangelistsWhereSome(groups, (r) => r.isReresolvable)
+        );
+    }
+
+    private shouldDisplayChangelist(resourceStates: Resource[]) {
+        if (this._config.hideEmptyChangelists && resourceStates.length < 1) {
+            return false;
+        }
+        if (this._config.hideNonWorkspaceFiles === HideNonWorkspace.HIDE_CHANGELISTS) {
+            const onlyHasNonWorkspace =
+                resourceStates.length > 0 &&
+                resourceStates.every((r) => !this.isUriInWorkspace(r.underlyingUri));
+            if (onlyHasNonWorkspace) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private getOrCreateResourceGroup(c: p4.ChangeInfo) {
+        let group = this._pendingGroups.get(c.chnum)?.group;
+        if (!group) {
+            group = this._sourceControl.createResourceGroup(
+                "pending:" + c.chnum,
+                "#" + c.chnum + ": " + c.description.join(" ")
+            ) as ResourceGroup;
+            group.model = this;
+            group.isDefault = false;
+            group.chnum = c.chnum.toString();
+        } else {
+            group.label = "#" + c.chnum + ": " + c.description.join(" ");
+        }
+
+        return group;
+    }
+
+    private arrangeResourcesByChangelist(
+        changelists: ChangeInfo[],
+        resources: Resource[]
+    ) {
+        const changesWithResources = changelists
+            .map((c) => {
+                const resourceStates = resources.filter(
+                    (resource) => resource.change === c.chnum
+                );
+                if (!this.shouldDisplayChangelist(resourceStates)) {
+                    return;
+                }
+                return { change: c, resources: resourceStates };
+            })
+            .filter(isTruthy);
+
+        const haveNewChangelists = changesWithResources.some(
+            (res) => !this._pendingGroups.has(res.change.chnum)
+        );
+        return {
+            haveNewChangelists,
+            changesWithResources,
+        };
+    }
+
+    private disposeUnusedGroups(usedGroups: ResourceGroup[]) {
+        this._pendingGroups.forEach((group) => {
+            if (!usedGroups.includes(group.group)) {
+                group.group.dispose();
+            }
+        });
     }
 
     private createResourceGroups(changelists: ChangeInfo[], resources: Resource[]) {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
         }
-        const sc = this._sourceControl;
+        this.cleanCaches();
+        Model._resolvable.removeChangelists([...this._pendingGroups.keys()]);
+        Model._reResolvable.removeChangelists([...this._pendingGroups.keys()]);
 
-        this.clean();
+        if (!this._defaultGroup) {
+            this._defaultGroup = this._sourceControl.createResourceGroup(
+                "default",
+                "Default Changelist"
+            ) as ResourceGroup;
+            this._defaultGroup.isDefault = true;
+            this._defaultGroup.model = this;
+            this._defaultGroup.chnum = "default";
+        }
 
-        this._defaultGroup = this._sourceControl.createResourceGroup(
-            "default",
-            "Default Changelist"
-        ) as ResourceGroup;
-        this._defaultGroup.isDefault = true;
-        this._defaultGroup.model = this;
-        this._defaultGroup.chnum = "default";
         this._defaultGroup.resourceStates = resources.filter(
             (resource): resource is Resource =>
                 !!resource && resource.change === "default"
         );
 
-        const groups = changelists
-            .map((c) => {
-                const resourceStates = resources.filter(
-                    (resource) => resource.change === c.chnum.toString()
-                );
-                if (this._config.hideEmptyChangelists && resourceStates.length < 1) {
-                    return;
-                }
-                if (
-                    this._config.hideNonWorkspaceFiles ===
-                    HideNonWorkspace.HIDE_CHANGELISTS
-                ) {
-                    const onlyHasNonWorkspace =
-                        resourceStates.length > 0 &&
-                        resourceStates.every(
-                            (r) => !this.isUriInWorkspace(r.underlyingUri)
-                        );
-                    if (onlyHasNonWorkspace) {
-                        return;
-                    }
-                }
-                const groupId = Model.makeGroupId(resourceStates, c);
-                const group = sc.createResourceGroup(
-                    groupId,
-                    "#" + c.chnum + ": " + c.description.join(" ")
-                ) as ResourceGroup;
-                group.model = this;
-                group.isDefault = false;
-                group.chnum = c.chnum.toString();
-                group.resourceStates = resourceStates;
-                return group;
-            })
-            .filter(isTruthy);
+        const arranged = this.arrangeResourcesByChangelist(changelists, resources);
+
+        // new resource groups always appear in the order they are created, so if there
+        // is a new changelist we need to clear out the existing ones to make it appear at the top
+        if (arranged.haveNewChangelists) {
+            this.cleanPendingGroups();
+        }
+
+        const groups = arranged.changesWithResources.map(({ change, resources }) => {
+            const group = this.getOrCreateResourceGroup(change);
+            group.resourceStates = resources;
+            return group;
+        });
+
+        // clear out any old groups that we didn't create or re-use above
+        this.disposeUnusedGroups(groups);
 
         resources.forEach((resource) => {
             if (!resource.isShelved && resource.underlyingUri) {
@@ -1155,11 +1251,13 @@ export class Model implements Disposable {
         });
 
         groups.forEach((group, i) => {
-            this._pendingGroups.set(parseInt(changelists[i].chnum), {
+            this._pendingGroups.set(changelists[i].chnum, {
                 description: changelists[i].description.join(" "),
                 group: group,
             });
         });
+
+        Model.updateContextVars(groups);
     }
 
     private async getChanges(): Promise<ChangeInfo[]> {
