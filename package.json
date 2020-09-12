@@ -606,12 +606,6 @@
                 "icon": "$(discard)"
             },
             {
-                "command": "perforce.shelveunshelve",
-                "title": "Shelve/Unshelve file",
-                "category": "Perforce",
-                "icon": "$(files)"
-            },
-            {
                 "command": "perforce.shelve",
                 "title": "Shelve file",
                 "category": "Perforce",
@@ -947,10 +941,6 @@
                 },
                 {
                     "command": "perforce.reopenFile",
-                    "when": "0"
-                },
-                {
-                    "command": "perforce.shelveunshelve",
                     "when": "0"
                 },
                 {

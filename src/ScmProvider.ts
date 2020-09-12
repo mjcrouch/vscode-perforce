@@ -355,10 +355,6 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.DeleteShelvedChangelist.bind(this)
         );
         commands.registerCommand(
-            "perforce.shelveunshelve",
-            PerforceSCMProvider.ShelveOrUnshelve.bind(this)
-        );
-        commands.registerCommand(
             "perforce.shelve",
             PerforceSCMProvider.Shelve.bind(this)
         );
@@ -739,15 +735,6 @@ export class PerforceSCMProvider {
         if (model) {
             await model.DeleteShelvedChangelist(input);
         }
-    }
-
-    public static async ShelveOrUnshelve(
-        ...resourceStates: SourceControlResourceState[]
-    ): Promise<void> {
-        const selection = resourceStates.filter(
-            (s) => s instanceof Resource
-        ) as Resource[];
-        await selection[0]?.model.ShelveOrUnshelveMultiple(selection);
     }
 
     public static async Shelve(

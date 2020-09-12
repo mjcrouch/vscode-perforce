@@ -801,19 +801,6 @@ export class Model implements Disposable {
         await this.revertFileAfterUnshelve(input);
     }
 
-    async ShelveOrUnshelve(input: Resource): Promise<void> {
-        try {
-            if (input.isShelved) {
-                await this.unshelveShelvedFile(input);
-            } else {
-                await this.shelveOpenFile(input);
-            }
-        } catch (reason) {
-            Display.showImportantError(reason.toString());
-            this.Refresh();
-        }
-    }
-
     public async ShelveMultiple(input: Resource[]) {
         if (input.some((r) => r.isShelved)) {
             Display.showModalMessage(
@@ -844,17 +831,6 @@ export class Model implements Disposable {
             Display.showImportantError(reason.toString());
             this.Refresh();
         }
-    }
-
-    public async ShelveOrUnshelveMultiple(input: Resource[]) {
-        if (input.some((r) => r.isShelved !== input[0].isShelved)) {
-            Display.showModalMessage(
-                "A mix of shelved / open files was selected. Please select only shelved or only open files for this operation"
-            );
-            return;
-        }
-        const promises = input.map((r) => this.ShelveOrUnshelve(r));
-        await Promise.all(promises);
     }
 
     public async DeleteShelvedFile(input: Resource): Promise<void> {
