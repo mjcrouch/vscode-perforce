@@ -716,6 +716,7 @@ export class Model implements Disposable {
             await p4.resolve(this._workspaceUri, {
                 files: [input.actionUriNoRev],
             });
+            this.Refresh();
         }
     }
 
@@ -1035,10 +1036,12 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
-    private cleanCaches() {
+    private cleanState() {
         this._openResourcesByPath.clear();
         this._conflictsByPath.clear();
         this._knownHaveListByPath.clear();
+        Model._resolvable.removeChangelists([...this._pendingGroups.keys()]);
+        Model._reResolvable.removeChangelists([...this._pendingGroups.keys()]);
     }
 
     private cleanPendingGroups() {
@@ -1048,7 +1051,7 @@ export class Model implements Disposable {
     }
 
     private clean() {
-        this.cleanCaches();
+        this.cleanState();
 
         if (this._defaultGroup) {
             this._defaultGroup.dispose();
@@ -1208,9 +1211,7 @@ export class Model implements Disposable {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
         }
-        this.cleanCaches();
-        Model._resolvable.removeChangelists([...this._pendingGroups.keys()]);
-        Model._reResolvable.removeChangelists([...this._pendingGroups.keys()]);
+        this.cleanState();
 
         if (!this._defaultGroup) {
             this._defaultGroup = this._sourceControl.createResourceGroup(
