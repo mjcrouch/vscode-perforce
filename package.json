@@ -687,6 +687,16 @@
                 "category": "Perforce"
             },
             {
+                "command": "perforce.resolveFiles",
+                "title": "Resolve...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.reresolveFiles",
+                "title": "Re-resolve...",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.reopenFile",
                 "title": "Move to changelist...",
                 "category": "Perforce",
@@ -921,6 +931,14 @@
                 },
                 {
                     "command": "perforce.reresolveChangelist",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.resolveFiles",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.reresolveFiles",
                     "when": "0"
                 },
                 {
@@ -1354,6 +1372,16 @@
                     "command": "perforce.deleteShelvedFile",
                     "when": "scmProvider == perforce && scmResourceState =~ /shelved/",
                     "group": "2_shelve@2"
+                },
+                {
+                    "command": "perforce.resolveFiles",
+                    "when": "scmProvider == perforce && scmResourceState =~ /unres/",
+                    "group": "3_resolve@1"
+                },
+                {
+                    "command": "perforce.reresolveFiles",
+                    "when": "scmProvider == perforce && scmResourceState =~ /reres/",
+                    "group": "3_resolve@1"
                 }
             ],
             "editor/title": [

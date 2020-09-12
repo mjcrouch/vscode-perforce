@@ -596,6 +596,21 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
+    public async ResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+        });
+        this.Refresh();
+    }
+
+    public async ReResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+            reresolve: true,
+        });
+        this.Refresh();
+    }
+
     public async ShelveChangelist(input: ResourceGroup, revert?: boolean): Promise<void> {
         if (input.isDefault) {
             throw new Error("Cannot shelve the default changelist");

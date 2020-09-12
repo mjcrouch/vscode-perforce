@@ -399,6 +399,14 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.ReResolveChangelist.bind(this)
         );
         commands.registerCommand(
+            "perforce.resolveFiles",
+            PerforceSCMProvider.ResolveFiles.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.reresolveFiles",
+            PerforceSCMProvider.ReResolveFiles.bind(this)
+        );
+        commands.registerCommand(
             "perforce.loginScm",
             PerforceSCMProvider.Login.bind(this)
         );
@@ -689,6 +697,20 @@ export class PerforceSCMProvider {
         if (model) {
             await model.ReResolveChangelist(input);
         }
+    }
+
+    public static async ResolveFiles(...resourceStates: SourceControlResourceState[]) {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.ResolveFiles(selection);
+    }
+
+    public static async ReResolveFiles(...resourceStates: SourceControlResourceState[]) {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.ReResolveFiles(selection);
     }
 
     public static async ShelveChangelist(input: ResourceGroup) {
