@@ -2,7 +2,7 @@
     "name": "perforce",
     "displayName": "Perforce for VS Code",
     "description": "(2020 Fork) Perforce integration with VS Code's SCM features",
-    "version": "4.12.0",
+    "version": "4.13.0",
     "publisher": "mjcrouch",
     "license": "MIT",
     "categories": [
@@ -22,7 +22,7 @@
         "theme": "dark"
     },
     "engines": {
-        "vscode": "^1.46.0"
+        "vscode": "^1.49.0"
     },
     "enableProposedApi": false,
     "keywords": [
@@ -543,6 +543,12 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "perforce.CleanRefresh",
+                "title": "Refresh (clean)",
+                "category": "Perforce",
+                "icon": "$(refresh)"
+            },
+            {
                 "command": "perforce.submitDefault",
                 "title": "Submit Default Changelist",
                 "category": "Perforce",
@@ -669,6 +675,11 @@
                 "title": "Edit changelist spec",
                 "category": "Perforce",
                 "icon": "$(edit)"
+            },
+            {
+                "command": "perforce.copyChangelistId",
+                "title": "Copy changelist number",
+                "category": "Perforce"
             },
             {
                 "command": "perforce.resolveChangelist",
@@ -920,6 +931,10 @@
                     "when": "0"
                 },
                 {
+                    "command": "perforce.copyChangelistId",
+                    "when": "0"
+                },
+                {
                     "command": "perforce.resolveChangelist",
                     "when": "0"
                 },
@@ -1116,12 +1131,17 @@
                 },
                 {
                     "command": "perforce.Sync",
-                    "group": "1_sync",
+                    "group": "1_sync@3",
                     "when": "scmProvider == perforce"
                 },
                 {
                     "command": "perforce.Refresh",
-                    "group": "1_sync",
+                    "group": "1_sync@1",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.CleanRefresh",
+                    "group": "1_sync@2",
                     "when": "scmProvider == perforce"
                 },
                 {
@@ -1228,12 +1248,12 @@
                 },
                 {
                     "command": "perforce.resolveChangelist",
-                    "when": "scmProvider == perforce && scmResourceGroup =~ /unres/",
+                    "when": "scmProvider == perforce && scmResourceGroup in perforce.changes.resolvable",
                     "group": "1_resolve@1"
                 },
                 {
                     "command": "perforce.reresolveChangelist",
-                    "when": "scmProvider == perforce && scmResourceGroup =~ /reres/",
+                    "when": "scmProvider == perforce && scmResourceGroup in perforce.changes.reresolvable",
                     "group": "1_resolve@2"
                 },
                 {
@@ -1267,14 +1287,19 @@
                     "group": "3_job@2"
                 },
                 {
+                    "command": "perforce.copyChangelistId",
+                    "when": "scmProvider == perforce && scmResourceGroup != default",
+                    "group": "4_info@1"
+                },
+                {
                     "command": "perforce.describe",
                     "when": "scmProvider == perforce",
-                    "group": "4_info"
+                    "group": "4_info@2"
                 },
                 {
                     "command": "perforce.openReviewTool",
                     "when": "scmProvider == perforce && scmResourceGroup != default && config.perforce.swarmHost",
-                    "group": "4_info"
+                    "group": "4_info@3"
                 }
             ],
             "scm/resourceState/context": [

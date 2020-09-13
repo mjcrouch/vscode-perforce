@@ -280,6 +280,9 @@ export class PerforceSCMProvider {
             "perforce.Refresh",
             PerforceSCMProvider.Refresh.bind(this)
         );
+        commands.registerCommand("perforce.CleanRefresh", (scmProvider?: SourceControl) =>
+            PerforceSCMProvider.Refresh(scmProvider, true)
+        );
         commands.registerCommand("perforce.info", PerforceSCMProvider.Info.bind(this));
         commands.registerCommand("perforce.Sync", PerforceSCMProvider.Sync.bind(this));
         commands.registerCommand(
@@ -385,6 +388,10 @@ export class PerforceSCMProvider {
         commands.registerCommand(
             "perforce.unfixJob",
             PerforceSCMProvider.UnfixJob.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.copyChangelistId",
+            PerforceSCMProvider.CopyChangelistId.bind(this)
         );
         commands.registerCommand(
             "perforce.resolveChangelist",
@@ -585,9 +592,9 @@ export class PerforceSCMProvider {
         }
     }
 
-    public static async Refresh(sourceControl: SourceControl) {
+    public static async Refresh(sourceControl?: SourceControl, fullRefresh = false) {
         const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
-        await perforceProvider?._model.RefreshPolitely();
+        await perforceProvider?._model.RefreshPolitely(fullRefresh);
     }
 
     public static async RefreshAll() {
@@ -679,6 +686,10 @@ export class PerforceSCMProvider {
             const model: Model = group.model;
             await model.Revert(group, true);
         }
+    }
+
+    public static CopyChangelistId(input: ResourceGroup) {
+        env.clipboard.writeText(input.chnum);
     }
 
     public static async ResolveChangelist(input: ResourceGroup) {
