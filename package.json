@@ -670,6 +670,11 @@
                 "icon": "$(edit)"
             },
             {
+                "command": "perforce.copyChangelistId",
+                "title": "Copy changelist number",
+                "category": "Perforce"
+            },
+            {
                 "command": "perforce.resolveChangelist",
                 "title": "Resolve changelist...",
                 "category": "Perforce"
@@ -906,6 +911,10 @@
                 },
                 {
                     "command": "perforce.describe",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.copyChangelistId",
                     "when": "0"
                 },
                 {
@@ -1249,14 +1258,19 @@
                     "group": "3_job@2"
                 },
                 {
+                    "command": "perforce.copyChangelistId",
+                    "when": "scmProvider == perforce && scmResourceGroup != default",
+                    "group": "4_info@1"
+                },
+                {
                     "command": "perforce.describe",
                     "when": "scmProvider == perforce",
-                    "group": "4_info"
+                    "group": "4_info@2"
                 },
                 {
                     "command": "perforce.openReviewTool",
                     "when": "scmProvider == perforce && scmResourceGroup != default && config.perforce.swarmHost",
-                    "group": "4_info"
+                    "group": "4_info@3"
                 }
             ],
             "scm/resourceState/context": [

@@ -386,6 +386,10 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.UnfixJob.bind(this)
         );
         commands.registerCommand(
+            "perforce.copyChangelistId",
+            PerforceSCMProvider.CopyChangelistId.bind(this)
+        );
+        commands.registerCommand(
             "perforce.resolveChangelist",
             PerforceSCMProvider.ResolveChangelist.bind(this)
         );
@@ -670,6 +674,10 @@ export class PerforceSCMProvider {
             const model: Model = group.model;
             await model.Revert(group, true);
         }
+    }
+
+    public static CopyChangelistId(input: ResourceGroup) {
+        env.clipboard.writeText(input.chnum);
     }
 
     public static async ResolveChangelist(input: ResourceGroup) {
