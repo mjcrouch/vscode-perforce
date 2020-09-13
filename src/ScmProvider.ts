@@ -280,6 +280,9 @@ export class PerforceSCMProvider {
             "perforce.Refresh",
             PerforceSCMProvider.Refresh.bind(this)
         );
+        commands.registerCommand("perforce.CleanRefresh", (scmProvider?: SourceControl) =>
+            PerforceSCMProvider.Refresh(scmProvider, true)
+        );
         commands.registerCommand("perforce.info", PerforceSCMProvider.Info.bind(this));
         commands.registerCommand("perforce.Sync", PerforceSCMProvider.Sync.bind(this));
         commands.registerCommand(
@@ -573,9 +576,9 @@ export class PerforceSCMProvider {
         }
     }
 
-    public static async Refresh(sourceControl: SourceControl) {
+    public static async Refresh(sourceControl?: SourceControl, fullRefresh = false) {
         const perforceProvider = PerforceSCMProvider.GetInstance(sourceControl);
-        await perforceProvider?._model.RefreshPolitely();
+        await perforceProvider?._model.RefreshPolitely(fullRefresh);
     }
 
     public static async RefreshAll() {

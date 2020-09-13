@@ -76,6 +76,8 @@ export class Model implements Disposable {
 
     private _disposables: Disposable[] = [];
     private _config: ConfigAccessor;
+    // stored as state because of the debounce
+    private _fullCleanOnNextRefresh: boolean;
 
     private _onDidChange = new EventEmitter<void>();
     public get onDidChange(): Event<void> {
@@ -143,6 +145,7 @@ export class Model implements Disposable {
         private _clientName: string,
         public _sourceControl: SourceControl
     ) {
+        this._fullCleanOnNextRefresh = false;
         this._config = configAccessor;
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
             this.RefreshImpl.bind(this),
@@ -243,7 +246,10 @@ export class Model implements Disposable {
         await this._refresh.withoutLeadingCall();
     }
 
-    public async RefreshPolitely() {
+    public async RefreshPolitely(fullRefresh = false) {
+        if (fullRefresh) {
+            this._fullCleanOnNextRefresh = true;
+        }
         await this._refresh();
     }
 
@@ -1211,7 +1217,12 @@ export class Model implements Disposable {
         if (!this._sourceControl) {
             throw new Error("Source control not initialised");
         }
-        this.cleanState();
+
+        if (!this._fullCleanOnNextRefresh) {
+            this.cleanState();
+        } else {
+            this.clean();
+        }
 
         if (!this._defaultGroup) {
             this._defaultGroup = this._sourceControl.createResourceGroup(
@@ -1259,6 +1270,7 @@ export class Model implements Disposable {
         });
 
         Model.updateContextVars(groups);
+        this._fullCleanOnNextRefresh = false;
     }
 
     private async getChanges(): Promise<ChangeInfo[]> {

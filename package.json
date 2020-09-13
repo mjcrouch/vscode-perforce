@@ -543,6 +543,12 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "perforce.CleanRefresh",
+                "title": "Refresh (clean)",
+                "category": "Perforce",
+                "icon": "$(refresh)"
+            },
+            {
                 "command": "perforce.submitDefault",
                 "title": "Submit Default Changelist",
                 "category": "Perforce",
@@ -1087,12 +1093,17 @@
                 },
                 {
                     "command": "perforce.Sync",
-                    "group": "1_sync",
+                    "group": "1_sync@3",
                     "when": "scmProvider == perforce"
                 },
                 {
                     "command": "perforce.Refresh",
-                    "group": "1_sync",
+                    "group": "1_sync@1",
+                    "when": "scmProvider == perforce"
+                },
+                {
+                    "command": "perforce.CleanRefresh",
+                    "group": "1_sync@2",
                     "when": "scmProvider == perforce"
                 },
                 {
