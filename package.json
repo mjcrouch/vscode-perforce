@@ -612,10 +612,16 @@
                 "icon": "$(discard)"
             },
             {
-                "command": "perforce.shelveunshelve",
-                "title": "Shelve/Unshelve file",
+                "command": "perforce.shelve",
+                "title": "Shelve file",
                 "category": "Perforce",
-                "icon": "$(files)"
+                "icon": "$(fold-up)"
+            },
+            {
+                "command": "perforce.unshelve",
+                "title": "Unshelve file",
+                "category": "Perforce",
+                "icon": "$(fold-down)"
             },
             {
                 "command": "perforce.shelveChangelist",
@@ -640,7 +646,8 @@
             {
                 "command": "perforce.deleteShelvedFile",
                 "title": "Delete shelved file",
-                "category": "Perforce"
+                "category": "Perforce",
+                "icon": "$(trash)"
             },
             {
                 "command": "perforce.fixJob",
@@ -682,6 +689,16 @@
             {
                 "command": "perforce.reresolveChangelist",
                 "title": "Re-resolve changelist...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.resolveFiles",
+                "title": "Resolve...",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.reresolveFiles",
+                "title": "Re-resolve...",
                 "category": "Perforce"
             },
             {
@@ -932,6 +949,14 @@
                     "when": "0"
                 },
                 {
+                    "command": "perforce.resolveFiles",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.reresolveFiles",
+                    "when": "0"
+                },
+                {
                     "command": "perforce.revertFile",
                     "when": "0"
                 },
@@ -940,7 +965,11 @@
                     "when": "0"
                 },
                 {
-                    "command": "perforce.shelveunshelve",
+                    "command": "perforce.shelve",
+                    "when": "0"
+                },
+                {
+                    "command": "perforce.unshelve",
                     "when": "0"
                 },
                 {
@@ -1283,27 +1312,37 @@
                 {
                     "command": "perforce.openFile",
                     "when": "scmProvider == perforce && config.perforce.scmFileChanges == true",
-                    "group": "inline"
+                    "group": "inline@2"
                 },
                 {
                     "command": "perforce.openResource",
                     "when": "scmProvider == perforce && config.perforce.scmFileChanges == false",
-                    "group": "inline"
+                    "group": "inline@3"
                 },
                 {
                     "command": "perforce.revertFile",
-                    "when": "scmProvider == perforce",
-                    "group": "inline"
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/",
+                    "group": "inline@10"
                 },
                 {
                     "command": "perforce.reopenFile",
-                    "when": "scmProvider == perforce",
-                    "group": "inline"
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/",
+                    "group": "inline@1"
                 },
                 {
-                    "command": "perforce.shelveunshelve",
-                    "when": "scmProvider == perforce && scmResourceGroup != default",
-                    "group": "inline"
+                    "command": "perforce.deleteShelvedFile",
+                    "when": "scmProvider == perforce && scmResourceState =~ /shelved/",
+                    "group": "inline@10"
+                },
+                {
+                    "command": "perforce.shelve",
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/ && scmResourceGroup != default",
+                    "group": "inline@15"
+                },
+                {
+                    "command": "perforce.unshelve",
+                    "when": "scmProvider == perforce && scmResourceState =~ /shelved/",
+                    "group": "inline@15"
                 },
                 {
                     "command": "perforce.openResource",
@@ -1322,17 +1361,17 @@
                 },
                 {
                     "command": "perforce.revertFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/",
                     "group": "1_modification@1"
                 },
                 {
                     "command": "perforce.revertUnchangedFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/",
                     "group": "1_modification@2"
                 },
                 {
                     "command": "perforce.reopenFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/",
                     "group": "1_modification@3"
                 },
                 {
@@ -1341,14 +1380,29 @@
                     "group": "1_modification@4"
                 },
                 {
-                    "command": "perforce.shelveunshelve",
-                    "when": "scmProvider == perforce && scmResourceGroup != default",
+                    "command": "perforce.shelve",
+                    "when": "scmProvider == perforce && scmResourceState =~ /opened/ && scmResourceGroup != default",
+                    "group": "2_shelve@1"
+                },
+                {
+                    "command": "perforce.unshelve",
+                    "when": "scmProvider == perforce && scmResourceState =~ /shelved/",
                     "group": "2_shelve@1"
                 },
                 {
                     "command": "perforce.deleteShelvedFile",
-                    "when": "scmProvider == perforce",
+                    "when": "scmProvider == perforce && scmResourceState =~ /shelved/",
                     "group": "2_shelve@2"
+                },
+                {
+                    "command": "perforce.resolveFiles",
+                    "when": "scmProvider == perforce && scmResourceState =~ /unres/",
+                    "group": "3_resolve@1"
+                },
+                {
+                    "command": "perforce.reresolveFiles",
+                    "when": "scmProvider == perforce && scmResourceState =~ /reres/",
+                    "group": "3_resolve@1"
                 }
             ],
             "editor/title": [

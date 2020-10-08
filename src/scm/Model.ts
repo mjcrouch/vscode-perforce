@@ -631,6 +631,21 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
+    public async ResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+        });
+        this.Refresh();
+    }
+
+    public async ReResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+            reresolve: true,
+        });
+        this.Refresh();
+    }
+
     public async ShelveChangelist(input: ResourceGroup, revert?: boolean): Promise<void> {
         if (input.isDefault) {
             throw new Error("Cannot shelve the default changelist");
@@ -822,28 +837,36 @@ export class Model implements Disposable {
         await this.revertFileAfterUnshelve(input);
     }
 
-    async ShelveOrUnshelve(input: Resource): Promise<void> {
+    public async ShelveMultiple(input: Resource[]) {
+        if (input.some((r) => r.isShelved)) {
+            Display.showModalMessage(
+                "Some selected files are already shelved. Please select only unshelved files"
+            );
+            return;
+        }
+        const promises = input.map((r) => this.shelveOpenFile(r));
         try {
-            if (input.isShelved) {
-                await this.unshelveShelvedFile(input);
-            } else {
-                await this.shelveOpenFile(input);
-            }
+            await Promise.all(promises);
         } catch (reason) {
             Display.showImportantError(reason.toString());
             this.Refresh();
         }
     }
 
-    public async ShelveOrUnshelveMultiple(input: Resource[]) {
-        if (input.some((r) => r.isShelved !== input[0].isShelved)) {
+    public async UnshelveMultiple(input: Resource[]) {
+        if (input.some((r) => !r.isShelved)) {
             Display.showModalMessage(
-                "A mix of shelved / open files was selected. Please select only shelved or only open files for this operation"
+                "Some selected files are not shelved. Please select only shelved files"
             );
             return;
         }
-        const promises = input.map((r) => this.ShelveOrUnshelve(r));
-        await Promise.all(promises);
+        const promises = input.map((r) => this.unshelveShelvedFile(r));
+        try {
+            await Promise.all(promises);
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
+            this.Refresh();
+        }
     }
 
     public async DeleteShelvedFile(input: Resource): Promise<void> {

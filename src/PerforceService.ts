@@ -6,6 +6,8 @@ import {
     tasks,
     ShellExecution,
     Disposable,
+    ShellQuoting,
+    ShellQuotedString,
 } from "vscode";
 
 import * as PerforceUri from "./PerforceUri";
@@ -249,7 +251,13 @@ export namespace PerforceService {
     ) {
         const editor = configAccessor.resolveP4EDITOR;
         const env = editor ? { P4EDITOR: editor } : undefined;
-        const exec = new ShellExecution(cmd, allArgs, {
+        const quotedArgs = allArgs.map<ShellQuotedString>((arg) => {
+            return {
+                value: arg,
+                quoting: ShellQuoting.Strong,
+            };
+        });
+        const exec = new ShellExecution(cmd, quotedArgs, {
             cwd: spawnArgs.cwd,
             env,
         });
