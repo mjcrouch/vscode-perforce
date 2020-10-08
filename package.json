@@ -22,9 +22,9 @@
         "theme": "dark"
     },
     "engines": {
-        "vscode": "^1.49.0"
+        "vscode": "^1.50.0"
     },
-    "enableProposedApi": true,
+    "enableProposedApi": false,
     "keywords": [
         "vscode",
         "scm",
