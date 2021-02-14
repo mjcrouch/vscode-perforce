@@ -8,7 +8,6 @@ import { Status } from "./Status";
 import * as path from "path";
 import { getStatusText } from "../test/helpers/testUtils";
 import { isTruthy } from "../TsUtils";
-import { TextDecoder } from "util";
 
 export class DecorationProvider {
     private static _iconsRootPath: string = path.join(
