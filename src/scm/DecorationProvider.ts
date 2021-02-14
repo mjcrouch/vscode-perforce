@@ -1,8 +1,14 @@
-import { SourceControlResourceDecorations, Uri } from "vscode";
+import {
+    FileDecoration,
+    SourceControlResourceDecorations,
+    ThemeColor,
+    Uri,
+} from "vscode";
 import { Status } from "./Status";
 import * as path from "path";
 import { getStatusText } from "../test/helpers/testUtils";
 import { isTruthy } from "../TsUtils";
+import { TextDecoder } from "util";
 
 export class DecorationProvider {
     private static _iconsRootPath: string = path.join(
@@ -39,6 +45,23 @@ export class DecorationProvider {
         const tooltip = this.getTooltipText(status, isShelved, isUnresolved);
 
         return { strikeThrough, faded, light, dark, tooltip };
+    }
+
+    public static getFileDecorations(
+        statuses: Status[],
+        isUnresolved: boolean
+    ): FileDecoration {
+        const status = this.getDominantStatus(statuses);
+        const text = DecorationProvider.getStatusDecorations(status);
+        const tooltip = isUnresolved ? text.tooltip + " - unresolved" : text.tooltip;
+        const colorName = isUnresolved ? "unresolved" : text.colorName;
+        return {
+            tooltip,
+            badge: text.badge,
+            color: colorName
+                ? new ThemeColor("perforceDecoration." + colorName + "Foreground")
+                : undefined,
+        };
     }
 
     private static getDominantStatus(statuses: Status[]) {
@@ -130,5 +153,36 @@ export class DecorationProvider {
 
     private static useStrikeThrough(status?: Status): boolean {
         return status === Status.DELETE || status === Status.MOVE_DELETE;
+    }
+
+    private static getStatusDecorations(
+        status?: Status
+    ): { badge?: string; tooltip?: string; colorName?: string } {
+        switch (status) {
+            case Status.ADD:
+                return { badge: "A", tooltip: "Add", colorName: "add" };
+            case Status.ARCHIVE:
+                return { badge: "a", tooltip: "Archive", colorName: "archive" };
+            case Status.BRANCH:
+                return { badge: "B", tooltip: "Branch", colorName: "branch" };
+            case Status.DELETE:
+                return { badge: "D", tooltip: "Delete", colorName: "delete" };
+            case Status.EDIT:
+                return { badge: "E", tooltip: "Edit", colorName: "edit" };
+            case Status.IMPORT:
+                return { badge: "i", tooltip: "Import", colorName: "import" };
+            case Status.INTEGRATE:
+                return { badge: "I", tooltip: "Integrate", colorName: "integrate" };
+            case Status.LOCK:
+                return { badge: "L", tooltip: "Lock", colorName: "lock" };
+            case Status.MOVE_ADD:
+                return { badge: "M", tooltip: "Move/Add", colorName: "moveAdd" };
+            case Status.MOVE_DELETE:
+                return { badge: "M", tooltip: "Move/Delete", colorName: "moveDelete" };
+            case Status.PURGE:
+                return { badge: "P", tooltip: "Purge", colorName: "purge" };
+            default:
+                return {};
+        }
     }
 }

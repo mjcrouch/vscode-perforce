@@ -28,6 +28,7 @@ import { isTruthy, pluralise } from "../TsUtils";
 import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { showQuickPickForJob } from "../quickPick/JobQuickPick";
 import { changeSpecEditor, jobSpecEditor } from "../SpecEditor";
+import { DecorationProvider } from "./DecorationProvider";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -70,7 +71,7 @@ class ChangelistContext {
     }
 }
 
-export class Model implements Disposable {
+export class Model implements Disposable, vscode.FileDecorationProvider {
     private static _resolvable = new ChangelistContext("resolvable");
     private static _reResolvable = new ChangelistContext("reresolvable");
 
@@ -118,6 +119,13 @@ export class Model implements Disposable {
 
     private _refresh: DebouncedFunction<any[], Promise<void>>;
 
+    private _onDidChangeFileDecorationsEmitter = new EventEmitter<
+        Uri | Uri[] | undefined
+    >();
+    get onDidChangeFileDecorations() {
+        return this._onDidChangeFileDecorationsEmitter.event;
+    }
+
     get workspaceUri() {
         return this._workspaceUri;
     }
@@ -145,6 +153,7 @@ export class Model implements Disposable {
         private _clientName: string,
         public _sourceControl: SourceControl
     ) {
+        this._disposables.push(vscode.window.registerFileDecorationProvider(this));
         this._fullCleanOnNextRefresh = false;
         this._config = configAccessor;
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
@@ -156,6 +165,20 @@ export class Model implements Disposable {
         this._disposables.push(
             Display.onActiveFileStatusKnown(this.checkForConflicts.bind(this))
         );
+    }
+
+    provideFileDecoration(
+        uri: Uri,
+        _token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.FileDecoration> {
+        const resource = this._openResourcesByPath.get(uri.fsPath);
+        if (resource) {
+            return DecorationProvider.getFileDecorations(
+                [resource.status],
+                resource.isUnresolved
+            );
+        }
+        return null;
     }
 
     private assertIsNotDefault(input: ResourceGroup) {
@@ -1071,6 +1094,7 @@ export class Model implements Disposable {
         this._knownHaveListByPath.clear();
         Model._resolvable.removeChangelists([...this._pendingGroups.keys()]);
         Model._reResolvable.removeChangelists([...this._pendingGroups.keys()]);
+        this._onDidChangeFileDecorationsEmitter.fire(undefined);
     }
 
     private cleanPendingGroups() {
@@ -1169,6 +1193,13 @@ export class Model implements Disposable {
         this._reResolvable.addChangelists(
             this.getChangelistsWhereSome(groups, (r) => r.isReresolvable)
         );
+    }
+
+    private updateDecorations() {
+        const uris = [...this._openResourcesByPath.values()]
+            .map((file) => file.underlyingUri)
+            .filter(isTruthy);
+        this._onDidChangeFileDecorationsEmitter.fire(uris);
     }
 
     private shouldDisplayChangelist(resourceStates: Resource[]) {
@@ -1293,6 +1324,7 @@ export class Model implements Disposable {
         });
 
         Model.updateContextVars(groups);
+        this.updateDecorations();
         this._fullCleanOnNextRefresh = false;
     }
 
