@@ -1771,7 +1771,7 @@
             },
             {
                 "id": "perforceDecoration.editForeground",
-                "description": "File decoration color for files open for delete",
+                "description": "File decoration color for files open for edit",
                 "defaults": {
                     "dark": "gitDecoration.modifiedResourceForeground",
                     "light": "gitDecoration.modifiedResourceForeground",
@@ -1780,7 +1780,7 @@
             },
             {
                 "id": "perforceDecoration.integrateForeground",
-                "description": "File decoration color for files open for delete",
+                "description": "File decoration color for files open for integrate",
                 "defaults": {
                     "dark": "gitDecoration.modifiedResourceForeground",
                     "light": "gitDecoration.modifiedResourceForeground",
