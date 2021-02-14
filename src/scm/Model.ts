@@ -119,7 +119,7 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
 
     private _refresh: DebouncedFunction<any[], Promise<void>>;
 
-    private _onDidChangeFileDecorationsEmitter = new EventEmitter<
+    private readonly _onDidChangeFileDecorationsEmitter = new EventEmitter<
         Uri | Uri[] | undefined
     >();
     get onDidChangeFileDecorations() {
@@ -154,6 +154,7 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
         public _sourceControl: SourceControl
     ) {
         this._disposables.push(vscode.window.registerFileDecorationProvider(this));
+        this._disposables.push(this._onDidChangeFileDecorationsEmitter);
         this._fullCleanOnNextRefresh = false;
         this._config = configAccessor;
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
