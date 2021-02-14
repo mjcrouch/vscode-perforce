@@ -60,6 +60,7 @@ export class DecorationProvider {
             color: colorName
                 ? new ThemeColor("perforceDecoration." + colorName + "Foreground")
                 : undefined,
+            propagate: true,
         };
     }
 
