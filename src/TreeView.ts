@@ -20,6 +20,10 @@ export abstract class SelfExpandingTreeItem<T extends SelfExpandingTreeItem<any>
     >;
     private _parent?: SelfExpandingTreeItem<any>;
 
+    public get labelText() {
+        return typeof this.label === "string" ? this.label : this.label?.label;
+    }
+
     public get onDisposed() {
         return this._onDisposed.event;
     }

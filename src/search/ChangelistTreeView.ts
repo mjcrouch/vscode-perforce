@@ -355,7 +355,7 @@ class SearchResultItem extends SelfExpandingTreeItem<
     addShelvedFiles(detail: DescribedChangelist) {
         // remove any existing shelved file group, in case of timing issues
         this.getChildren()
-            .filter((child) => child.label?.startsWith("Shelved Files"))
+            .filter((child) => child.labelText?.startsWith("Shelved Files"))
             .forEach((child) => child.dispose());
         if (detail.shelvedFiles.length > 0) {
             this.insertChild(new SearchResultShelvedSubTree(this._resource, detail));
@@ -484,7 +484,7 @@ abstract class SearchResultTree extends SelfExpandingTreeItem<SearchResultItem> 
     showInQuickPick() {
         showResultsInQuickPick(
             this._resource,
-            this.label ?? "Search Results",
+            this.labelText ?? "Search Results",
             this._results
         );
     }

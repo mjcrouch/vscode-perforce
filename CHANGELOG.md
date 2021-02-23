@@ -1,5 +1,17 @@
 # Change log
 
+## [4.15.0] - 2020-02-14
+
+* Add file explorer decorations for open files (#201)
+* Ths minimum VS Code version is now 1.53
+
+## [4.14.0] - 2020-10-08
+
+* Tidy up the context commands for individual files in the SCM view
+  * From VS Code 1.50 it's possible to provide different context commands per file. For example, we now have a separate shelve vs unshelve icon, and a "delete shelved file" icon instead of the previously unusable revert icon on a shelved file. The right click context has also been tidied up
+* Move explorer context commands to a sub-menu
+  * From VS Code 1.50 it's possible to provide sub-menus - Previously the "Perforce:" menu items took up a lot of space on the explorer context menu - Now they're all on a sub-menu instead
+
 ## [4.13.0] - 2020-09-13
 
 * Improve the refresh behaviour, so that it does not clear out and replace the list of changelists every time (#170)
@@ -444,6 +456,8 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.15.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.14.0...4.15.0
+[4.14.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.13.0...4.14.0
 [4.13.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.12.0...4.13.0
 [4.12.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.11.0...4.12.0
 [4.11.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.10.0...4.11.0

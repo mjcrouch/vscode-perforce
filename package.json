@@ -2,7 +2,7 @@
     "name": "perforce",
     "displayName": "Perforce for VS Code",
     "description": "(2020 Fork) Perforce integration with VS Code's SCM features",
-    "version": "4.13.0",
+    "version": "4.15.0",
     "publisher": "mjcrouch",
     "license": "MIT",
     "categories": [
@@ -22,7 +22,7 @@
         "theme": "dark"
     },
     "engines": {
-        "vscode": "^1.50.0"
+        "vscode": "^1.53.0"
     },
     "enableProposedApi": false,
     "keywords": [
@@ -1705,6 +1705,114 @@
                     "light": "#00BCF299",
                     "highContrast": "#00BCF299"
                 }
+            },
+            {
+                "id": "perforceDecoration.addForeground",
+                "description": "File decoration color for files open for add",
+                "defaults": {
+                    "dark": "gitDecoration.addedResourceForeground",
+                    "light": "gitDecoration.addedResourceForeground",
+                    "highContrast": "gitDecoration.addedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.moveAddForeground",
+                "description": "File decoration color for files open for move / add",
+                "defaults": {
+                    "dark": "gitDecoration.addedResourceForeground",
+                    "light": "gitDecoration.addedResourceForeground",
+                    "highContrast": "gitDecoration.addedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.branchForeground",
+                "description": "File decoration color for files open for branch",
+                "defaults": {
+                    "dark": "gitDecoration.addedResourceForeground",
+                    "light": "gitDecoration.addedResourceForeground",
+                    "highContrast": "gitDecoration.addedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.archiveForeground",
+                "description": "File decoration color for files open for archive",
+                "defaults": {
+                    "dark": "gitDecoration.deletedResourceForeground",
+                    "light": "gitDecoration.deletedResourceForeground",
+                    "highContrast": "gitDecoration.deletedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.deleteForeground",
+                "description": "File decoration color for files open for delete",
+                "defaults": {
+                    "dark": "gitDecoration.deletedResourceForeground",
+                    "light": "gitDecoration.deletedResourceForeground",
+                    "highContrast": "gitDecoration.deletedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.moveDeleteForeground",
+                "description": "File decoration color for files open for move/delete",
+                "defaults": {
+                    "dark": "gitDecoration.deletedResourceForeground",
+                    "light": "gitDecoration.deletedResourceForeground",
+                    "highContrast": "gitDecoration.deletedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.purgeForeground",
+                "description": "File decoration color for files open for purge",
+                "defaults": {
+                    "dark": "gitDecoration.deletedResourceForeground",
+                    "light": "gitDecoration.deletedResourceForeground",
+                    "highContrast": "gitDecoration.deletedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.editForeground",
+                "description": "File decoration color for files open for edit",
+                "defaults": {
+                    "dark": "gitDecoration.modifiedResourceForeground",
+                    "light": "gitDecoration.modifiedResourceForeground",
+                    "highContrast": "gitDecoration.modifiedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.integrateForeground",
+                "description": "File decoration color for files open for integrate",
+                "defaults": {
+                    "dark": "gitDecoration.modifiedResourceForeground",
+                    "light": "gitDecoration.modifiedResourceForeground",
+                    "highContrast": "gitDecoration.modifiedResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.importForeground",
+                "description": "File decoration color for files open for import",
+                "defaults": {
+                    "dark": "gitDecoration.conflictingResourceForeground",
+                    "light": "gitDecoration.conflictingResourceForeground",
+                    "highContrast": "gitDecoration.conflictingResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.lockForeground",
+                "description": "File decoration color for files open for lock",
+                "defaults": {
+                    "dark": "gitDecoration.conflictingResourceForeground",
+                    "light": "gitDecoration.conflictingResourceForeground",
+                    "highContrast": "gitDecoration.conflictingResourceForeground"
+                }
+            },
+            {
+                "id": "perforceDecoration.unresolvedForeground",
+                "description": "File decoration color for unresolved files",
+                "defaults": {
+                    "dark": "gitDecoration.conflictingResourceForeground",
+                    "light": "gitDecoration.conflictingResourceForeground",
+                    "highContrast": "gitDecoration.conflictingResourceForeground"
+                }
             }
         ],
         "keybindings": [
@@ -1839,7 +1947,7 @@
         "@types/node": "^12.12.29",
         "@types/sinon": "^9.0.0",
         "@types/sinon-chai": "^3.2.3",
-        "@types/vscode": "^1.46.0",
+        "@types/vscode": "^1.53.0",
         "@typescript-eslint/eslint-plugin": "^2.22.0",
         "@typescript-eslint/parser": "^2.22.0",
         "chai": "^4.2.0",

@@ -379,7 +379,7 @@ export class FileFilterValue extends SelfExpandingTreeItem<any> {
                     return "Please enter a value";
                 }
             },
-            value: this.label,
+            value: this.labelText,
         });
         if (value) {
             this.label = value;
@@ -597,7 +597,7 @@ export class FileFilterRoot extends SelfExpandingTreeItem<
     get value(): string[] {
         return this.getChildren()
             .filter((child) => child.contextValue === "fileFilter")
-            .map((file) => file.label)
+            .map((file) => file.labelText)
             .filter(isTruthy);
     }
 
