@@ -130,7 +130,7 @@ export function getWorkspaceFromQuery(uri: vscode.Uri) {
 }
 
 export function getUsableWorkspace(uri: vscode.Uri) {
-    return !isDepotUri(uri) && !!uri.fsPath
+    return !isDepotUri(uri) && !!uri.fsPath && uri.fsPath !== "/Command_Output"
         ? vscode.Uri.file(uriWithoutRev(uri).fsPath)
         : getWorkspaceFromQuery(uri);
 }
