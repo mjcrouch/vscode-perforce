@@ -155,7 +155,7 @@ export async function getShelvedFiles(
 }
 
 function parseFixedJobsSection(subLines: string[]): FixedJob[] {
-    return sectionArrayBy(subLines, (line) => /^\w*? on/.test(line)).map((job) => {
+    return sectionArrayBy(subLines, (line) => /^\S*? on/.test(line)).map((job) => {
         return {
             id: job[0].split(" ")[0],
             description: job

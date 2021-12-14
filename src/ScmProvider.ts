@@ -358,8 +358,12 @@ export class PerforceSCMProvider {
             PerforceSCMProvider.DeleteShelvedChangelist.bind(this)
         );
         commands.registerCommand(
-            "perforce.shelveunshelve",
-            PerforceSCMProvider.ShelveOrUnshelve.bind(this)
+            "perforce.shelve",
+            PerforceSCMProvider.Shelve.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.unshelve",
+            PerforceSCMProvider.Unshelve.bind(this)
         );
         commands.registerCommand(
             "perforce.deleteShelvedFile",
@@ -396,6 +400,14 @@ export class PerforceSCMProvider {
         commands.registerCommand(
             "perforce.reresolveChangelist",
             PerforceSCMProvider.ReResolveChangelist.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.resolveFiles",
+            PerforceSCMProvider.ResolveFiles.bind(this)
+        );
+        commands.registerCommand(
+            "perforce.reresolveFiles",
+            PerforceSCMProvider.ReResolveFiles.bind(this)
         );
         commands.registerCommand(
             "perforce.loginScm",
@@ -694,6 +706,20 @@ export class PerforceSCMProvider {
         }
     }
 
+    public static async ResolveFiles(...resourceStates: SourceControlResourceState[]) {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.ResolveFiles(selection);
+    }
+
+    public static async ReResolveFiles(...resourceStates: SourceControlResourceState[]) {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.ReResolveFiles(selection);
+    }
+
     public static async ShelveChangelist(input: ResourceGroup) {
         const model: Model = input.model;
         if (model) {
@@ -722,13 +748,22 @@ export class PerforceSCMProvider {
         }
     }
 
-    public static async ShelveOrUnshelve(
+    public static async Shelve(
         ...resourceStates: SourceControlResourceState[]
     ): Promise<void> {
         const selection = resourceStates.filter(
             (s) => s instanceof Resource
         ) as Resource[];
-        await selection[0]?.model.ShelveOrUnshelveMultiple(selection);
+        await selection[0]?.model.ShelveMultiple(selection);
+    }
+
+    public static async Unshelve(
+        ...resourceStates: SourceControlResourceState[]
+    ): Promise<void> {
+        const selection = resourceStates.filter(
+            (s) => s instanceof Resource
+        ) as Resource[];
+        await selection[0]?.model.UnshelveMultiple(selection);
     }
 
     public static async DeleteShelvedFile(

@@ -1,5 +1,36 @@
 # Change log
 
+## [4.15.2] - 2021-05-09
+
+* Fix the inability to attach perforce jobs that contain non-alphanumeric characters (#208)
+* Fix the "show job" command not working from the job quick pick, due to incorrect detection of the working directory
+
+## [4.15.1] - 2021-02-23
+
+* Fix an issue where the count shown on the scm badge was incorrect after submitting a changelist (#205)
+
+## [4.15.0] - 2021-02-14
+
+* Add file explorer decorations for open files (#201)
+* Ths minimum VS Code version is now 1.53
+
+## [4.14.0] - 2020-10-08
+
+* Tidy up the context commands for individual files in the SCM view
+  * From VS Code 1.50 it's possible to provide different context commands per file. For example, we now have a separate shelve vs unshelve icon, and a "delete shelved file" icon instead of the previously unusable revert icon on a shelved file. The right click context has also been tidied up
+* Move explorer context commands to a sub-menu
+  * From VS Code 1.50 it's possible to provide sub-menus - Previously the "Perforce:" menu items took up a lot of space on the explorer context menu - Now they're all on a sub-menu instead
+
+## [4.13.0] - 2020-09-13
+
+* Improve the refresh behaviour, so that it does not clear out and replace the list of changelists every time (#170)
+  * This means that when you collapse a changelist, it doesn't expand again when you next do anything, like open a file for edit. It also prevents the 'flickeriness' where all the changelists disappear and reappear on refresh
+  * The only exception is, when a new changelist is added, we still have to refresh the whole view, to maintain the correct order of changelists
+  * As this is quite a significant change, please look out for any bugs relating to changelists having the wrong state, and raise an issue if things look wrong. There is also a new "Refresh (clean)" command to force a full refresh in case of any bugs
+* Add a command to the changelist context menu to copy the changelist number (#183)
+* Fixed an issue where the SCM view was not refreshed when an individual file was resolved
+* The minimum VS Code version is now 1.49
+
 ## [4.12.0] - 2020-08-09
 
 * Add an option `perforce.syncMode`. This controls the set of files to sync when using the "sync" command on the SCM provider. You can either sync the whole perforce client area, or just the part that is contained in the VS code workspace (#169)
@@ -434,6 +465,11 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.15.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.1...4.15.2
+[4.15.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.0...4.15.1
+[4.15.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.14.0...4.15.0
+[4.14.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.13.0...4.14.0
+[4.13.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.12.0...4.13.0
 [4.12.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.11.0...4.12.0
 [4.11.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.10.0...4.11.0
 [4.10.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.9.0...4.10.0

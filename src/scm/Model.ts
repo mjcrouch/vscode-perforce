@@ -28,6 +28,7 @@ import { isTruthy, pluralise } from "../TsUtils";
 import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { showQuickPickForJob } from "../quickPick/JobQuickPick";
 import { changeSpecEditor, jobSpecEditor } from "../SpecEditor";
+import { DecorationProvider } from "./DecorationProvider";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -70,7 +71,7 @@ class ChangelistContext {
     }
 }
 
-export class Model implements Disposable {
+export class Model implements Disposable, vscode.FileDecorationProvider {
     private static _resolvable = new ChangelistContext("resolvable");
     private static _reResolvable = new ChangelistContext("reresolvable");
 
@@ -118,6 +119,13 @@ export class Model implements Disposable {
 
     private _refresh: DebouncedFunction<any[], Promise<void>>;
 
+    private readonly _onDidChangeFileDecorationsEmitter = new EventEmitter<
+        Uri | Uri[] | undefined
+    >();
+    get onDidChangeFileDecorations() {
+        return this._onDidChangeFileDecorationsEmitter.event;
+    }
+
     get workspaceUri() {
         return this._workspaceUri;
     }
@@ -145,6 +153,8 @@ export class Model implements Disposable {
         private _clientName: string,
         public _sourceControl: SourceControl
     ) {
+        this._disposables.push(vscode.window.registerFileDecorationProvider(this));
+        this._disposables.push(this._onDidChangeFileDecorationsEmitter);
         this._fullCleanOnNextRefresh = false;
         this._config = configAccessor;
         this._refresh = debounce<(boolean | undefined)[], Promise<void>>(
@@ -156,6 +166,20 @@ export class Model implements Disposable {
         this._disposables.push(
             Display.onActiveFileStatusKnown(this.checkForConflicts.bind(this))
         );
+    }
+
+    provideFileDecoration(
+        uri: Uri,
+        _token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.FileDecoration> {
+        const resource = this._openResourcesByPath.get(uri.fsPath);
+        if (resource) {
+            return DecorationProvider.getFileDecorations(
+                [resource.status],
+                resource.isUnresolved
+            );
+        }
+        return null;
     }
 
     private assertIsNotDefault(input: ResourceGroup) {
@@ -631,6 +655,21 @@ export class Model implements Disposable {
         this.Refresh();
     }
 
+    public async ResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+        });
+        this.Refresh();
+    }
+
+    public async ReResolveFiles(input: Resource[]) {
+        await p4.resolve(this._workspaceUri, {
+            files: input.map((i) => i.actionUriNoRev),
+            reresolve: true,
+        });
+        this.Refresh();
+    }
+
     public async ShelveChangelist(input: ResourceGroup, revert?: boolean): Promise<void> {
         if (input.isDefault) {
             throw new Error("Cannot shelve the default changelist");
@@ -822,28 +861,36 @@ export class Model implements Disposable {
         await this.revertFileAfterUnshelve(input);
     }
 
-    async ShelveOrUnshelve(input: Resource): Promise<void> {
+    public async ShelveMultiple(input: Resource[]) {
+        if (input.some((r) => r.isShelved)) {
+            Display.showModalMessage(
+                "Some selected files are already shelved. Please select only unshelved files"
+            );
+            return;
+        }
+        const promises = input.map((r) => this.shelveOpenFile(r));
         try {
-            if (input.isShelved) {
-                await this.unshelveShelvedFile(input);
-            } else {
-                await this.shelveOpenFile(input);
-            }
+            await Promise.all(promises);
         } catch (reason) {
             Display.showImportantError(reason.toString());
             this.Refresh();
         }
     }
 
-    public async ShelveOrUnshelveMultiple(input: Resource[]) {
-        if (input.some((r) => r.isShelved !== input[0].isShelved)) {
+    public async UnshelveMultiple(input: Resource[]) {
+        if (input.some((r) => !r.isShelved)) {
             Display.showModalMessage(
-                "A mix of shelved / open files was selected. Please select only shelved or only open files for this operation"
+                "Some selected files are not shelved. Please select only shelved files"
             );
             return;
         }
-        const promises = input.map((r) => this.ShelveOrUnshelve(r));
-        await Promise.all(promises);
+        const promises = input.map((r) => this.unshelveShelvedFile(r));
+        try {
+            await Promise.all(promises);
+        } catch (reason) {
+            Display.showImportantError(reason.toString());
+            this.Refresh();
+        }
     }
 
     public async DeleteShelvedFile(input: Resource): Promise<void> {
@@ -874,16 +921,12 @@ export class Model implements Disposable {
     }
 
     private async requestJobId(chnum: string) {
-        const re = new RegExp(/^[a-z0-9]+$/i);
         return await window.showInputBox({
             prompt: "Enter the job to be fixed by changelist " + chnum,
             placeHolder: "jobNNNNNN",
             validateInput: (val) => {
                 if (val.trim() === "") {
                     return "Enter a job name";
-                }
-                if (!re.exec(val)) {
-                    return "Job names can only contain letters and numbers";
                 }
             },
         });
@@ -1048,6 +1091,7 @@ export class Model implements Disposable {
         this._knownHaveListByPath.clear();
         Model._resolvable.removeChangelists([...this._pendingGroups.keys()]);
         Model._reResolvable.removeChangelists([...this._pendingGroups.keys()]);
+        this._onDidChangeFileDecorationsEmitter.fire(undefined);
     }
 
     private cleanPendingGroups() {
@@ -1148,6 +1192,13 @@ export class Model implements Disposable {
         );
     }
 
+    private updateDecorations() {
+        const uris = [...this._openResourcesByPath.values()]
+            .map((file) => file.underlyingUri)
+            .filter(isTruthy);
+        this._onDidChangeFileDecorationsEmitter.fire(uris);
+    }
+
     private shouldDisplayChangelist(resourceStates: Resource[]) {
         if (this._config.hideEmptyChangelists && resourceStates.length < 1) {
             return false;
@@ -1209,6 +1260,7 @@ export class Model implements Disposable {
         this._pendingGroups.forEach((group) => {
             if (!usedGroups.includes(group.group)) {
                 group.group.dispose();
+                this._pendingGroups.delete(group.group.chnum);
             }
         });
     }
@@ -1270,6 +1322,7 @@ export class Model implements Disposable {
         });
 
         Model.updateContextVars(groups);
+        this.updateDecorations();
         this._fullCleanOnNextRefresh = false;
     }
 
