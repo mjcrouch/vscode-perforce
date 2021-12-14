@@ -921,16 +921,12 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
     }
 
     private async requestJobId(chnum: string) {
-        const re = new RegExp(/^[a-z0-9]+$/i);
         return await window.showInputBox({
             prompt: "Enter the job to be fixed by changelist " + chnum,
             placeHolder: "jobNNNNNN",
             validateInput: (val) => {
                 if (val.trim() === "") {
                     return "Enter a job name";
-                }
-                if (!re.exec(val)) {
-                    return "Job names can only contain letters and numbers";
                 }
             },
         });
@@ -1264,6 +1260,7 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
         this._pendingGroups.forEach((group) => {
             if (!usedGroups.includes(group.group)) {
                 group.group.dispose();
+                this._pendingGroups.delete(group.group.chnum);
             }
         });
     }
