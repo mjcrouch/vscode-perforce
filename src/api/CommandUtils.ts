@@ -249,6 +249,7 @@ export async function runPerforceCommand(
 ): Promise<string> {
     const { input, hideStdErr, stdErrIsOk, useTerminal, logStdOut } = params;
 
+    let isStdErr = false;
     try {
         const [stdout, stderr] = await runPerforceCommandRaw(
             resource,
@@ -265,12 +266,15 @@ export async function runPerforceCommand(
                 Display.showError(stderr.toString());
             }
             if (!stdErrIsOk) {
+                isStdErr = true;
                 throw stderr;
             }
         }
         return stdout;
     } catch (err) {
-        Display.showError(err.toString());
+        if (!isStdErr || !hideStdErr) {
+            Display.showError(err.toString());
+        }
         throw err;
     }
 }
