@@ -3,3 +3,4 @@ dist/
 node_modules/
 typings/
 webpack.config.js
+vscode.proposed.d.ts
