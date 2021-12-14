@@ -1,5 +1,10 @@
 # Change log
 
+## [4.15.2] - 2021-05-09
+
+* Fix the inability to attach perforce jobs that contain non-alphanumeric characters (#208)
+* Fix the "show job" command not working from the job quick pick, due to incorrect detection of the working directory
+
 ## [4.15.1] - 2021-02-23
 
 * Fix an issue where the count shown on the scm badge was incorrect after submitting a changelist (#205)
@@ -460,6 +465,7 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.15.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.1...4.15.2
 [4.15.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.0...4.15.1
 [4.15.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.14.0...4.15.0
 [4.14.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.13.0...4.14.0
