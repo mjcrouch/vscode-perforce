@@ -9,6 +9,7 @@ import { Display } from "./Display";
 import { Utils } from "./Utils";
 import * as vscode from "vscode";
 import * as Path from "path";
+import * as fs from "fs";
 
 import { Disposable } from "vscode";
 import { AnnotationProvider } from "./annotations/AnnotationProvider";
@@ -88,7 +89,7 @@ function isInClientRoot(
     rootFsPath: string,
     caseInsensitive: boolean
 ) {
-    const wksRootN = Utils.normalize(testFile.fsPath);
+    const wksRootN = Utils.normalize(fs.realpathSync(testFile.fsPath));
     return startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive);
 }
 
@@ -97,7 +98,7 @@ function isClientRootIn(
     rootFsPath: string,
     caseInsensitive: boolean
 ) {
-    const wksRootN = Utils.normalize(workspace.fsPath);
+    const wksRootN = Utils.normalize(fs.realpathSync(workspace.fsPath));
     return startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive);
 }
 
