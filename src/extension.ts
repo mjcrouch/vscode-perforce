@@ -89,8 +89,12 @@ function isInClientRoot(
     rootFsPath: string,
     caseInsensitive: boolean
 ) {
-    const wksRootN = Utils.normalize(fs.realpathSync(testFile.fsPath));
-    return startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive);
+    const wksRootN = Utils.normalize(testFile.fsPath);
+    const wksRealRootN = Utils.normalize(fs.realpathSync(testFile.fsPath));
+    return (
+        startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive) ||
+        startsWithInsensitive(wksRealRootN, rootFsPath, caseInsensitive)
+    );
 }
 
 function isClientRootIn(
@@ -98,8 +102,12 @@ function isClientRootIn(
     rootFsPath: string,
     caseInsensitive: boolean
 ) {
-    const wksRootN = Utils.normalize(fs.realpathSync(workspace.fsPath));
-    return startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive);
+    const wksRootN = Utils.normalize(workspace.fsPath);
+    const wksRealRootN = Utils.normalize(fs.realpathSync(workspace.fsPath));
+    return (
+        startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive) ||
+        startsWithInsensitive(wksRealRootN, wksRootN, caseInsensitive)
+    );
 }
 
 async function findP4ConfigFiles(
