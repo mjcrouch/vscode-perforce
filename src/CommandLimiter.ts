@@ -93,7 +93,7 @@ export class CommandLimiter {
      * @returns a promise that resolves once the job has called the callback, or rejects if the job throws an error (regardless of whether it called the callback)
      */
     public submit(
-        command: (callback: LimiterCallback) => any,
+        command: (callback: LimiterCallback) => Promise<any>,
         id: string
     ): Promise<void> {
         let item: QueuedCommand;
@@ -106,7 +106,10 @@ export class CommandLimiter {
                 id,
                 command: () => {
                     try {
-                        command(doneCallback);
+                        command(doneCallback).catch((err) => {
+                            this.completed(id);
+                            rej(err);
+                        });
                     } catch (err) {
                         this.completed(id);
                         rej(err);

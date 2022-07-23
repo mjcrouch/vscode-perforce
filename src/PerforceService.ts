@@ -112,20 +112,27 @@ export namespace PerforceService {
             limiter.debugMode = true;
             debugModeSetup = true;
         }
-        limiter.submit((onDone) => {
-            execCommand(
-                resource,
-                command,
-                (...rest) => {
-                    // call done first in case responseCallback throws - the important part is done
-                    onDone();
-                    responseCallback(...rest);
-                },
-                args,
-                input,
-                useTerminal
-            );
-        }, `<JOB_ID:${++id}:${command}>`);
+        limiter
+            .submit(
+                (onDone) =>
+                    execCommand(
+                        resource,
+                        command,
+                        (...rest) => {
+                            // call done first in case responseCallback throws - the important part is done
+                            onDone();
+                            responseCallback(...rest);
+                        },
+                        args,
+                        input,
+                        useTerminal
+                    ),
+                `<JOB_ID:${++id}:${command}>`
+            )
+            .catch((err) => {
+                console.error("Error while running perforce command:", err);
+                responseCallback(err, "", "");
+            });
     }
 
     export function executeAsPromise(
