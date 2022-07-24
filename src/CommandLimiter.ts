@@ -89,6 +89,7 @@ export class CommandLimiter {
     /**
      * Submit a job to be executed
      * @param command the command to run when the job is dequeued. The command MUST call the callback to indicate that it has completed.
+     * The command must also return a promise so we can catch errors in async operations that are not handled by the callback. This is incredibly confusing because of the mix of async functions and callback. Running commands should be reworked to be entirely async instead of using a callback!
      * @param id an identifier for the job. MUST BE UNIQUE (TODO validate uniqueness)
      * @returns a promise that resolves once the job has called the callback, or rejects if the job throws an error (regardless of whether it called the callback)
      */
