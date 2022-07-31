@@ -754,7 +754,7 @@ export namespace PerforceCommands {
 
                         const depotPath = selection.description;
                         const whereFile = depotPath.substring(0, depotPath.indexOf("#"));
-                        where(whereFile)
+                        where(resource, whereFile)
                             .then((result) => {
                                 // https://www.perforce.com/perforce/r14.2/manuals/cmdref/p4_where.html
                                 const results = result.split(" ");
@@ -778,14 +778,13 @@ export namespace PerforceCommands {
         });
     }
 
-    function where(file: string): Promise<string> {
+    function where(resource: Uri, file: string): Promise<string> {
         return new Promise((resolve, reject) => {
             if (!checkFolderOpened()) {
                 reject();
                 return;
             }
 
-            const resource = Uri.file(file);
             const args = [file];
             PerforceService.execute(
                 resource,
