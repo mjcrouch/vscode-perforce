@@ -217,6 +217,8 @@ export namespace PerforceService {
         }
     }
 
+    let spawnedId = 0;
+
     function spawnNormally(
         cmd: string,
         allArgs: string[],
@@ -224,12 +226,22 @@ export namespace PerforceService {
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
         input?: string
     ) {
+        const config = workspace.getConfiguration("perforce");
+        const debug = config.get("debugP4Commands", false);
+        const id = ++spawnedId;
+        if (debug) {
+            console.log("[P4 RUN]", id, cmd, allArgs, spawnArgs);
+        }
+
         const child = spawn(cmd, allArgs, spawnArgs);
 
         let called = false;
         child.on("error", (err: Error) => {
             if (!called) {
                 called = true;
+                if (debug) {
+                    console.log("[P4 ERR]", id, err);
+                }
                 responseCallback(err, "", "");
             }
         });
@@ -243,6 +255,9 @@ export namespace PerforceService {
 
         getResults(child).then((value: string[]) => {
             if (!called) {
+                if (debug) {
+                    console.log("[P4 RES]", id, value[0], value[1]);
+                }
                 responseCallback(null, value[0] ?? "", value[1] ?? "");
             }
         });
