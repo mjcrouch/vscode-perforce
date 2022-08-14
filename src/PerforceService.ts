@@ -256,7 +256,13 @@ export namespace PerforceService {
         getResults(child).then((value: string[]) => {
             if (!called) {
                 if (debug) {
-                    console.log("[P4 RES]", id, value[0], value[1]);
+                    console.log(
+                        "[P4 RES]",
+                        id,
+                        "Stdout:\n" + value[0],
+                        "\n============================",
+                        "\nStderr:\n" + value[1] + "\n"
+                    );
                 }
                 responseCallback(null, value[0] ?? "", value[1] ?? "");
             }
