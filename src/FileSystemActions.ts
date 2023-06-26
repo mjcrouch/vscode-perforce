@@ -158,7 +158,10 @@ export default class FileSystemActions {
     private static async isDirectory(uri: Uri) {
         try {
             const stat = await workspace.fs.stat(uri);
-            return stat.type === FileType.Directory;
+            return (
+                stat.type === FileType.Directory ||
+                stat.type === (FileType.Directory | FileType.SymbolicLink)
+            );
         } catch (err) {
             // still try to revert
             Display.channel.appendLine(err);

@@ -162,7 +162,11 @@ export namespace PerforceService {
 
     async function isDirectory(uri: Uri): Promise<boolean> {
         try {
-            return (await workspace.fs.stat(uri)).type === FileType.Directory;
+            const stat = await workspace.fs.stat(uri);
+            return (
+                stat.type === FileType.Directory ||
+                stat.type === (FileType.Directory | FileType.SymbolicLink)
+            );
         } catch {}
         return false;
     }
