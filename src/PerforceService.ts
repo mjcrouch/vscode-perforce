@@ -79,6 +79,7 @@ export namespace PerforceService {
         const p4Port = config.get("port", "none");
         const p4Pass = config.get("password", "none");
         const p4Dir = config.get("dir", "none");
+        const p4Charset = config.get("charset", "none");
 
         const ret: string[] = [];
 
@@ -94,6 +95,7 @@ export namespace PerforceService {
         ret.push(...buildCmd(p4Port, "-p"));
         ret.push(...buildCmd(p4Pass, "-P"));
         ret.push(...buildCmd(p4Dir, "-d"));
+        ret.push(...buildCmd(p4Charset, "-C"));
 
         return ret;
     }
