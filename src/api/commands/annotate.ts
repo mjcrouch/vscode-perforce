@@ -16,7 +16,7 @@ const annotateFlags = flagMapper<AnnotateOptions>(
         ["i", "followBranches"],
     ],
     "file",
-    ["-q"]
+    ["-tq"]
 );
 
 const annotateCommand = makeSimpleCommand("annotate", annotateFlags);
