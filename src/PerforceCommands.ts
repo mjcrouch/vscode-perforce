@@ -12,7 +12,7 @@ import {
 } from "vscode";
 
 import * as Path from "path";
-
+import { Utils } from "./Utils";
 import { PerforceService } from "./PerforceService";
 import * as p4 from "./api/PerforceApi";
 import { Display } from "./Display";
@@ -99,6 +99,7 @@ export namespace PerforceCommands {
 
     export async function p4add(fileUri: Uri) {
         try {
+            fileUri = Utils.getResolvedUri(fileUri) ?? fileUri;
             await p4.add(fileUri, { files: [fileUri] });
             Display.showMessage("File opened for add");
             Display.updateEditor();
@@ -144,6 +145,7 @@ export namespace PerforceCommands {
 
     export async function p4edit(fileUri: Uri) {
         try {
+            fileUri = Utils.getResolvedUri(fileUri) ?? fileUri;
             await p4.edit(fileUri, { files: [fileUri] });
             Display.showMessage("File opened for edit");
             Display.updateEditor();
@@ -168,6 +170,7 @@ export namespace PerforceCommands {
     export async function p4delete(fileUri: Uri, resource?: Uri) {
         const deleteOpts: p4.DeleteOptions = { paths: [fileUri] };
         try {
+            fileUri = Utils.getResolvedUri(fileUri) ?? fileUri;
             await p4.del(resource ?? fileUri, deleteOpts);
             Display.showMessage(PerforceUri.fsPathWithoutRev(fileUri) + " deleted.");
             Display.updateEditor();
@@ -204,6 +207,7 @@ export namespace PerforceCommands {
     export async function p4revert(fileUri: Uri, resource?: Uri) {
         const revertOpts: p4.RevertOptions = { paths: [fileUri] };
         try {
+            fileUri = Utils.getResolvedUri(fileUri) ?? fileUri;
             await p4.revert(resource ?? fileUri, revertOpts);
             Display.showMessage(PerforceUri.basenameWithoutRev(fileUri) + " reverted.");
             Display.updateEditor();
@@ -282,7 +286,7 @@ export namespace PerforceCommands {
     }
 
     export async function syncOpenFile() {
-        const file = window.activeTextEditor?.document.uri;
+        const file = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!file || file.scheme !== "file") {
             Display.showError("No open file to sync");
             return;
@@ -297,7 +301,7 @@ export namespace PerforceCommands {
     }
 
     export async function syncOpenFileRevision() {
-        const file = window.activeTextEditor?.document.uri;
+        const file = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!file || file.scheme !== "file") {
             Display.showError("No open file to sync");
             return;
@@ -329,6 +333,16 @@ export namespace PerforceCommands {
 
     // accepts a string for any custom tasks etc
     export async function syncExplorerPath(file: Uri | string, files?: Uri[]) {
+        if (file instanceof Uri) {
+            file = Utils.getResolvedUri(file) ?? file;
+        } else {
+            file = Utils.getResolvedPath(file) ?? file;
+        }
+        if (files) {
+            for (let i = 0; i < files.length; ++i) {
+                files[i] = Utils.getResolvedUri(files[i]) ?? files[i];
+            }
+        }
         return explorerOperationByDir(
             file,
             files,
@@ -595,16 +609,17 @@ export namespace PerforceCommands {
         }
 
         const doc = editor.document;
+        const docUri = Utils.getResolvedUri(doc.uri) ?? doc.uri;
 
         if (!doc.isUntitled) {
             if (!revision) {
-                await diffPrevious(editor.document.uri);
+                await diffPrevious(docUri);
                 return;
             }
 
             const revStr = revision && !isNaN(revision) ? revision.toString() : "have";
-            const depotUri = PerforceUri.fromUriWithRevision(doc.uri, revStr);
-            const rightUri = doc.uri;
+            const depotUri = PerforceUri.fromUriWithRevision(docUri, revStr);
+            const rightUri = docUri;
 
             await DiffProvider.diffFiles(depotUri, rightUri);
         }
@@ -625,8 +640,9 @@ export namespace PerforceCommands {
         }
 
         const doc = editor.document;
+        const docUri = Utils.getResolvedUri(doc.uri) ?? doc.uri;
 
-        const revision = await pickRevision(doc.uri, "Choose a revision to diff against");
+        const revision = await pickRevision(docUri, "Choose a revision to diff against");
         if (revision) {
             diff(parseInt(revision.revision));
         }
@@ -636,6 +652,7 @@ export namespace PerforceCommands {
         if (!fromDoc) {
             fromDoc = window.activeTextEditor?.document.uri;
         }
+        fromDoc = Utils.getResolvedUri(fromDoc) ?? fromDoc;
         if (!fromDoc) {
             Display.showError("No file to diff");
             return false;
@@ -644,7 +661,7 @@ export namespace PerforceCommands {
     }
 
     async function diffPreviousFromDiff() {
-        const fromDoc = window.activeTextEditor?.document.uri;
+        const fromDoc = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!fromDoc) {
             Display.showError("No file to diff");
             return false;
@@ -656,6 +673,7 @@ export namespace PerforceCommands {
         if (!fromDoc) {
             fromDoc = window.activeTextEditor?.document.uri;
         }
+        fromDoc = Utils.getResolvedUri(fromDoc) ?? fromDoc;
         if (!fromDoc) {
             Display.showError("No file to diff");
             return false;
@@ -692,7 +710,7 @@ export namespace PerforceCommands {
     }
 
     export async function annotate(file?: Uri) {
-        const uri = file ?? getOpenDocUri();
+        const uri = Utils.getResolvedUri(file ?? getOpenDocUri());
 
         if (!uri) {
             return false;
@@ -726,6 +744,7 @@ export namespace PerforceCommands {
                 }
             }
         }
+        resource = Utils.getResolvedUri(resource) ?? resource;
 
         PerforceService.execute(resource, "opened", (err, stdout, stderr) => {
             if (err) {
@@ -779,6 +798,7 @@ export namespace PerforceCommands {
     }
 
     function where(resource: Uri, file: string): Promise<string> {
+        resource = Utils.getResolvedUri(resource) ?? resource;
         return new Promise((resolve, reject) => {
             if (!checkFolderOpened()) {
                 reject();
@@ -866,7 +886,7 @@ export namespace PerforceCommands {
     }
 
     function showFileHistory() {
-        const file = window.activeTextEditor?.document.uri;
+        const file = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!file) {
             return;
         }
