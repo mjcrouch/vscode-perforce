@@ -107,7 +107,7 @@ export namespace Display {
             let active: ActiveEditorStatus = ActiveEditorStatus.NOT_IN_WORKSPACE;
             let details: p4.OpenedFile | undefined;
             try {
-                const docUri = Utils.getResolvedUri(doc.uri) ?? doc.uri;
+                const docUri = Utils.getResolvedCurDocUri() ?? doc.uri;
                 const opened = await p4.getOpenedFileDetails(docUri, {
                     files: [docUri],
                 });

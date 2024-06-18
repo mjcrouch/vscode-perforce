@@ -1,4 +1,4 @@
-import { Event, workspace, Uri } from "vscode";
+import { Event, workspace, Uri, window } from "vscode";
 
 import * as Fs from "fs";
 import * as Path from "path";
@@ -45,6 +45,9 @@ export namespace Utils {
 
     function parseLastLink(path: string): string {
         try {
+            if (!process.platform.startsWith("win")) {
+                return path;
+            } //todo linux
             if (!path || isVolumeLabel(path)) {
                 return path;
             }
@@ -71,6 +74,9 @@ export namespace Utils {
 
     function parseAllLinks(path: string): string {
         try {
+            if (!process.platform.startsWith("win")) {
+                return path;
+            } //todo linux
             let realpath = Fs.realpathSync(path);
             realpath = Path.normalize(realpath);
             const parts = realpath.split("\\");
@@ -91,9 +97,40 @@ export namespace Utils {
         }
     }
 
+    let curDocUri: Uri;
+    let curDocResolvedUri: Uri;
+    function checkAndUpdateCurDocUri() {
+        const editor = window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+        const docUri = editor.document.uri;
+        if (!docUri || (curDocUri && docUri.fsPath === curDocUri.fsPath)) {
+            return;
+        }
+        curDocUri = docUri;
+        curDocResolvedUri = Uri.file(parseAllLinks(docUri.fsPath)) ?? curDocUri;
+    }
+
+    export function getResolvedCurDocPath(): string {
+        checkAndUpdateCurDocUri();
+        return curDocResolvedUri.fsPath;
+    }
+
+    export function getResolvedCurDocUri(): Uri {
+        checkAndUpdateCurDocUri();
+        return curDocResolvedUri;
+    }
+
     export function getResolvedPath(path: string | undefined): string | undefined {
         if (!path || !Fs.existsSync(path)) {
             return path;
+        }
+        if (
+            curDocUri &&
+            (path === curDocUri.fsPath || path === curDocResolvedUri.fsPath)
+        ) {
+            return curDocResolvedUri.fsPath;
         }
         return parseAllLinks(path);
     }
@@ -101,6 +138,12 @@ export namespace Utils {
     export function getResolvedUri(uri: Uri | undefined): Uri | undefined {
         if (!uri || !Fs.existsSync(uri.fsPath)) {
             return uri;
+        }
+        if (
+            curDocUri &&
+            (uri.fsPath === curDocUri.fsPath || uri.fsPath === curDocResolvedUri.fsPath)
+        ) {
+            return curDocResolvedUri;
         }
         return Uri.file(parseAllLinks(uri.fsPath));
     }
