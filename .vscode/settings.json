@@ -12,6 +12,11 @@
     // Turn off tsc task auto detection since we have the necessary task as npm scripts
     "typescript.tsc.autoDetect": "off",
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": true
+        "source.fixAll.eslint": "explicit"
+    },
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#5B0D2E",
+        "titleBar.activeBackground": "#7F1240",
+        "titleBar.activeForeground": "#FEFBFD"
     }
 }
