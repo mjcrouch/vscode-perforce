@@ -38,5 +38,5 @@ export type FstatInfo = {
 export type PerforceFile = Uri | string;
 
 export function isUri(obj: any): obj is Uri {
-    return obj && obj.fsPath && obj.scheme !== undefined;
+    return obj && obj.fsPath !== undefined && obj.scheme !== undefined;
 }

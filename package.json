@@ -2,7 +2,7 @@
     "name": "perforce",
     "displayName": "Perforce for VS Code",
     "description": "(2020 Fork) Perforce integration with VS Code's SCM features",
-    "version": "4.15.1",
+    "version": "4.15.7",
     "publisher": "mjcrouch",
     "license": "MIT",
     "categories": [
@@ -86,7 +86,13 @@
                 "perforce.debugModeActive": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Whether debug mode is active or not."
+                    "description": "When enabled, logs information about command throttling to the javascript console (open with 'Toggle Developer Tools')"
+                },
+                "perforce.debugP4Commands": {
+                    "type": "boolean",
+                    "default": false,
+                    "scope": "window",
+                    "description": "When enabled, logs all perforce commands and their output to the javascript console (open with 'Toggle Developer Tools'). This may be a *lot* of output and will include raw passwords if present"
                 },
                 "perforce.activationMode": {
                     "type": "string",

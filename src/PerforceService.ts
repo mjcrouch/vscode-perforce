@@ -112,20 +112,27 @@ export namespace PerforceService {
             limiter.debugMode = true;
             debugModeSetup = true;
         }
-        limiter.submit((onDone) => {
-            execCommand(
-                resource,
-                command,
-                (...rest) => {
-                    // call done first in case responseCallback throws - the important part is done
-                    onDone();
-                    responseCallback(...rest);
-                },
-                args,
-                input,
-                useTerminal
-            );
-        }, `<JOB_ID:${++id}:${command}>`);
+        limiter
+            .submit(
+                (onDone) =>
+                    execCommand(
+                        resource,
+                        command,
+                        (...rest) => {
+                            // call done first in case responseCallback throws - the important part is done
+                            onDone();
+                            responseCallback(...rest);
+                        },
+                        args,
+                        input,
+                        useTerminal
+                    ),
+                `<JOB_ID:${++id}:${command}>`
+            )
+            .catch((err) => {
+                console.error("Error while running perforce command:", err);
+                responseCallback(err, "", "");
+            });
     }
 
     export function executeAsPromise(
@@ -210,6 +217,8 @@ export namespace PerforceService {
         }
     }
 
+    let spawnedId = 0;
+
     function spawnNormally(
         cmd: string,
         allArgs: string[],
@@ -217,12 +226,22 @@ export namespace PerforceService {
         responseCallback: (err: Error | null, stdout: string, stderr: string) => void,
         input?: string
     ) {
+        const config = workspace.getConfiguration("perforce");
+        const debug = config.get("debugP4Commands", false);
+        const id = ++spawnedId;
+        if (debug) {
+            console.log("[P4 RUN]", id, cmd, allArgs, spawnArgs);
+        }
+
         const child = spawn(cmd, allArgs, spawnArgs);
 
         let called = false;
         child.on("error", (err: Error) => {
             if (!called) {
                 called = true;
+                if (debug) {
+                    console.log("[P4 ERR]", id, err);
+                }
                 responseCallback(err, "", "");
             }
         });
@@ -236,6 +255,15 @@ export namespace PerforceService {
 
         getResults(child).then((value: string[]) => {
             if (!called) {
+                if (debug) {
+                    console.log(
+                        "[P4 RES]",
+                        id,
+                        "Stdout:\n" + value[0],
+                        "\n============================",
+                        "\nStderr:\n" + value[1] + "\n"
+                    );
+                }
                 responseCallback(null, value[0] ?? "", value[1] ?? "");
             }
         });

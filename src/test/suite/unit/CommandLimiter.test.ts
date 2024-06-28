@@ -104,7 +104,14 @@ describe("Command Limiter (unit)", () => {
     });
 
     describe("Limiter", () => {
+        type LimiterCallback = () => void;
         let cbs: sinon.SinonStub[];
+        const asPromise = (cb: (lcb: LimiterCallback) => void) => (
+            lcb: LimiterCallback
+        ) => {
+            cb(lcb);
+            return Promise.resolve(null);
+        };
         beforeEach(() => {
             cbs = [
                 sinon.stub().callsArg(0),
@@ -127,7 +134,7 @@ describe("Command Limiter (unit)", () => {
         });
         it("Runs the command as a callback", async () => {
             const cl = new CommandLimiter(1);
-            const promise = cl.submit(cbs[0], "1");
+            const promise = cl.submit(asPromise(cbs[0]), "1");
             expect(cl).to.include({ queueLength: 0, runningCount: 1 });
             expect(cbs[0]).not.to.have.been.called;
             await promise;
@@ -137,11 +144,11 @@ describe("Command Limiter (unit)", () => {
         it("Queues while maxConcurrent commands are running (1)", async () => {
             const cl = new CommandLimiter(1);
 
-            const p1 = cl.submit(cbs[0], "1");
+            const p1 = cl.submit(asPromise(cbs[0]), "1");
             expect(cl).to.include({ queueLength: 0, runningCount: 1 });
-            const p2 = cl.submit(cbs[1], "2");
+            const p2 = cl.submit(asPromise(cbs[1]), "2");
             expect(cl).to.include({ queueLength: 1, runningCount: 1 });
-            const p3 = cl.submit(cbs[2], "3");
+            const p3 = cl.submit(asPromise(cbs[2]), "3");
             expect(cl).to.include({ queueLength: 2, runningCount: 1 });
 
             expect(cbs[0]).not.to.have.been.called;
@@ -162,11 +169,11 @@ describe("Command Limiter (unit)", () => {
         it("Queues while maxConcurrent commands are running (2)", async () => {
             const cl = new CommandLimiter(2);
 
-            const p1 = cl.submit(cbs[0], "1");
+            const p1 = cl.submit(asPromise(cbs[0]), "1");
             expect(cl).to.include({ queueLength: 0, runningCount: 1 });
-            const p2 = cl.submit(cbs[1], "2");
+            const p2 = cl.submit(asPromise(cbs[1]), "2");
             expect(cl).to.include({ queueLength: 0, runningCount: 2 });
-            const p3 = cl.submit(cbs[2], "3");
+            const p3 = cl.submit(asPromise(cbs[2]), "3");
             expect(cl).to.include({ queueLength: 1, runningCount: 2 });
 
             expect(cbs[0]).not.to.have.been.called;
@@ -193,9 +200,12 @@ describe("Command Limiter (unit)", () => {
 
             const p1 = cl.submit(
                 (c) =>
-                    setTimeout(() => {
-                        c1(c);
-                    }, 40),
+                    new Promise((res) =>
+                        setTimeout(() => {
+                            c1(c);
+                            res();
+                        }, 40)
+                    ),
                 "1"
             );
 
@@ -203,9 +213,12 @@ describe("Command Limiter (unit)", () => {
 
             const p2 = cl.submit(
                 (c) =>
-                    setTimeout(() => {
-                        c2(c);
-                    }, 5),
+                    new Promise((res) =>
+                        setTimeout(() => {
+                            c2(c);
+                            res();
+                        }, 5)
+                    ),
                 "2"
             );
 
@@ -228,9 +241,9 @@ describe("Command Limiter (unit)", () => {
         it("Does not queue when maxConcurrent is 0", async () => {
             const cl = new CommandLimiter(0);
 
-            cl.submit(cbs[0], "1");
-            cl.submit(cbs[1], "2");
-            const p3 = cl.submit(cbs[2], "3");
+            cl.submit(asPromise(cbs[0]), "1");
+            cl.submit(asPromise(cbs[1]), "2");
+            const p3 = cl.submit(asPromise(cbs[2]), "3");
             expect(cl).to.include({ queueLength: 0, runningCount: 3 });
 
             expect(cbs[0]).not.to.have.been.called;
@@ -247,7 +260,22 @@ describe("Command Limiter (unit)", () => {
             const cl = new CommandLimiter(1);
             const thrower = sinon.fake.throws(new Error("an error"));
             const p1 = cl.submit(thrower, "1");
-            const p2 = cl.submit(cbs[0], "2");
+            const p2 = cl.submit(asPromise(cbs[0]), "2");
+            expect(cl).to.include({ queueLength: 1, runningCount: 1 });
+            expect(thrower).not.to.have.been.called;
+
+            await expect(p1).to.eventually.be.rejectedWith("an error");
+
+            expect(cl).to.include({ queueLength: 0, runningCount: 1 });
+
+            await p2;
+            expect(cbs[0]).to.have.been.calledOnce;
+        });
+        it("Completes jobs that throw an error async", async () => {
+            const cl = new CommandLimiter(1);
+            const thrower = sinon.fake.rejects(new Error("an error"));
+            const p1 = cl.submit(thrower, "1");
+            const p2 = cl.submit(asPromise(cbs[0]), "2");
             expect(cl).to.include({ queueLength: 1, runningCount: 1 });
             expect(thrower).not.to.have.been.called;
 
