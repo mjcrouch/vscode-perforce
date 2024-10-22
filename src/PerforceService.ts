@@ -162,15 +162,11 @@ export namespace PerforceService {
 
     async function isDirectory(uri: Uri): Promise<boolean> {
         try {
-            return (await workspace.fs.stat(uri)).type === FileType.Directory;
-        } catch {}
-        return false;
-    }
-	
-	async function isSymbolicLinkAndDirectory(uri: Uri): Promise<boolean> {
-        try {
-            const linkAndDir = FileType.SymbolicLink | FileType.Directory;
-            return (await workspace.fs.stat(uri)).type === linkAndDir;
+            const ftype = (await workspace.fs.stat(uri)).type;
+            return (
+                ftype === FileType.Directory ||
+                ftype === (FileType.SymbolicLink | FileType.Directory)
+            );
         } catch {}
         return false;
     }
@@ -194,11 +190,7 @@ export namespace PerforceService {
         }
 
         const isDir = await isDirectory(actualResource);
-		const isLinkAndDir = isDir ? false : await isSymbolicLinkAndDirectory(actualResource);
-        const cwd =
-            isDir || isLinkAndDir
-                ? actualResource.fsPath
-                : Path.dirname(actualResource.fsPath);
+        const cwd = isDir ? actualResource.fsPath : Path.dirname(actualResource.fsPath);
 
         const env = { ...process.env, PWD: cwd };
         const spawnArgs: CP.SpawnOptions = { cwd, env };
