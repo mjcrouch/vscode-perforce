@@ -162,10 +162,10 @@ export namespace PerforceService {
 
     async function isDirectory(uri: Uri): Promise<boolean> {
         try {
-            const stat = await workspace.fs.stat(uri);
+            const ftype = (await workspace.fs.stat(uri)).type;
             return (
-                stat.type === FileType.Directory ||
-                stat.type === (FileType.Directory | FileType.SymbolicLink)
+                ftype === FileType.Directory ||
+                ftype === (FileType.SymbolicLink | FileType.Directory)
             );
         } catch {}
         return false;
@@ -190,7 +190,6 @@ export namespace PerforceService {
         }
 
         const isDir = await isDirectory(actualResource);
-
         const cwd = isDir ? actualResource.fsPath : Path.dirname(actualResource.fsPath);
 
         const env = { ...process.env, PWD: cwd };
