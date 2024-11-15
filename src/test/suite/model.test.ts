@@ -1120,7 +1120,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         path: basicFiles.add().localFile.path,
                         scheme: "perforce",
                         fragment: "have",
-                        authority: "#have",
+                        authority: "-rev-have",
                         query: "command=print&p4Args=-q&rev=have&authority=null",
                     })
                 );
@@ -1140,7 +1140,7 @@ describe("Model & ScmProvider modules (integration)", () => {
                         path: "/testArea/testFolderOld/movedFrom.txt",
                         scheme: "perforce",
                         fragment: "4",
-                        authority: "#4",
+                        authority: "-rev-4",
                         query:
                             "command=print&p4Args=-q&authority=depot&depot&workspace=" +
                             encodeURIComponent(basicFiles.moveAdd().localFile.fsPath) +

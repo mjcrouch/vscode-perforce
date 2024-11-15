@@ -63,7 +63,7 @@ describe("Perforce Uris", () => {
         it("Produces a URI for a depot path, including the depot parameter", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             expect(uri.scheme).to.equal("perforce");
-            expect(uri.authority).to.equal("#2");
+            expect(uri.authority).to.equal("-rev-2");
             expect(uri.path).to.equal("/my/path/file.txt");
             expect(uri.query).to.equal(
                 "command=print&p4Args=-q&authority=depot&depot&" +
@@ -90,7 +90,7 @@ describe("Perforce Uris", () => {
             const uri = PerforceUri.fromUriWithRevision(localUri, "@=99");
             expect(uri.scheme).to.equal("perforce");
             expect(uri.fsPath).to.equal(localUri.fsPath);
-            expect(uri.authority).to.equal("@=99");
+            expect(uri.authority).to.equal("@shelved-99");
             expect(uri.query).to.equal(
                 "command=print&p4Args=-q&rev=%40%3D99&authority=null"
             );
@@ -101,7 +101,7 @@ describe("Perforce Uris", () => {
             const uri = PerforceUri.fromUriWithRevision(start, "@=98");
             expect(uri.scheme).to.equal("perforce");
             expect(uri.fsPath).to.equal(localUri.fsPath);
-            expect(uri.authority).to.equal("@=98");
+            expect(uri.authority).to.equal("@shelved-98");
             expect(uri.query).to.equal(
                 "command=print&p4Args=-q&rev=%40%3D98&authority=null"
             );
@@ -133,7 +133,7 @@ describe("Perforce Uris", () => {
         it("Accepts an optional revision", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" }, "3");
-            expect(augmented.authority).to.equal("#3");
+            expect(augmented.authority).to.equal("-rev-3");
             expect(augmented.query).to.equal(
                 "command=print&p4Args=hello&authority=depot&depot&" +
                     workspaceArg +
@@ -144,7 +144,7 @@ describe("Perforce Uris", () => {
         it("Does not override the fragment if no revision supplied", () => {
             const uri = PerforceUri.fromDepotPath(localUri, depotPath, "2");
             const augmented = PerforceUri.withArgs(uri, { p4Args: "hello" });
-            expect(augmented.authority).to.equal("#2");
+            expect(augmented.authority).to.equal("-rev-2");
             expect(augmented.query).to.equal(
                 "command=print&p4Args=hello&authority=depot&depot&" +
                     workspaceArg +
