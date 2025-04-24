@@ -335,6 +335,8 @@ function makeHoverMessage(
     return markdown;
 }
 
+export { makeHoverMessage };
+
 function makeDecorationForChange(
     ageRating: number,
     isTop: boolean,

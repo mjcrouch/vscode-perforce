@@ -19,6 +19,7 @@ import { isTruthy } from "./TsUtils";
 import { registerChangelistSearch } from "./search/ChangelistTreeView";
 import { createSpecEditor } from "./SpecEditor";
 import { clearAllMementos } from "./MementoItem";
+import { ChangelistLens } from "./ChangelistLens";
 
 let _isRegistered = false;
 const _disposable: vscode.Disposable[] = [];
@@ -550,6 +551,14 @@ function doOneTimeRegistration() {
             )
         );
 
+        // If changelistLens feature is enabled, initialize ChangelistLens
+        const showChangelistLens = vscode.workspace
+            .getConfiguration("perforce")
+            .get<boolean>("changelistLens.enabled");
+        if (showChangelistLens) {
+            _disposable.push(ChangelistLens.getInstance());
+        }
+
         _disposable.push(vscode.workspace.onDidOpenTextDocument(onDidOpenTextDocument));
         _disposable.push(vscode.workspace.onDidCloseTextDocument(onDidCloseTextDocument));
 
@@ -557,6 +566,12 @@ function doOneTimeRegistration() {
         PerforceCommands.registerCommands();
         PerforceSCMProvider.registerCommands();
         registerChangelistSearch(_context);
+        _disposable.push(
+            vscode.commands.registerCommand(
+                "perforce.toggleChangelistLens",
+                toggleChangelistLens
+            )
+        );
     }
 }
 
@@ -793,5 +808,35 @@ async function clearMementos() {
     );
     if (choice === ok) {
         await clearAllMementos(_context.workspaceState, _context.globalState);
+    }
+}
+
+/**
+ * Toggle the changelistLens feature on/off
+ */
+async function toggleChangelistLens() {
+    const config = vscode.workspace.getConfiguration("perforce");
+    const isEnabled = config.get<boolean>("changelistLens.enabled");
+
+    // Toggle setting
+    await config.update(
+        "changelistLens.enabled",
+        !isEnabled,
+        vscode.ConfigurationTarget.Global
+    );
+
+    if (!isEnabled) {
+        // If previously disabled, now enable, initialize instance
+        _disposable.push(ChangelistLens.getInstance());
+        vscode.window.showInformationMessage(
+            "Perforce changelist information display enabled"
+        );
+    } else {
+        // If previously enabled, now disable, dispose instance
+        const lens = ChangelistLens.getInstance();
+        lens.dispose();
+        vscode.window.showInformationMessage(
+            "Perforce changelist information display disabled"
+        );
     }
 }
