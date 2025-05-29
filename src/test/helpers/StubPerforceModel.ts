@@ -14,7 +14,7 @@ import { Status } from "../../scm/Status";
 import { PerforceService } from "../../PerforceService";
 import { getStatusText } from "./testUtils";
 import * as PerforceUri from "../../PerforceUri";
-import { parseDate } from "../../TsUtils";
+import { parseDate, isTruthy } from "../../TsUtils";
 
 type PerforceResponseCallback = (
     err: Error | null,
@@ -82,6 +82,7 @@ export class StubPerforceModel {
     public getChangelists: sinon.SinonStub<any>;
     public getFixedJobs: sinon.SinonStub<any>;
     public getFstatInfoMapped: sinon.SinonStub<any>;
+    public getFstatInfo: sinon.SinonStub<any>;
     public getInfo: sinon.SinonStub<any>;
     public getOpenedFiles: sinon.SinonStub<any>;
     public getShelvedFiles: sinon.SinonStub<any>;
@@ -119,6 +120,9 @@ export class StubPerforceModel {
         this.getFstatInfoMapped = sinon
             .stub(p4, "getFstatInfoMapped")
             .callsFake(this.fstatFiles.bind(this));
+        this.getFstatInfo = sinon
+            .stub(p4, "getFstatInfo")
+            .callsFake(this.resolveFstat.bind(this));
         this.getInfo = sinon.stub(p4, "getInfo").callsFake(makeDefaultInfo);
         this.getOpenedFiles = sinon
             .stub(p4, "getOpenedFiles")
@@ -176,11 +180,22 @@ export class StubPerforceModel {
         );
     }
 
-    resolveChangelists(): Promise<ChangeInfo[]> {
-        // Note - doesn't take account of options! (TODO if required)
+    resolveChangelists(
+        _resource: vscode.Uri,
+        options: p4.ChangesOptions
+    ): Promise<ChangeInfo[]> {
+        // filter submitted and default changelists
+        // if status is shelved, include changelists with shelved files only
         return Promise.resolve(
             this.changelists
-                .filter((cl) => !cl.submitted && cl.chnum !== "default")
+                .filter(
+                    (cl) =>
+                        !cl.submitted &&
+                        cl.chnum !== "default" &&
+                        (options.status !== p4.ChangelistStatus.SHELVED ||
+                            (cl.shelvedFiles !== undefined &&
+                                options.status === p4.ChangelistStatus.SHELVED))
+                )
                 .map<ChangeInfo>((cl) => {
                     return {
                         chnum: cl.chnum,
@@ -299,6 +314,24 @@ export class StubPerforceModel {
         );
         return Promise.resolve(files);
         //return Promise.reject("implement me");
+    }
+
+    resolveFstat(_resource: vscode.Uri, options: p4.FstatOptions): Promise<FstatInfo[]> {
+        const cl = this.changelists.find((c) =>
+            options.chnum === c.chnum ? c : undefined
+        );
+        // If this is an fstat command a client file specifier, then use the change's
+        // shelved file or file names respectively.
+        const fileList = options.depotPaths.includes("//cli/...")
+            ? (
+                  (options.limitToShelved ? cl?.shelvedFiles : cl?.files) ??
+                  ([] as StubFile[])
+              ).map((f) => f.depotPath)
+            : options.depotPaths;
+        const files = fileList
+            .map((path) => this.fstatFile(path, options.chnum, options.limitToShelved))
+            .filter(isTruthy);
+        return Promise.resolve(files);
     }
 
     resolveChangeSpec(

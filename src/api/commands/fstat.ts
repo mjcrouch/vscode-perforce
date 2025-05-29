@@ -15,6 +15,8 @@ export interface FstatOptions {
     chnum?: string;
     limitToShelved?: boolean;
     outputPendingRecord?: boolean;
+    limitToOpened?: boolean;
+    limitToClient?: boolean;
 }
 
 function parseZTagField(field: string) {
@@ -47,6 +49,8 @@ const fstatFlags = flagMapper<FstatOptions>(
         ["e", "chnum"],
         ["Or", "outputPendingRecord"],
         ["Rs", "limitToShelved"],
+        ["Ro", "limitToOpened"],
+        ["Rc", "limitToClient"],
     ],
     "depotPaths"
 );
