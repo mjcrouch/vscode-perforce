@@ -75,6 +75,18 @@ See more context about each line, including the author and the changelist descri
 
 The format of the annotations is customisable in the extension configuration if this is too much information.
 
+### ChangelistLens - See changelist information as you code
+
+The ChangelistLens feature provides inline changelist information for the currently selected line, similar to GitLens but for Perforce. This feature helps you understand code history without leaving your editor:
+
+- Shows changelist number, author, and time information for the selected line
+- Displays information at the end of the line for minimal distraction
+- Provides detailed changelist information on hover
+- Customizable appearance with different information density levels
+- Toggle on/off with a simple command
+
+To enable or disable this feature, use the command "Perforce: Toggle changelist information display" or configure it in settings with `perforce.changelistLens.enabled`.
+
 ### New revision & changelist quick pick
 
 Looking at a diff or annotation? Dive in to the depot with a single click to see some context:
@@ -327,51 +339,51 @@ You can specify how you want the extension to activate by setting the parameter 
 
 ## Configuration
 
-|Name                               |Type       |Description
-|-----------------------------------|-----------|-----------
-|`perforce.client`                  |`string`   |Use the specified client
-|`perforce.user`                    |`string`   |Use the specified user
-|`perforce.port`                    |`string`   |Use the specified protocol:host:port
-|`perforce.password`                |`string`   |Use the specified password
-|`perforce.charset`                 |`enum`     |Use the specified charset for unicode or utf16 files
-|&nbsp; 
-|`perforce.editOnFileSave`          |`boolean`  |Automatically open a file for edit when saved
-|`perforce.editOnFileModified`      |`boolean`  |Automatically open a file for edit when Modified
-|`perforce.addOnFileCreate`         |`boolean`  |Automatically Add a file to depot when Created
-|`perforce.deleteOnFileDelete`      |`boolean`  |Automatically delete a file from depot when deleted
-|&nbsp; 
-|`perforce.dir`                     |`string`   |Overrides any PWD setting (current working directory) and replaces it with the specified directory
-|`perforce.command`                 |`string`   |Configure a path to p4 or an alternate command if needed
-|`perforce.realpath`                |`boolean`  |**Experimental** Try to resolve real file path before executing command
-|&nbsp; 
-|`perforce.activationMode`          |`string`   |Controls when to activate the extension (`always`,`autodetect`,`off`)
-|`perforce.enableP4ConfigScanOnStartup` | `boolean` | When enabled (default), the extension scans the workspace for `P4CONFIG` files on startup. In large workspaces without `P4CONFIG` files this can be disabled to improve performance
-|`perforce.scm.activateOnFileOpen`  | `boolean` | Controls whether the extension attempts to create an SCM provider each time a file outside of a known perforce client workspace is opened
-|`perforce.scm.deactivateOnFileClose` | `boolean` | Controls whether an SCM provider is de-activated when there are no more related files or folders open in the editor
-|&nbsp;
-|`perforce.countBadge`              |`string`   |Controls the badge counter for Perforce (`all`,`off`)
-|`perforce.annotate.followBranches` |`boolean`  |Whether to follow branch actions when annotating a file
-|`perforce.annotate.gutterColumns`  |`object`   |**Experimental** Format for annotation summary messages
-|`perforce.changelistSearch.maxResults` | `number` | The maximum number of results to show in the changelist search
-|`perforce.changelistOrder`         |`string`   |Specifies the direction of the changelist sorting (`descending`,`ascending`)
-|`perforce.scmFileChanges`          |`boolean`  |Open file changes when selected in SCM Explorer
-|`perforce.ignoredChangelistPrefix` |`string`   |Specifies the prefix of the changelists to be ignored.
-|`perforce.hideNonWorkspaceFiles`   |`enum`     |Controls how files outside of the current VS Code workspace are shown in the SCM Provider
-|`perforce.syncMode`                |`enum`     |Controls whether to sync the whole perforce client or just the VS code workspace when using the default sync command
-|`perforce.fileShelveMode`          |`enum`     |Controls behaviour when shelving or unshelving an individual file from the SCM view
-|`perforce.hideShelvedFiles`        |`boolean`  |Hide shelved files in the SCM Explorer.
-|`perforce.hideEmptyChangelists`    |`boolean`  |Hide changelists with no file in the SCM Explorer.
-|`perforce.hideSubmitIcon`          |`boolean`  |Don't show the submit icon next to the changelist description.
-|`perforce.promptBeforeSubmit`      |`boolean`  |Whether to prompt for confirmation before submitting a saved changelist.
-|`perforce.resolve.p4editor`        |`string`   |Overrides P4EDITOR when running resolve commands
-|`perforce.swarmHost`               |`string`   |Specifies the hostname of the Swarm server for annotation links. (`https://localhost`)
-|`perforce.editorButtons.diffPrevAndNext`      |`enum`  |Controls when to show buttons on the editor title menu for diffing next / previous
-|&nbsp;
-|`perforce.explorer.showSyncCommands`|`boolean` |Whether to show commands in the explorer context menu for syncing files and folders
-|`perforce.explorer.showBasicOpCommands`|`boolean` |Whether to show commands in the explorer context menu for adding, editing and reverting files
-|`perforce.explorer.showFileOpCommands`|`boolean` |Whether to show commands in the explorer context menu for moving files with p4 move
-|&nbsp;
-|`perforce.bottleneck.maxConcurrent` |`number`  |Limit the maximum number of perforce commands running at any given time.
+| Name                                     | Type      | Description                                                                                                                                                                         |
+| ---------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `perforce.client`                        | `string`  | Use the specified client                                                                                                                                                            |
+| `perforce.user`                          | `string`  | Use the specified user                                                                                                                                                              |
+| `perforce.port`                          | `string`  | Use the specified protocol:host:port                                                                                                                                                |
+| `perforce.password`                      | `string`  | Use the specified password                                                                                                                                                          |
+| `perforce.charset`                       | `enum`    | Use the specified charset for unicode or utf16 files                                                                                                                                |
+| &nbsp;                                   |
+| `perforce.editOnFileSave`                | `boolean` | Automatically open a file for edit when saved                                                                                                                                       |
+| `perforce.editOnFileModified`            | `boolean` | Automatically open a file for edit when Modified                                                                                                                                    |
+| `perforce.addOnFileCreate`               | `boolean` | Automatically Add a file to depot when Created                                                                                                                                      |
+| `perforce.deleteOnFileDelete`            | `boolean` | Automatically delete a file from depot when deleted                                                                                                                                 |
+| &nbsp;                                   |
+| `perforce.dir`                           | `string`  | Overrides any PWD setting (current working directory) and replaces it with the specified directory                                                                                  |
+| `perforce.command`                       | `string`  | Configure a path to p4 or an alternate command if needed                                                                                                                            |
+| `perforce.realpath`                      | `boolean` | **Experimental** Try to resolve real file path before executing command                                                                                                             |
+| &nbsp;                                   |
+| `perforce.activationMode`                | `string`  | Controls when to activate the extension (`always`,`autodetect`,`off`)                                                                                                               |
+| `perforce.enableP4ConfigScanOnStartup`   | `boolean` | When enabled (default), the extension scans the workspace for `P4CONFIG` files on startup. In large workspaces without `P4CONFIG` files this can be disabled to improve performance |
+| `perforce.scm.activateOnFileOpen`        | `boolean` | Controls whether the extension attempts to create an SCM provider each time a file outside of a known perforce client workspace is opened                                           |
+| `perforce.scm.deactivateOnFileClose`     | `boolean` | Controls whether an SCM provider is de-activated when there are no more related files or folders open in the editor                                                                 |
+| &nbsp;                                   |
+| `perforce.countBadge`                    | `string`  | Controls the badge counter for Perforce (`all`,`off`)                                                                                                                               |
+| `perforce.annotate.followBranches`       | `boolean` | Whether to follow branch actions when annotating a file                                                                                                                             |
+| `perforce.annotate.gutterColumns`        | `object`  | **Experimental** Format for annotation summary messages                                                                                                                             |
+| `perforce.changelistSearch.maxResults`   | `number`  | The maximum number of results to show in the changelist search                                                                                                                      |
+| `perforce.changelistOrder`               | `string`  | Specifies the direction of the changelist sorting (`descending`,`ascending`)                                                                                                        |
+| `perforce.scmFileChanges`                | `boolean` | Open file changes when selected in SCM Explorer                                                                                                                                     |
+| `perforce.ignoredChangelistPrefix`       | `string`  | Specifies the prefix of the changelists to be ignored.                                                                                                                              |
+| `perforce.hideNonWorkspaceFiles`         | `enum`    | Controls how files outside of the current VS Code workspace are shown in the SCM Provider                                                                                           |
+| `perforce.syncMode`                      | `enum`    | Controls whether to sync the whole perforce client or just the VS code workspace when using the default sync command                                                                |
+| `perforce.fileShelveMode`                | `enum`    | Controls behaviour when shelving or unshelving an individual file from the SCM view                                                                                                 |
+| `perforce.hideShelvedFiles`              | `boolean` | Hide shelved files in the SCM Explorer.                                                                                                                                             |
+| `perforce.hideEmptyChangelists`          | `boolean` | Hide changelists with no file in the SCM Explorer.                                                                                                                                  |
+| `perforce.hideSubmitIcon`                | `boolean` | Don't show the submit icon next to the changelist description.                                                                                                                      |
+| `perforce.promptBeforeSubmit`            | `boolean` | Whether to prompt for confirmation before submitting a saved changelist.                                                                                                            |
+| `perforce.resolve.p4editor`              | `string`  | Overrides P4EDITOR when running resolve commands                                                                                                                                    |
+| `perforce.swarmHost`                     | `string`  | Specifies the hostname of the Swarm server for annotation links. (`https://localhost`)                                                                                              |
+| `perforce.editorButtons.diffPrevAndNext` | `enum`    | Controls when to show buttons on the editor title menu for diffing next / previous                                                                                                  |
+| &nbsp;                                   |
+| `perforce.explorer.showSyncCommands`     | `boolean` | Whether to show commands in the explorer context menu for syncing files and folders                                                                                                 |
+| `perforce.explorer.showBasicOpCommands`  | `boolean` | Whether to show commands in the explorer context menu for adding, editing and reverting files                                                                                       |
+| `perforce.explorer.showFileOpCommands`   | `boolean` | Whether to show commands in the explorer context menu for moving files with p4 move                                                                                                 |
+| &nbsp;                                   |
+| `perforce.bottleneck.maxConcurrent`      | `number`  | Limit the maximum number of perforce commands running at any given time.                                                                                                            |
 
 ## Command and Context Variables
 
@@ -389,14 +401,14 @@ For example, the following task prints out the changelist number, provided the c
 
 In all cases, the command name and the context variable name are the same
 
-| Name                              | description
-|-----------------------------------|---------------
-| `perforce.currentFile.status`     | Whether the file is open / in the workspace. Possible values: `OPEN`, `NOT_OPEN`, `NOT_IN_WORKSPACE`
-| `perforce.currentFile.depotPath`  | The depot path of the file (**only** provided if the file is open)
-| `perforce.currentFile.revision`   | The open revision of the file (**only** provided if the file is open)
-| `perforce.currentFile.changelist` | The changelist in which the file is open
-| `perforce.currentFile.operation`  | The perforce operation for the file, e.g. `edit`, `move/add`
-| `perforce.currentFile.filetype`   | The perforce file type of the file, e.g. `text`
+| Name                              | description                                                                                          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `perforce.currentFile.status`     | Whether the file is open / in the workspace. Possible values: `OPEN`, `NOT_OPEN`, `NOT_IN_WORKSPACE` |
+| `perforce.currentFile.depotPath`  | The depot path of the file (**only** provided if the file is open)                                   |
+| `perforce.currentFile.revision`   | The open revision of the file (**only** provided if the file is open)                                |
+| `perforce.currentFile.changelist` | The changelist in which the file is open                                                             |
+| `perforce.currentFile.operation`  | The perforce operation for the file, e.g. `edit`, `move/add`                                         |
+| `perforce.currentFile.filetype`   | The perforce file type of the file, e.g. `text`                                                      |
 
 ## Common Questions
 

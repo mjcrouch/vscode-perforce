@@ -167,6 +167,14 @@ export class ConfigAccessor {
             return SyncMode.WHOLE_CLIENT;
         }
     }
+
+    public get changelistLensStyle(): string {
+        return this.getConfigItem<string>("changelistLens.style") ?? "all";
+    }
+
+    public get changelistLensEnabled(): boolean {
+        return this.getConfigItem<boolean>("changelistLens.enabled") ?? true;
+    }
 }
 
 export const configAccessor = new ConfigAccessor();

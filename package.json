@@ -443,6 +443,28 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Whether to show a warning when editing a change or job spec and the editor is set to use spaces instead of tabs"
+                },
+                "perforce.changelistLens.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable changelist lens feature to display modification information and changelist for each line of code in the editor",
+                    "scope": "window"
+                },
+                "perforce.changelistLens.style": {
+                    "type": "string",
+                    "enum": [
+                        "all",
+                        "compact",
+                        "minimalist"
+                    ],
+                    "enumDescriptions": [
+                        "Show complete information: user, revision number and time",
+                        "Show compact information: user and revision number",
+                        "Show only revision number"
+                    ],
+                    "default": "all",
+                    "description": "Control the information style displayed by the changelist lens",
+                    "scope": "window"
                 }
             }
         },
@@ -960,6 +982,11 @@
             {
                 "command": "perforce.clearMementos",
                 "title": "Clear persisted memento data",
+                "category": "Perforce"
+            },
+            {
+                "command": "perforce.toggleChangelistLens",
+                "title": "Toggle changelist information display",
                 "category": "Perforce"
             }
         ],
@@ -1773,6 +1800,24 @@
                     "dark": "#BEBEBE",
                     "light": "#747474",
                     "highContrast": "#BEBEBE"
+                }
+            },
+            {
+                "id": "perforce.changelistLensForeground",
+                "description": "Specifies the foreground color of the changelist lens",
+                "defaults": {
+                    "dark": "#555555",
+                    "light": "#666666",
+                    "highContrast": "#CCCCCC"
+                }
+            },
+            {
+                "id": "perforce.changelistLensBorder",
+                "description": "Specifies the border color of the changelist lens",
+                "defaults": {
+                    "dark": "#333333",
+                    "light": "#CCCCCC",
+                    "highContrast": "#3F7A94"
                 }
             },
             {
