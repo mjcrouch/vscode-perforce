@@ -102,7 +102,7 @@ export namespace Display {
 
         const doc = editor.document;
 
-        if (!doc.isUntitled) {
+        if (!doc.isUntitled && doc.uri.fsPath !== "") {
             let active: ActiveEditorStatus = ActiveEditorStatus.NOT_IN_WORKSPACE;
             let details: p4.OpenedFile | undefined;
             try {

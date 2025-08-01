@@ -73,7 +73,7 @@ describe("Perforce Command Module (integration)", () => {
                 localFile,
                 "a.txt#2 ⟷ a.txt (workspace)"
             );
-        });
+        }).timeout(10000);
         it("Opens the supplied revision for the currently open file", async () => {
             const localFile = getLocalFile(workspaceUri, "testFolder", "new.txt");
             await vscode.window.showTextDocument(localFile);

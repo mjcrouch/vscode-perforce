@@ -10,11 +10,11 @@ pr:
 strategy:
   matrix:
     linux:
-      imageName: 'ubuntu-16.04'
+      imageName: 'ubuntu-24.04'
     mac:
-      imageName: 'macOS-10.14'
+      imageName: 'macOS-14'
     windows:
-      imageName: 'vs2017-win2016'
+      imageName: 'windows-2022'
 
 pool:
   vmImage: $(imageName)
@@ -23,7 +23,7 @@ steps:
 
 - task: NodeTool@0
   inputs:
-    versionSpec: '12.x'
+    versionSpec: '20.x'
   displayName: 'Install Node.js'
 
 - bash: |
@@ -64,7 +64,7 @@ steps:
 
 - bash: |
     echo ">>> Install vsce"
-    npm install -g vsce
+    npm install -g @vscode/vsce
     echo ">>> Publish extension"
     npm run deploy -- -p $(VSCODE_MARKETPLACE_TOKEN)
   displayName: Publish

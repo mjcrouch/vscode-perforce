@@ -66,7 +66,9 @@ function uriWithRev(uri: vscode.Uri, revOrAtLabel: string | undefined) {
     const args = decodeUriQuery(uri.query);
     const origAuthority = args.authority ?? uri.authority ?? "";
     return uri.with({
-        authority: revOrLabelAsSuffix(revOrAtLabel),
+        authority: revOrLabelAsSuffix(revOrAtLabel)
+            .replace("#", "-rev-")
+            .replace("=", "shelved-"),
         fragment: revOrAtLabel,
         query: encodeQuery({ ...args, authority: origAuthority || "null" }),
     });

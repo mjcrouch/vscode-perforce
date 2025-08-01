@@ -1,5 +1,34 @@
 # Change log
 
+## [4.16.2] - 2025-06-20
+
+* Reduces load on the perforce server, by issuing fewer commands when refreshing the list of changelists. Previously the extension issued one fstat command per open file. It now issues one per changelist (#301) - Thanks @cpmclouth
+
+## [4.16.1] - 2024-11-15
+
+* Fixes an issue where URIs used internally to represent files in the perforce depot were technically invalid and could cause errors in the C# extension. Note that following this change, when displaying a single file from the depot, the title will be displayed slightly differently. Instead of filename#2 or filename@=123 it will say filename-rev-2 or filename@shelved-123 (#260)
+
+## [4.16.0] - 2024-10-24
+
+* Add support for overriding P4CHARSET using perforce.charset setting (#270) - Thanks @hozuki
+* Symbolic links to directories are now correctly considered as directories when running perforce commands (#288 & #257) - Thanks @mpriya501 and @jacob-kay2
+
+## [4.15.6] - 2023-03-02
+
+* Work around vscode/#17588 where extension would not properly initialize
+  
+## [4.15.5] - 2022-08-14
+
+* Add setting `perforce.debugP4Commands` that logs all commands and their output to the javascript debug console (use 'Toggle developer tools' command to view)
+
+## [4.15.4] - 2022-08-01
+
+* Fix an issue where the 'opened' command from the status bar menu failed to open the selected file
+
+## [4.15.3] - 2022-07-24
+
+* Fix an issue where opening search results in the editor could stop the extension from working (#234)
+
 ## [4.15.2] - 2021-05-09
 
 * Fix the inability to attach perforce jobs that contain non-alphanumeric characters (#208)
@@ -465,6 +494,13 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.16.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.16.1...4.16.2
+[4.16.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.16.0...4.16.1
+[4.16.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.6...4.16.0
+[4.15.6]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.5...4.15.6
+[4.15.5]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.4...4.15.5
+[4.15.4]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.3...4.15.4
+[4.15.3]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.2...4.15.3
 [4.15.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.1...4.15.2
 [4.15.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.0...4.15.1
 [4.15.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.14.0...4.15.0

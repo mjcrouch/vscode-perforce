@@ -140,7 +140,9 @@ export class PerforceSCMProvider {
 
         PerforceSCMProvider.instances.push(this);
         PerforceSCMProvider._onDidChangeScmProviders.fire();
-        this._model._sourceControl.quickDiffProvider = this;
+        this._model._sourceControl.quickDiffProvider = {
+            provideOriginalResource: (url) => this.provideOriginalResource(url),
+        };
         this._model._sourceControl.acceptInputCommand = {
             command: "perforce.processChangelist",
             title: "Process Changelist",

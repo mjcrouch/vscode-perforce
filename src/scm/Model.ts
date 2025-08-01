@@ -1129,14 +1129,30 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
             return;
         }
 
-        const changelists = await this.getChanges();
-        const shelvedPromise = this.getAllShelvedResources(changelists);
-        const openPromise = this.getDepotOpenedResources();
+        const [pendingChanges, shelvedChanges] = await Promise.all([
+            this.getChanges(),
+            this.getChanges(p4.ChangelistStatus.SHELVED),
+        ]);
+        const shelvedPromise = this.getAllShelvedResources(shelvedChanges);
+
+        // query all pending changelists (including the default changelist) for open files
+        const defaultChange: ChangeInfo = {
+            chnum: "default",
+            description: [""],
+            user: "",
+            client: "",
+            isPending: true,
+        };
+        const openPromise = this.getOpenedByChangeResources([
+            defaultChange,
+            ...pendingChanges,
+        ]);
+
         const [shelvedResources, openResources] = await Promise.all([
             shelvedPromise,
             openPromise,
         ]);
-        this.createResourceGroups(changelists, shelvedResources.concat(openResources));
+        this.createResourceGroups(pendingChanges, shelvedResources.concat(openResources));
 
         this._refreshInProgress = false;
         this._onDidChange.fire();
@@ -1326,11 +1342,13 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
         this._fullCleanOnNextRefresh = false;
     }
 
-    private async getChanges(): Promise<ChangeInfo[]> {
+    private async getChanges(
+        changeStatus: p4.ChangelistStatus = p4.ChangelistStatus.PENDING
+    ): Promise<ChangeInfo[]> {
         const changes = this.filterIgnoredChangelists(
             await p4.getChangelists(this._workspaceUri, {
                 client: this._clientName,
-                status: p4.ChangelistStatus.PENDING,
+                status: changeStatus,
             })
         );
 
@@ -1349,10 +1367,23 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
         if (this._config.hideShelvedFiles || changes.length === 0) {
             return [];
         }
-        const allFileInfo = await p4.getShelvedFiles(this._workspaceUri, {
-            chnums: changes.map((c) => c.chnum),
-        });
-        return this.getShelvedResources(allFileInfo);
+        const depotPaths = ["//" + this._clientName + "/..."];
+        const proms = changes.map((c) =>
+            p4.getFstatInfo(this._workspaceUri, {
+                depotPaths,
+                outputPendingRecord: true,
+                limitToShelved: true,
+                chnum: c.chnum.toString(),
+            })
+        );
+        const fstatInfo = await Promise.all(proms);
+        return fstatInfo
+            .flat() // flatten nested arrays
+            .filter((info) => info["depotFile"]) // filter out changelist only record
+            .map((info) =>
+                this.makeResourceForShelvedFile(info["change"].toString(), info)
+            ) // create resources
+            .filter(isTruthy); // filter null records
     }
 
     private makeResourceForShelvedFile(chnum: string, fstatInfo: FstatInfo) {
@@ -1382,44 +1413,23 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
         return resource;
     }
 
-    private async getShelvedResources(
-        files: p4.ShelvedChangeInfo[]
-    ): Promise<Resource[]> {
-        const proms = files.map((f) =>
-            p4.getFstatInfoMapped(this._workspaceUri, {
-                depotPaths: f.paths,
-                limitToShelved: true,
+    private async getOpenedByChangeResources(changes: ChangeInfo[]): Promise<Resource[]> {
+        const depotPaths = ["//" + this._clientName + "/..."];
+        const proms = changes.map((c) =>
+            p4.getFstatInfo(this._workspaceUri, {
+                depotPaths,
                 outputPendingRecord: true,
-                chnum: f.chnum.toString(),
+                limitToOpened: true,
+                limitToClient: true,
+                chnum: c.chnum.toString(),
             })
         );
         const fstatInfo = await Promise.all(proms);
 
-        return fstatInfo.flatMap((cur, i) =>
-            cur
-                .filter(isTruthy)
-                .map((f) => this.makeResourceForShelvedFile(files[i].chnum.toString(), f))
-                .filter(isTruthy)
-        );
-    }
-
-    private async getDepotOpenedResources(): Promise<Resource[]> {
-        const depotPaths = await this.getDepotOpenedFilePaths();
-        const fstatInfo = (
-            await p4.getFstatInfoMapped(this._workspaceUri, {
-                depotPaths,
-                outputPendingRecord: true,
-            })
-        ).filter(isTruthy);
-
         return fstatInfo
-            .map((info) => this.makeResourceForOpenFile(info))
-            .filter(isTruthy); // for files out of workspace
-    }
-
-    private async getDepotOpenedFilePaths(): Promise<string[]> {
-        return (await p4.getOpenedFiles(this._workspaceUri, {})).map(
-            (file) => file.depotPath
-        );
+            .flat() // flatten nested arrays
+            .filter((info) => info["depotFile"]) // filter out changelist only record
+            .map((info) => this.makeResourceForOpenFile(info)) // create resources
+            .filter(isTruthy); // filter null records
     }
 }

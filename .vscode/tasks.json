@@ -25,7 +25,7 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": "Compilation (.*?)starting…",
-                    "endsPattern": "Compilation (.*?)finished"
+                    "endsPattern": "compiled (.*?)successfully"
                 }
             },
             "isBackground": true,
