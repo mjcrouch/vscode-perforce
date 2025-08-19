@@ -19,6 +19,7 @@ import spawn from "cross-spawn";
 import { CommandLimiter } from "./CommandLimiter";
 import * as Path from "path";
 import { configAccessor } from "./ConfigService";
+import { Utils } from "./Utils";
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace PerforceService {
@@ -181,6 +182,7 @@ export namespace PerforceService {
         input?: string,
         useTerminal?: boolean
     ) {
+        resource = Utils.getResolvedUri(resource) ?? resource;
         const actualResource = PerforceUri.getUsableWorkspace(resource) ?? resource;
         const cmd = getPerforceCmdPath(actualResource);
 

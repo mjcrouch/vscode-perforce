@@ -23,6 +23,7 @@ import * as PerforceUri from "./PerforceUri";
 import { ClientRoot } from "./extension";
 import * as Path from "path";
 import { Display } from "./Display";
+import { Utils } from "./Utils";
 
 export class PerforceSCMProvider {
     private disposables: Disposable[] = [];
@@ -850,6 +851,8 @@ export class PerforceSCMProvider {
         if (uri.scheme !== "file") {
             return;
         }
+
+        uri = Utils.getResolvedUri(uri) ?? uri;
 
         // for a MOVE operation, diff against the original file
         const resource = this._model.getOpenResource(uri);

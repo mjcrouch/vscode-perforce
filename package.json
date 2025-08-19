@@ -319,6 +319,11 @@
                     "default": false,
                     "description": "Try to resolve real file path before executing command."
                 },
+                "perforce.resolveLinks": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Try to resolve symbolic links or junctions before executing command."
+                },
                 "perforce.ignoredChangelistPrefix": {
                     "type": "string",
                     "description": "Specifies the prefix of the changelists to be ignored."

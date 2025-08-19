@@ -29,6 +29,7 @@ import { showQuickPickForChangelist } from "../quickPick/ChangeQuickPick";
 import { showQuickPickForJob } from "../quickPick/JobQuickPick";
 import { changeSpecEditor, jobSpecEditor } from "../SpecEditor";
 import { DecorationProvider } from "./DecorationProvider";
+import { Utils } from "../Utils";
 
 function isResourceGroup(arg: any): arg is SourceControlResourceGroup {
     return arg && arg.id !== undefined;
@@ -295,6 +296,7 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
      * @param uri the local file to check
      */
     public async haveFile(uri: Uri): Promise<boolean> {
+        uri = Utils.getResolvedUri(uri) ?? uri;
         const cachedHave = this._knownHaveListByPath.get(uri.fsPath);
         if (cachedHave !== undefined) {
             return cachedHave;

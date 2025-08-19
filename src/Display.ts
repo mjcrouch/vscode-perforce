@@ -12,6 +12,7 @@ import { debounce } from "./Debounce";
 import * as p4 from "./api/PerforceApi";
 import * as PerforceUri from "./PerforceUri";
 import { isPositiveOrZero } from "./TsUtils";
+import { Utils } from "./Utils";
 
 let _statusBarItem: StatusBarItem;
 
@@ -106,8 +107,9 @@ export namespace Display {
             let active: ActiveEditorStatus = ActiveEditorStatus.NOT_IN_WORKSPACE;
             let details: p4.OpenedFile | undefined;
             try {
-                const opened = await p4.getOpenedFileDetails(doc.uri, {
-                    files: [doc.uri],
+                const docUri = Utils.getResolvedUri(doc.uri) ?? doc.uri;
+                const opened = await p4.getOpenedFileDetails(docUri, {
+                    files: [docUri],
                 });
                 if (opened.open.length > 0) {
                     _statusBarItem.text = "P4: $(check)";
