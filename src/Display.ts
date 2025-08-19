@@ -146,7 +146,7 @@ export namespace Display {
     }
 
     async function isSameAsOpenHaveFile(uri: Uri) {
-        const open = window.activeTextEditor?.document.uri;
+        const open = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!open || !PerforceUri.isDepotUri(uri)) {
             return false;
         }
@@ -158,7 +158,7 @@ export namespace Display {
     }
 
     function isSameAsOpenFileByStatus(uri: Uri) {
-        const open = window.activeTextEditor?.document.uri;
+        const open = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!open || !PerforceUri.isDepotUri(uri)) {
             return false;
         }
@@ -168,7 +168,7 @@ export namespace Display {
     }
 
     export async function isSameAsOpenFile(uri: Uri) {
-        const open = window.activeTextEditor?.document.uri;
+        const open = Utils.getResolvedUri(window.activeTextEditor?.document.uri);
         if (!open) {
             return false;
         }

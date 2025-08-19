@@ -89,7 +89,7 @@ export namespace Utils {
         timestamp: number;
     }
     const linkCache = new Map<string, CacheEntry>();
-    const LINK_CACHE_VALIDITY = -1;
+    const LINK_CACHE_VALIDITY = -1; // never out of date
     const LINK_CACHE_MAX_SIZE = 1000;
 
     function isLinkCacheValid(entry: CacheEntry) {
@@ -156,16 +156,25 @@ export namespace Utils {
     }
 
     export function getResolvedPath(path: string | undefined): string | undefined {
-        if (!path || !workspace.getConfiguration("perforce").get("resolveLinks", true)) {
+        if (!path || !workspace.getConfiguration("perforce").get("resolveLinks", false)) {
             return path;
         }
         return parseAllLinks(path);
     }
 
     export function getResolvedUri(uri: Uri | undefined): Uri | undefined {
-        if (!uri || !workspace.getConfiguration("perforce").get("resolveLinks", true)) {
+        if (!uri || !workspace.getConfiguration("perforce").get("resolveLinks", false)) {
             return uri;
         }
-        return Uri.file(parseAllLinks(uri.fsPath));
+        if (uri.scheme !== "file") {
+            return uri;
+        }
+        const resolvedFsPath = parseAllLinks(uri.fsPath);
+        return Uri.file(resolvedFsPath).with({
+            query: uri.query,
+            scheme: uri.scheme,
+            fragment: uri.fragment,
+            authority: uri.authority,
+        });
     }
 }
