@@ -13,10 +13,10 @@ const annotateFlags = flagMapper<AnnotateOptions>(
     [
         ["c", "outputChangelist"],
         ["u", "outputUser"],
-        ["i", "followBranches"],
+        ["I", "followBranches"],
     ],
     "file",
-    ["-q"]
+    ["-tq"]
 );
 
 const annotateCommand = makeSimpleCommand("annotate", annotateFlags);
