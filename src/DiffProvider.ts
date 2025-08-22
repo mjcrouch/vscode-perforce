@@ -265,7 +265,7 @@ export async function diffDefault(
     diffType?: DiffType,
     preview: boolean = true
 ): Promise<void> {
-    if (resource.FileType.base === FileType.BINARY) {
+    if (resource.FileType.base === FileType.BINARY && !workspace.getConfiguration("perforce").get("binaryAsText", false)) {
         const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
         await workspace.openTextDocument(uri).then((doc) => window.showTextDocument(doc));
         return;

@@ -16,7 +16,7 @@ const annotateFlags = flagMapper<AnnotateOptions>(
         ["I", "followBranches"],
     ],
     "file",
-    ["-tq"]
+    (!vscode.workspace.getConfiguration("perforce").get("binaryAsText", false) ? ["-q"] : ["-q", "-t"])
 );
 
 const annotateCommand = makeSimpleCommand("annotate", annotateFlags);
