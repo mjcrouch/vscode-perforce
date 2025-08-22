@@ -102,7 +102,7 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
         const command = (allArgs["command"] as string) ?? "print";
         let args = ((allArgs["p4Args"] as string) ?? "-q").split(" ");
         if (command === "fstat") {
-            args = args.filter(arg => arg !== "-q");
+            args = args.filter((arg) => arg !== "-q");
         }
 
         if (!PerforceFileSystemProvider.cmdWhitelist.includes(command)) {
