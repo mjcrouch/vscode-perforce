@@ -319,6 +319,11 @@
                     "default": false,
                     "description": "Try to resolve real file path before executing command."
                 },
+                "perforce.binaryAsText": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Handle binary files similarly to text files in workflows (e.g. diff, annotate, ...)"
+                },
                 "perforce.ignoredChangelistPrefix": {
                     "type": "string",
                     "description": "Specifies the prefix of the changelists to be ignored."
