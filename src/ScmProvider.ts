@@ -883,7 +883,10 @@ export class PerforceSCMProvider {
         preview: boolean = true
     ): Promise<void> {
         if (resource.FileType.base === FileType.BINARY) {
-            const uri = PerforceUri.fromUri(resource.openUri, { command: "fstat" });
+            const uri = PerforceUri.fromUri(resource.openUri, {
+                command: "fstat",
+                p4Args: "",
+            });
             await workspace
                 .openTextDocument(uri)
                 .then((doc) => window.showTextDocument(doc));
