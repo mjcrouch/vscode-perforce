@@ -55,12 +55,22 @@ const fstatFlags = flagMapper<FstatOptions>(
     "depotPaths"
 );
 
-const fstatBasic = makeSimpleCommand("fstat", fstatFlags).ignoringStdErr;
+const fstatBasic = makeSimpleCommand("fstat", fstatFlags);
 
-export async function getFstatInfo(resource: vscode.Uri, options: FstatOptions) {
+export async function getFstatInfo(
+    resource: vscode.Uri,
+    options: FstatOptions,
+    hideStdErr: boolean = false
+) {
     const chunks = splitIntoChunks(options.depotPaths);
     const promises = chunks.map((paths) =>
-        fstatBasic(resource, { ...options, ...{ depotPaths: paths } })
+        (hideStdErr ? fstatBasic?.ignoringAndHidingStdErr : fstatBasic.ignoringStdErr)(
+            resource,
+            {
+                ...options,
+                ...{ depotPaths: paths },
+            }
+        )
     );
 
     const fstats = await Promise.all(promises);
