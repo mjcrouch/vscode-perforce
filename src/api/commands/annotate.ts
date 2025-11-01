@@ -14,7 +14,7 @@ const annotateFlags = flagMapper<AnnotateOptions>(
     [
         ["c", "outputChangelist"],
         ["u", "outputUser"],
-        ["I", "followBranches"],
+        ["i", "followBranches"],
         ["t", "displayBinaryFiles"],
     ],
     "file",
