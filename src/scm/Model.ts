@@ -1416,13 +1416,17 @@ export class Model implements Disposable, vscode.FileDecorationProvider {
     private async getOpenedByChangeResources(changes: ChangeInfo[]): Promise<Resource[]> {
         const depotPaths = ["//" + this._clientName + "/..."];
         const proms = changes.map((c) =>
-            p4.getFstatInfo(this._workspaceUri, {
-                depotPaths,
-                outputPendingRecord: true,
-                limitToOpened: true,
-                limitToClient: true,
-                chnum: c.chnum.toString(),
-            })
+            p4.getFstatInfo(
+                this._workspaceUri,
+                {
+                    depotPaths,
+                    outputPendingRecord: true,
+                    limitToOpened: true,
+                    limitToClient: true,
+                    chnum: c.chnum.toString(),
+                },
+                true // outputs to stderr if there are only shelved resources
+            )
         );
         const fstatInfo = await Promise.all(proms);
 
