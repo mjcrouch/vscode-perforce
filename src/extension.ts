@@ -9,6 +9,7 @@ import { Display } from "./Display";
 import { Utils } from "./Utils";
 import * as vscode from "vscode";
 import * as Path from "path";
+import * as fs from "fs";
 
 import { Disposable } from "vscode";
 import { AnnotationProvider } from "./annotations/AnnotationProvider";
@@ -89,7 +90,11 @@ function isInClientRoot(
     caseInsensitive: boolean
 ) {
     const wksRootN = Utils.normalize(testFile.fsPath);
-    return startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive);
+    const wksRealRootN = Utils.normalize(fs.realpathSync(testFile.fsPath));
+    return (
+        startsWithInsensitive(wksRootN, rootFsPath, caseInsensitive) ||
+        startsWithInsensitive(wksRealRootN, rootFsPath, caseInsensitive)
+    );
 }
 
 function isClientRootIn(
@@ -98,7 +103,11 @@ function isClientRootIn(
     caseInsensitive: boolean
 ) {
     const wksRootN = Utils.normalize(workspace.fsPath);
-    return startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive);
+    const wksRealRootN = Utils.normalize(fs.realpathSync(workspace.fsPath));
+    return (
+        startsWithInsensitive(rootFsPath, wksRootN, caseInsensitive) ||
+        startsWithInsensitive(wksRealRootN, wksRootN, caseInsensitive)
+    );
 }
 
 async function findP4ConfigFiles(
