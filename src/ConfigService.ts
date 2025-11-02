@@ -111,6 +111,10 @@ export class ConfigAccessor {
         return this.getConfigItem("deleteOnFileDelete") ?? false;
     }
 
+    public get enableFileSystemActionsWithoutFolder(): boolean {
+        return this.getConfigItem("enableFileSystemActionsWithoutFolder") ?? true;
+    }
+
     public get resolveP4EDITOR(): string | undefined {
         return this.getConfigItem("resolve.p4editor");
     }
