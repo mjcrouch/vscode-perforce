@@ -6,6 +6,7 @@ export interface AnnotateOptions {
     outputChangelist?: boolean;
     outputUser?: boolean;
     followBranches?: boolean;
+    displayBinaryFiles?: boolean;
     file: PerforceFile;
 }
 
@@ -14,6 +15,7 @@ const annotateFlags = flagMapper<AnnotateOptions>(
         ["c", "outputChangelist"],
         ["u", "outputUser"],
         ["i", "followBranches"],
+        ["t", "displayBinaryFiles"],
     ],
     "file",
     ["-q"]
@@ -60,6 +62,9 @@ function parseAnnotateOutput(
 }
 
 export async function annotate(resource: vscode.Uri, options: AnnotateOptions) {
+    if (vscode.workspace.getConfiguration("perforce").get("binaryAsText", false)) {
+        options.displayBinaryFiles = true;
+    }
     const output = await annotateCommand(resource, options);
     return parseAnnotateOutput(output, options.outputUser);
 }

@@ -343,6 +343,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.dir`                     |`string`   |Overrides any PWD setting (current working directory) and replaces it with the specified directory
 |`perforce.command`                 |`string`   |Configure a path to p4 or an alternate command if needed
 |`perforce.realpath`                |`boolean`  |**Experimental** Try to resolve real file path before executing command
+|`perforce.binaryAsText`            |`boolean`  |**Experimental** Handle binary files similarly to text files in workflows (e.g. diff, annotate, ...)
 |&nbsp; 
 |`perforce.activationMode`          |`string`   |Controls when to activate the extension (`always`,`autodetect`,`off`)
 |`perforce.enableP4ConfigScanOnStartup` | `boolean` | When enabled (default), the extension scans the workspace for `P4CONFIG` files on startup. In large workspaces without `P4CONFIG` files this can be disabled to improve performance

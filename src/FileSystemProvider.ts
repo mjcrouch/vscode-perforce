@@ -99,8 +99,16 @@ export class PerforceFileSystemProvider implements FileSystemProvider, Disposabl
         }
 
         const allArgs = PerforceUri.decodeUriQuery(uri.query ?? "");
-        const args = ((allArgs["p4Args"] as string) ?? "-q").split(" ");
+        const commandsNoQuietMode = {
+            fstat: true,
+        } as const;
+
         const command = (allArgs["command"] as string) ?? "print";
+        const args = allArgs["p4Args"]
+            ? allArgs["p4Args"].split(" ")
+            : command in commandsNoQuietMode
+            ? []
+            : ["-q"];
 
         if (!PerforceFileSystemProvider.cmdWhitelist.includes(command)) {
             throw new Error("Illegal command " + command);
