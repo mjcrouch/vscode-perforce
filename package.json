@@ -139,6 +139,11 @@
                     "default": false,
                     "description": "Automatically delete a file from depot when deleted"
                 },
+                "perforce.enableFileSystemActionsWithoutFolder": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Allows file system actions (e.g. edit on save) to react to file system changes when no VS Code folder is open"
+                },
                 "perforce.annotate.followBranches": {
                     "type": "boolean",
                     "default": true,

@@ -339,6 +339,7 @@ You can specify how you want the extension to activate by setting the parameter 
 |`perforce.editOnFileModified`      |`boolean`  |Automatically open a file for edit when Modified
 |`perforce.addOnFileCreate`         |`boolean`  |Automatically Add a file to depot when Created
 |`perforce.deleteOnFileDelete`      |`boolean`  |Automatically delete a file from depot when deleted
+|`perforce.enableFileSystemActionsWithoutFolder` |`boolean`  |Enables the above actions when no folder is open in VS Code. Requires that an SCM provider has been activated in the window (e.g. via activateOnFileOpen)
 |&nbsp; 
 |`perforce.dir`                     |`string`   |Overrides any PWD setting (current working directory) and replaces it with the specified directory
 |`perforce.command`                 |`string`   |Configure a path to p4 or an alternate command if needed
