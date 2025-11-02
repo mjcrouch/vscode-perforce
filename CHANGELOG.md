@@ -1,5 +1,11 @@
 # Change log
 
+## [4.17.0] - 2025-11-02
+
+* Adds an option to enable file system actions (e.g. edit on save) without having a folder open in VS Code (#307)
+* Adds an option to treat binary files as text for diff and annotate, + other binary file fixes (#261, #271) - Thanks @Forest-Lover
+* Fixes an issue where spurious errors would be shown in the status bar if a changelist contained only shelved files (#308)
+
 ## [4.16.2] - 2025-06-20
 
 * Reduces load on the perforce server, by issuing fewer commands when refreshing the list of changelists. Previously the extension issued one fstat command per open file. It now issues one per changelist (#301) - Thanks @cpmclouth
@@ -494,6 +500,7 @@ Otherwise, this version *should* be backward compatible. The following changes h
 * `edit` command on opened file
 * `revert` command on opened file
 
+[4.17.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.16.2...4.17.0
 [4.16.2]: https://github.com/mjcrouch/vscode-perforce/compare/4.16.1...4.16.2
 [4.16.1]: https://github.com/mjcrouch/vscode-perforce/compare/4.16.0...4.16.1
 [4.16.0]: https://github.com/mjcrouch/vscode-perforce/compare/4.15.6...4.16.0
