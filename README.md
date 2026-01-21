@@ -459,3 +459,4 @@ It's generally not recommended to rebind your ctrl+s keyboard shortcut, due to t
 ## License
 
 [MIT](LICENSE.md)
+
